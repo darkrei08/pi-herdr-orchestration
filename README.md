@@ -22,6 +22,7 @@ npx skills add darkrei08/repository-orchestrator --skill repository-orchestrator
 
 - `skills/repository-orchestrator/SKILL.md`: indice e contratto operativo essenziale.
 - `references/bootstrap.md`: discovery delle capacità installate.
+- `references/dependencies.md`: registro delle dipendenze opzionali, rilevamento, installazione verificata e fallback.
 - `references/wizard-ai.md`: compatibilità con Wizard-AI, TOON/LEA, RTK/sqz, Serena, graphify e Pi.dev.
 - `references/guardian-angel.md`: integrazione opzionale di Gentleman Guardian Angel come quality gate Git/pre-commit/CI con cache hashata.
 - `references/discovery.md`: inventario Git, Issue/PR e grafo dei task.
@@ -35,6 +36,8 @@ npx skills add darkrei08/repository-orchestrator --skill repository-orchestrator
 - `references/audit.md`: rescan, recupero e audit finale.
 
 La skill non installa automaticamente PiWorkflow, Gentle AI o altre skill. Rileva ciò che esiste e usa le istruzioni locali effettive. PiWorkflow resta l'orchestratore quando disponibile; la suite Gentle AI (inclusi gentle-pi, Engram, skill, workflow e integrazioni effettivamente installati) conserva conoscenza e continuità senza sostituire Git. Il modello operativo usa una sessione `[MASTER] Pi Repository Orchestrator`, chief di reparto e sessioni figlie con tab ordinate e rinominate. Il passaggio di stato usa un envelope JSON compatto; il Markdown viene generato per la lettura umana. Prima di chiudere una sessione figlia salva la memoria di sviluppo, trasmette il report al chief e al master, decide se pubblicare sul ramo stabile o mantenere il lavoro sul ramo di sviluppo, poi chiude sessione e tab. Le operazioni remote rispettano l'autorizzazione e le convenzioni del repository.
+
+Quando l'utente richiede il setup, la skill propone l'installazione delle dipendenze mancanti e le verifica come estensioni della skill. Non installa nulla in modo silenzioso. Pi Agent e Pi VCC restano proprietari della compattazione del contesto: la skill registra il compactor attivo, produce handoff strutturati e non esegue una seconda compattazione concorrente.
 
 ## Esempi
 
