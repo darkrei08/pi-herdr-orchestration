@@ -23,6 +23,7 @@ npx skills add darkrei08/repository-orchestrator --skill repository-orchestrator
 - `skills/repository-orchestrator/SKILL.md`: indice e contratto operativo essenziale.
 - `references/bootstrap.md`: discovery delle capacità installate.
 - `references/wizard-ai.md`: compatibilità con Wizard-AI, TOON/LEA, RTK/sqz, Serena, graphify e Pi.dev.
+- `references/guardian-angel.md`: integrazione opzionale di Gentleman Guardian Angel come quality gate Git/pre-commit/CI con cache hashata.
 - `references/discovery.md`: inventario Git, Issue/PR e grafo dei task.
 - `references/memory.md`: memoria selettiva e handoff tra macchine.
 - `references/routing.md`: scelta dinamica delle skill.
@@ -46,5 +47,6 @@ La skill non installa automaticamente PiWorkflow, Gentle AI o altre skill. Rilev
 - [PiWorkflow](https://github.com/vekexasia/pi-extensible-workflows)
 - [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai)
 - [Engineering Excellence](https://github.com/micio86dev/Engineering-Excellence)
+- [Gentleman Guardian Angel](https://github.com/Gentleman-Programming/gentleman-guardian-angel)
 
 Questa skill è autonoma e non incorpora il codice né le skill dei progetti collegati.
