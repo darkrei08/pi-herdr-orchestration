@@ -21,6 +21,16 @@ Choose the representation by boundary rather than using one format everywhere:
 
 Use JSON as the canonical durable representation even when TOON, CSV, YAML or XML is used at a boundary. TOON is a useful optimization for regular tabular data, but its own project describes it as an evolving format and recommends JSON for deeply nested or irregular data. CSV is not a general object format: use it only with a versioned typed header and escaping rules. YAML is convenient for humans but must be parsed and normalized before validation. XML tags improve prompt separation for Claude-style prompts; they do not provide schema-constrained output. Binary encodings such as CBOR, MessagePack or Protocol Buffers belong between trusted programs, not in an LLM prompt. Experimental proposals such as ADOL or ANML can inform future adapters, but they are not treated as production standards until the relevant ecosystem and implementation are stable.
 
+## Pi and Pi VCC compaction boundary
+
+Pi remains the owner of the live transcript and its session entries. Pi's native compaction or Pi VCC may summarize that transcript; the orchestrator must not create a competing second summary. Detect the active owner and record it in the run metadata:
+
+```json
+{"context_manager":"pi-vcc","compaction_mode":"override","handoff":"repo-orchestrator/v1","recall":"pi-vcc-recall"}
+```
+
+When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In both cases, emit a separate repository handoff containing goal, constraints, progress, decisions, checks, memory references, open risks and next action. That handoff is durable task state, not a replacement for Pi's transcript compaction.
+
 ## Canonical envelope
 
 ```json
