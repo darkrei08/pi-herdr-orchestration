@@ -31,7 +31,7 @@ Guardian Angel (GGA)            → runs provider-agnostic commit/PR quality rev
 repository-orchestrator         → defines the master/chief/task protocol
 ```
 
-At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `@darkrei08/wizard-ai-cli`, `wz-ai context`, installed Pi extensions and the actual `pi-extensible-workflows` version. Use the installed documentation and package exports as the source of truth. The same orchestration contract must work with Pi.dev even when Wizard-AI's Cockpit proxy is absent; provider routing is an optional infrastructure capability, not a workflow dependency.
+At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `@darkrei08/wizard-ai-cli`, `wz-ai context`, installed Pi extensions, `@adamjen/pi-vcc` and the actual `pi-extensible-workflows` version. Use the installed documentation and package exports as the source of truth. The same orchestration contract must work with Pi.dev even when Wizard-AI's Cockpit proxy is absent; provider routing is an optional infrastructure capability, not a workflow dependency. If Wizard-AI is missing and the user asks for setup, prefer its guided installer so RTK, sqz, Serena and graphify are installed as one recorded bundle rather than as guessed independent packages.
 
 ## Recommended flow
 
@@ -40,8 +40,9 @@ At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `@darkrei08/wizard-a
 3. Build the canonical state envelope from [state-protocol.md](state-protocol.md).
 4. Encode regular evidence arrays as TOON for model input, or LEA when the main saving comes from repeated source and evidence labels. Keep canonical JSON for validation and storage.
 5. Send only the compact result to the next PiWorkflow stage. Keep logs, diffs, raw test output and graph artifacts behind file/CI references.
-6. Let Gentle/Engram persist only durable decisions and verified facts after the master accepts the result.
-7. Run GGA on the staged/PR diff before the chief reports `READY`; retain only its status, version, config digest and artifact reference in the envelope.
+6. Let Pi/Pi VCC own transcript compaction; use TOON/LEA/sqz only for bounded evidence and handoff preparation.
+7. Let Gentle/Engram persist only durable decisions and verified facts after the master accepts the result.
+8. Run GGA on the staged/PR diff before the chief reports `READY`; retain only its status, version, config digest and artifact reference in the envelope.
 
 ## Claims and compatibility limits
 
