@@ -27,6 +27,7 @@ Pi / pi.dev                     → executes sessions and tools
 Engineering Excellence          → supplies engineering quality methods
 Gentle/gentle-pi + Engram       → hydrates and persists durable knowledge
 Herdr                           → owns panes, workspaces and runtime layout
+Guardian Angel (GGA)            → runs provider-agnostic commit/PR quality review
 repository-orchestrator         → defines the master/chief/task protocol
 ```
 
@@ -40,6 +41,7 @@ At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `@darkrei08/wizard-a
 4. Encode regular evidence arrays as TOON for model input, or LEA when the main saving comes from repeated source and evidence labels. Keep canonical JSON for validation and storage.
 5. Send only the compact result to the next PiWorkflow stage. Keep logs, diffs, raw test output and graph artifacts behind file/CI references.
 6. Let Gentle/Engram persist only durable decisions and verified facts after the master accepts the result.
+7. Run GGA on the staged/PR diff before the chief reports `READY`; retain only its status, version, config digest and artifact reference in the envelope.
 
 ## Claims and compatibility limits
 
