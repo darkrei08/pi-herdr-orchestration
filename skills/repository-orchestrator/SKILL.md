@@ -12,13 +12,14 @@ Act as the control session for the current repository. Respect the user's actual
 1. Read repository instructions (`AGENTS.md` and project documentation), identify the requested scope, and inspect Git state before edits.
 2. Discover Pi, PiWorkflow, Gentle AI/Engram, installed skills, GitHub access, runtimes and checks. Read their *installed* instructions. See [bootstrap.md](references/bootstrap.md).
 3. If Wizard-AI is installed or the repository exposes it, discover its context stack and compatibility layer. See [wizard-ai.md](references/wizard-ai.md).
-4. Reconcile relevant persisted memory with current Git, issues, PRs and CI; load only task-relevant memory. See [memory.md](references/memory.md).
-5. Build a deduplicated work queue and dependency graph. Prioritize defects with material impact and unblockers. See [discovery.md](references/discovery.md).
-6. Select the smallest useful set of available skills, methods and roles. See [routing.md](references/routing.md).
-7. Operate the session hierarchy: `[MASTER] Pi Repository Orchestrator` coordinates department chiefs; chiefs coordinate issue, PR, feature, review and audit sessions. See [coordination.md](references/coordination.md).
-8. Pass compact structured state between workflow layers and sessions. Use JSON as the machine contract and Markdown as the human report generated from it. See [state-protocol.md](references/state-protocol.md).
-9. Execute in an isolated branch/worktree with an ordered, immediately renamed Pi tab when the task merits it. Verify and review the result. See [execution.md](references/execution.md) and [quality.md](references/quality.md).
-10. Decide destination from evidence: stable integration, preserved development branch, follow-up or blocked. Persist durable knowledge, close child sessions and tabs in order, report to the master, then rescan and audit. See [integration.md](references/integration.md) and [audit.md](references/audit.md).
+4. If installed, use Guardian Angel (GGA) as a provider-agnostic commit/PR quality gate after tests and before `READY`. See [guardian-angel.md](references/guardian-angel.md).
+5. Reconcile relevant persisted memory with current Git, issues, PRs and CI; load only task-relevant memory. See [memory.md](references/memory.md).
+6. Build a deduplicated work queue and dependency graph. Prioritize defects with material impact and unblockers. See [discovery.md](references/discovery.md).
+7. Select the smallest useful set of available skills, methods and roles. See [routing.md](references/routing.md).
+8. Operate the session hierarchy: `[MASTER] Pi Repository Orchestrator` coordinates department chiefs; chiefs coordinate issue, PR, feature, review and audit sessions. See [coordination.md](references/coordination.md).
+9. Pass compact structured state between workflow layers and sessions. Use JSON as the machine contract and Markdown as the human report generated from it. See [state-protocol.md](references/state-protocol.md).
+10. Execute in an isolated branch/worktree with an ordered, immediately renamed Pi tab when the task merits it. Verify and review the result. See [execution.md](references/execution.md) and [quality.md](references/quality.md).
+11. Decide destination from evidence: stable integration, preserved development branch, follow-up or blocked. Persist durable knowledge, close child sessions and tabs in order, report to the master, then rescan and audit. See [integration.md](references/integration.md) and [audit.md](references/audit.md).
 
 ## Control rules
 
@@ -35,6 +36,7 @@ Act as the control session for the current repository. Respect the user's actual
 | --- | --- |
 | Environment and capability discovery | [bootstrap.md](references/bootstrap.md) |
 | Wizard-AI context and Pi compatibility | [wizard-ai.md](references/wizard-ai.md) |
+| Guardian Angel commit/PR quality gate | [guardian-angel.md](references/guardian-angel.md) |
 | Branch, PR and issue inventory | [discovery.md](references/discovery.md) |
 | Gentle/Engram hydration and handoff | [memory.md](references/memory.md) |
 | Dynamic skill and role selection | [routing.md](references/routing.md) |
