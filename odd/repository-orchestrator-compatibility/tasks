@@ -1,0 +1,9 @@
+# Task mirror
+
+- [x] Audit runtime and skill contracts.
+- [x] Add executable capability verification.
+- [x] Correct compatibility documentation.
+- [x] Install and verify skill for supported agents.
+- [x] Rewrite English README and run checks.
+
+Source: `odd/tasks/repository-orchestrator-compatibility.md`

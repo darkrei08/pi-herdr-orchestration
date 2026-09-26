@@ -10,8 +10,8 @@ Act as the control session for the current repository. Respect the user's actual
 ## Entry sequence
 
 1. Read repository instructions (`AGENTS.md` and project documentation), identify the requested scope, and inspect Git state before edits.
-2. Discover Pi, PiWorkflow, Pi VCC, Gentle AI/Engram, Wizard-AI, Guardian Angel, Herdr, installed skills, runtimes and checks. Classify them as installed, missing or incompatible; read only their installed instructions. See [bootstrap.md](references/bootstrap.md) and [dependencies.md](references/dependencies.md).
-3. If the user requests setup, propose and then install missing optional dependencies using their official installer; never install silently. Verify every installation and register its version and capability.
+2. Discover Pi, PiWorkflow, Pi compaction extensions, Gentle AI/Engram, Wizard-AI, Guardian Angel, Herdr, installed skills, runtimes and checks. Classify them as installed, missing or incompatible; read only their installed instructions. Run `node scripts/check-environment.mjs --json` when the checkout is available. See [bootstrap.md](references/bootstrap.md) and [dependencies.md](references/dependencies.md).
+3. If the user requests setup, propose and then install missing optional dependencies using their official installer; never install silently. Verify every installation and register its version and capability. Do not install components that overlap with the installed Gentle AI/Engram/PiWorkflow stack.
 4. If Wizard-AI is installed or the repository exposes it, discover its context stack and compatibility layer. See [wizard-ai.md](references/wizard-ai.md).
 5. If installed, use Guardian Angel (GGA) as a provider-agnostic commit/PR quality gate after tests and before `READY`. See [guardian-angel.md](references/guardian-angel.md).
 6. Reconcile relevant persisted memory with current Git, issues, PRs and CI; load only task-relevant memory. See [memory.md](references/memory.md).
@@ -30,6 +30,7 @@ Act as the control session for the current repository. Respect the user's actual
 - Delegate or parallelize only when permitted by the host, user and project instructions and when task dependencies allow it. A separate reviewer is desirable when available, never mandatory theater.
 - Do not automatically merge, push, close PRs/issues, delete branches, or broaden the user's scope without applicable authorization. Preserve unrelated work and uncommitted changes.
 - Report `PASS`, `FAIL`, `BLOCKED` or `NOT RUN` accurately for relevant checks. State exact remaining blockers and next action.
+- Skill distribution is host-specific: verify Codex, Claude Code, Antigravity and Antigravity CLI roots after installation; never claim support merely because a `SKILL.md` exists in one agent's directory.
 
 ## Reference map
 

@@ -8,9 +8,9 @@ Choose the representation by boundary rather than using one format everywhere:
 
 | Boundary | Preferred format | Reason |
 | --- | --- | --- |
-| Agent/tool result and workflow state | Strict JSON Schema | Deterministic validation, enums, required fields and machine routing |
+| Agent/tool result and workflow state | JSON envelope validated by the receiving workflow; strict JSON Schema when the host supports it | Deterministic validation, enums, required fields and machine routing |
 | MCP tool result | `structuredContent` JSON plus a short text fallback | Native structured result with schema validation and resource references |
-| Shared schema components | JSON Schema `$ref`/JSON Pointer and a schema digest | Define repeated fields once; cache and validate the referenced version |
+| Shared schema components | JSON Schema `$ref`/JSON Pointer and a schema digest when a schema is available | Define repeated fields once; cache and validate the referenced version |
 | Repeated homogeneous rows in an LLM prompt | TOON, encoded from canonical JSON | Lower token cost for uniform arrays; convert back to JSON before validation |
 | Small flat records or CSV-like evidence | Delimited table/CSV only after a typed header | Lower overhead for regular rows; unsafe for nested values without escaping rules |
 | Append-only event or audit stream | JSONL | One independently parseable event per line and easy replay |
@@ -26,7 +26,7 @@ Use JSON as the canonical durable representation even when TOON, CSV, YAML or XM
 Pi remains the owner of the live transcript and its session entries. Pi's native compaction or Pi VCC may summarize that transcript; the orchestrator must not create a competing second summary. Detect the active owner and record it in the run metadata:
 
 ```json
-{"context_manager":"pi-vcc","compaction_mode":"override","handoff":"repo-orchestrator/v1","recall":"pi-vcc-recall"}
+{"context_manager":"detected-owner","compaction_mode":"override-or-native","handoff":"repo-orchestrator/v1","recall":"provider-specific-or-none"}
 ```
 
 When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In both cases, emit a separate repository handoff containing goal, constraints, progress, decisions, checks, memory references, open risks and next action. That handoff is durable task state, not a replacement for Pi's transcript compaction.

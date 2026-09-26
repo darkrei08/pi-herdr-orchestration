@@ -31,7 +31,7 @@ Guardian Angel (GGA)            → runs provider-agnostic commit/PR quality rev
 repository-orchestrator         → defines the master/chief/task protocol
 ```
 
-At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `@darkrei08/wizard-ai-cli`, `wz-ai context`, installed Pi extensions, `@adamjen/pi-vcc` and the actual `pi-extensible-workflows` version. Use the installed documentation and package exports as the source of truth. The same orchestration contract must work with Pi.dev even when Wizard-AI's Cockpit proxy is absent; provider routing is an optional infrastructure capability, not a workflow dependency. If Wizard-AI is missing and the user asks for setup, prefer its guided installer so RTK, sqz, Serena and graphify are installed as one recorded bundle rather than as guessed independent packages.
+At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `wizard-ai-context`, `@darkrei08/wizard-ai-cli`, installed Pi extensions, the active Pi compaction owner (`pi-codex-context`, `@sting8k/pi-vcc`, legacy `@adamjen/pi-vcc`, or Pi core), and the actual `pi-extensible-workflows` version. Use the installed documentation, package exports and active Pi settings as the source of truth. The same orchestration contract must work with Pi.dev even when Wizard-AI's Cockpit proxy is absent; provider routing is an optional infrastructure capability, not a workflow dependency. If Wizard-AI is missing and the user asks for setup, prefer its guided installer so RTK, sqz, Serena and graphify are installed as one recorded bundle rather than as guessed independent packages.
 
 ## Recommended flow
 
@@ -43,6 +43,7 @@ At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `@darkrei08/wizard-a
 6. Let Pi/Pi VCC own transcript compaction; use TOON/LEA/sqz only for bounded evidence and handoff preparation.
 7. Let Gentle/Engram persist only durable decisions and verified facts after the master accepts the result.
 8. Run GGA on the staged/PR diff before the chief reports `READY`; retain only its status, version, config digest and artifact reference in the envelope.
+9. Do not enable Wizard-AI memory, workflow, proxy, or provider-routing components when Gentle/Engram/PiWorkflow already provide the same responsibility.
 
 ## Claims and compatibility limits
 

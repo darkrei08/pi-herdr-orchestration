@@ -1,55 +1,98 @@
 # Repository Orchestrator
 
-Una skill modulare per gestire lavoro complesso in repository: discovery, task graph, PiWorkflow, memoria Gentle/Engram, branch e worktree, verifiche, integrazione e audit finale.
+A portable agent skill for coordinating repository maintenance, issue and PR work, isolated worktrees, verification, review, integration, and final audit.
 
-## Installazione
+The skill is provider-agnostic. It can run with plain Git and a single agent. PiWorkflow, Gentle/Engram, Herdr, Guardian Angel, Wizard-AI, and context tools are optional integrations discovered at runtime.
 
-Dopo aver pubblicato questo repository su GitHub:
+## Install
 
-```bash
-npx skills add darkrei08/repository-orchestrator --skill repository-orchestrator
-```
-
-Per l'installazione globale in Codex, quando supportata dalla versione della CLI:
+This repository does not require an npm package. Install the skill with the official Vercel Skills CLI:
 
 ```bash
-npx skills add darkrei08/repository-orchestrator --skill repository-orchestrator --agent codex --global
+# From GitHub, for all supported agent targets
+npx skills add darkrei08/repository-orchestrator \
+  --skill repository-orchestrator \
+  --agent codex claude-code antigravity antigravity-cli \
+  --global
 ```
 
-`npx` avvia la CLI `skills`: questo repository non richiede un pacchetto npm proprio. Prima della pubblicazione si può provare la sorgente locale con `npx skills add ./repository-orchestrator --skill repository-orchestrator` dalla directory che la contiene.
+For a local checkout:
 
-## Struttura
+```bash
+npx skills add . \
+  --skill repository-orchestrator \
+  --agent codex claude-code antigravity antigravity-cli \
+  --global
+```
 
-- `skills/repository-orchestrator/SKILL.md`: indice e contratto operativo essenziale.
-- `references/bootstrap.md`: discovery delle capacità installate.
-- `references/dependencies.md`: registro delle dipendenze opzionali, rilevamento, installazione verificata e fallback.
-- `references/wizard-ai.md`: compatibilità con Wizard-AI, TOON/LEA, RTK/sqz, Serena, graphify e Pi.dev.
-- `references/guardian-angel.md`: integrazione opzionale di Gentleman Guardian Angel come quality gate Git/pre-commit/CI con cache hashata.
-- `references/discovery.md`: inventario Git, Issue/PR e grafo dei task.
-- `references/memory.md`: memoria selettiva e handoff tra macchine.
-- `references/routing.md`: scelta dinamica delle skill.
-- `references/coordination.md`: gerarchia master, chief, sessioni e tab ordinate.
-- `references/state-protocol.md`: contratto JSON compatto per directive, progress, result, chief report e decisioni master.
-- `references/execution.md`: branch, worktree e sessioni.
-- `references/quality.md`: test, critica e review.
-- `references/integration.md`: destinazione, PR e cleanup.
-- `references/audit.md`: rescan, recupero e audit finale.
+The installer uses these global skill roots:
 
-La skill non installa automaticamente PiWorkflow, Gentle AI o altre skill. Rileva ciò che esiste e usa le istruzioni locali effettive. PiWorkflow resta l'orchestratore quando disponibile; la suite Gentle AI (inclusi gentle-pi, Engram, skill, workflow e integrazioni effettivamente installati) conserva conoscenza e continuità senza sostituire Git. Il modello operativo usa una sessione `[MASTER] Pi Repository Orchestrator`, chief di reparto e sessioni figlie con tab ordinate e rinominate. Il passaggio di stato usa un envelope JSON compatto; il Markdown viene generato per la lettura umana. Prima di chiudere una sessione figlia salva la memoria di sviluppo, trasmette il report al chief e al master, decide se pubblicare sul ramo stabile o mantenere il lavoro sul ramo di sviluppo, poi chiude sessione e tab. Le operazioni remote rispettano l'autorizzazione e le convenzioni del repository.
+| Agent | Agent-specific root |
+| --- | --- |
+| Codex | `~/.codex/skills` |
+| Claude Code | `~/.claude/skills` |
+| Antigravity | `~/.gemini/config/skills` |
+| Antigravity CLI | `~/.gemini/antigravity-cli/skills` |
+| Pi | `~/.pi/agent/skills` |
 
-Quando l'utente richiede il setup, la skill propone l'installazione delle dipendenze mancanti e le verifica come estensioni della skill. Non installa nulla in modo silenzioso. Pi Agent e Pi VCC restano proprietari della compattazione del contesto: la skill registra il compactor attivo, produce handoff strutturati e non esegue una seconda compattazione concorrente.
+The official CLI may instead install once in the shared `~/.agents/skills` root and expose the skill to several agents through links or its agent registry. Verify the actual resolution with the capability report before relying on a path.
 
-## Esempi
+## Verify
 
-- «Usa repository-orchestrator per esaminare Issue e PR aperte e risolvere il lavoro autorizzato.»
-- «Riprendi questo progetto dopo la reinstallazione: ricostruisci lo stato da Git e dalla memoria disponibile.»
-- «Esegui l'audit finale del repository e segnala lavoro dimenticato e controlli mancanti.»
+Run the read-only capability report from a checkout:
 
-## Progetti collegati
+```bash
+node skills/repository-orchestrator/scripts/check-environment.mjs --json
+node skills/repository-orchestrator/scripts/check-environment.mjs --strict
+```
 
-- [PiWorkflow](https://github.com/vekexasia/pi-extensible-workflows)
-- [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai)
-- [Engineering Excellence](https://github.com/micio86dev/Engineering-Excellence)
-- [Gentleman Guardian Angel](https://github.com/Gentleman-Programming/gentleman-guardian-angel)
+The report checks:
 
-Questa skill è autonoma e non incorpora il codice né le skill dei progetti collegati.
+- the skill, Node.js, and Git;
+- Pi, PiWorkflow, Gentle/Engram, Guardian Angel, and Herdr;
+- optional Wizard-AI, Serena, graphify, RTK, and sqz tools;
+- Codex, Claude Code, Antigravity, and Antigravity CLI skill roots;
+- the active Pi compaction owner.
+
+Missing optional tools are reported, not treated as failures. `--strict` fails for a missing core runtime, conflicting compaction owners, or a missing skill.
+
+## Runtime and dependency policy
+
+The orchestrator is usable with plain Git. It never assumes that a command or integration exists because a package or repository is mentioned in a prompt.
+
+At bootstrap it detects the installed implementation, version, supported operations, configuration, and constraints. It then chooses a documented fallback when an optional capability is missing. It does not install software silently.
+
+Pi compaction is selected from active settings and hooks. The supported outcomes are:
+
+- one configured third-party owner, such as `pi-codex-context` or `@sting8k/pi-vcc`;
+- Pi native compaction when no third-party owner is active;
+- `incompatible` when multiple owners are active.
+
+The orchestrator never runs a second compactor over the live transcript. Gentle AI/Engram and PiWorkflow remain authoritative when installed; Wizard-AI memory, workflow, proxy, or provider-routing components are not installed on top of them unless explicitly required and verified as non-overlapping.
+
+## Layout
+
+- `skills/repository-orchestrator/SKILL.md`: operational contract.
+- `skills/repository-orchestrator/references/`: bootstrap, dependency, routing, state, execution, quality, memory, integration, and audit guidance.
+- `skills/repository-orchestrator/scripts/check-environment.mjs`: read-only capability and host compatibility check.
+- `skills/repository-orchestrator/agents/openai.yaml`: OpenAI/Codex metadata.
+
+## Sources
+
+The implementation follows the documented interfaces of these upstream projects:
+
+- [Vercel Agent Skills CLI](https://github.com/vercel-labs/skills) for cross-agent skill installation.
+- [OpenAI Codex skills](https://developers.openai.com/plugins/concepts/skills) for the `SKILL.md` skill contract.
+- [Google Antigravity skills](https://antigravity.google/docs/skills) for Antigravity skill discovery.
+- [Pi coding agent](https://github.com/badlogic/pi-mono) for Pi extensions and sessions.
+- [Pi extensible workflows](https://github.com/vekexasia/pi-extensible-workflows) for workflow orchestration.
+- [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai) and [Gentle Engram](https://github.com/Gentleman-Programming/gentle-engram) for continuity and memory integrations.
+- [Gentleman Guardian Angel](https://github.com/Gentleman-Programming/gentleman-guardian-angel) for the optional provider-agnostic quality gate.
+- [Wizard-AI](https://github.com/darkrei08/Wizard-AI) for optional guided setup and context tooling.
+- [Herdr](https://herdr.dev/) for optional workspace and tab management.
+
+Upstream availability and package versions can change. The runtime report and installed package metadata are authoritative; README links are references, not proof that a tool is installed.
+
+## License
+
+See [LICENSE](LICENSE).
