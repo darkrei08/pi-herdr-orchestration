@@ -1,0 +1,8 @@
+# Task mirror
+
+- [x] Define official dependency bootstrap contract.
+- [x] Update README and skill references.
+- [x] Verify documentation update.
+- [x] Publish documentation update after explicit commit/push authorization.
+
+Source: `odd/tasks/repository-orchestrator-dependency-bootstrap.md`

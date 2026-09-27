@@ -1,0 +1,8 @@
+# Task mirror
+
+- [x] Define ownership and installer matrix.
+- [x] Implement dependency bootstrap command.
+- [x] Update documentation and capability report.
+- [x] Install authorized non-overlapping dependencies and verify.
+
+Source: `odd/tasks/repository-orchestrator-full-dependency-bootstrap.md`
