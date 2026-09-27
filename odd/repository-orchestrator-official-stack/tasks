@@ -3,6 +3,6 @@
 - [x] Inventory skill-referenced software and official installation plan.
 - [x] Install missing official optional tooling.
 - [x] Update skill with verified stack and install guidance.
-- [ ] Verify and publish the skill.
+- [x] Verify and publish the skill.
 
 Source: `odd/tasks/repository-orchestrator-official-stack.md`

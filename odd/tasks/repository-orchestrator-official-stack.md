@@ -20,7 +20,7 @@ Verify every software capability referenced by the skill, install missing option
 - [x] Inventory skill-referenced software and official installation plan.
 - [x] Install missing official optional tooling.
 - [x] Update skill with verified stack and install guidance.
-- [ ] Verify and publish the skill.
+- [x] Verify and publish the skill.
 
 ## Evidence
 - Branch: `chore/official-tooling-stack`, based on `main`; remote is `https://github.com/darkrei08/repository-orchestrator`.
@@ -31,3 +31,5 @@ Verify every software capability referenced by the skill, install missing option
 - Legacy `@adamjen/pi-vcc` is intentionally not installed because another compaction owner is active.
 - GGA v2.10.1 passed the staged candidate with exit `0`; it reported only non-blocking observations about stale branch text and Pi-root verification.
 - Preserve pre-existing untracked `.gitignore`.
+- Work-unit commit: `12b2ae2 feat: document official tool compatibility stack`.
+- Published branch: `origin/chore/official-tooling-stack`.
