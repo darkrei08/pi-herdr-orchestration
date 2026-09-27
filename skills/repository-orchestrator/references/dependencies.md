@@ -10,19 +10,22 @@ detect → classify → propose install → explicit approval → install → ve
 
 | Capability | Detect | Installation/source | Used for |
 | --- | --- | --- | --- |
-| Pi coding agent | `command -v pi`, `pi --version` | pi.dev installer or the package manager documented by the installed Pi release | sessions, tools and native compaction |
-| PiWorkflow | Pi extension/package inventory and `pi-extensible-workflows` files | `pi install npm:pi-extensible-workflows` | `parallel`, `pipeline`, checkpoints, agents and worktrees |
-| Pi compaction | Active Pi settings plus the configured extension hook; common packages include `pi-codex-context`, `@sting8k/pi-vcc` and legacy `@adamjen/pi-vcc` | Use the installed package's official instructions; for pi-vcc, `pi install npm:@sting8k/pi-vcc` | one selected context-compaction owner and recall |
+| Pi coding agent | `command -v pi`, `pi --version` | `npm install --global @mariozechner/pi-coding-agent` or the package manager documented by the installed Pi release | sessions, tools and native compaction |
+| PiWorkflow | Pi extension/package inventory and `pi-extensible-workflows` files | Existing package/config is manager-owned; otherwise `pi install npm:pi-extensible-workflows` | `parallel`, `pipeline`, checkpoints, agents and worktrees |
+| Pi compaction | Active Pi settings plus `~/.pi/agent/packages/pi-codex-context` and configured extension hooks | `pi-codex-context` is the Vekexasia dotenv owner; never install `@sting8k/pi-vcc` | one selected context-compaction owner and recall |
 | Skills CLI | `command -v skills` or `npx skills --version` | `npm install --global skills@latest` or the documented `npx skills` invocation | cross-agent skill distribution |
 | Wizard-AI | `WIZARD_AI_DIR`, `~/.wizard-ai/.wizard-ai.json`, `wizard-ai`, `wizard-ai-context`, `@darkrei08/wizard-ai-cli` | `npx --no-cache -y @darkrei08/wizard-ai-cli@latest setup --verbose` | guided installation, registry and context tooling |
-| TOON | `@toon-format/toon` import or Wizard-AI context utility | install through Wizard-AI or the project-local npm dependency | regular tabular context encoding |
-| LEA | Wizard-AI `encodeLEA`/`wz-ai-context` and LEA files | project convention supplied by Wizard-AI; no universal package assumed | lossless evidence aliases |
-| RTK / sqz / Serena / graphify | corresponding executable plus `--version`/`--help`; Wizard-AI wrappers do not prove the underlying tool is installed | prefer Wizard-AI's guided setup; use each project's official installer only when documented | output reduction, semantic code navigation and graphs |
-| Guardian Angel | `command -v gga`, `gga version` | Homebrew or the upstream `install.sh` from Gentleman Guardian Angel | commit/PR quality gate and hash cache |
-| Gentle AI / gentle-pi / Engram | executable, package, MCP server or configured skill directory | use the installed project's instructions; do not guess a package name | durable memory, handoff and review workflows |
-| Herdr | `command -v herdr` or runtime registration | use the installed Herdr instructions | panes, tabs and workspace layout |
+| TOON / LEA | Wizard-AI `wz-ai-context` and format utilities | Wizard-AI-managed only; no standalone LEA installer | tabular context encoding and lossless evidence aliases |
+| graphify / graphifyy | command or Wizard-AI venv import | `uv tool install --force 'graphifyy[all]'` when Wizard-AI remains present | optional architecture graphs |
+| LLMLingua | import from the detected Wizard-AI venv | `uv pip install --python <Wizard-AI-venv-python> llmlingua` | Wizard-AI context reduction |
+| RTK | `rtk --version` | POSIX: `curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh`; Windows: `winget install rtk-ai.rtk`; then `rtk init --global` or `rtk init -g` | output reduction |
+| sqz | `sqz --version` | POSIX: `curl -fsSL https://raw.githubusercontent.com/ojuschugh1/sqz/main/install.sh | sh`; Windows: `irm https://raw.githubusercontent.com/ojuschugh1/sqz/main/install.ps1 | iex`; then `sqz init --global` | output compression |
+| Serena | `serena --version` | `uv tool install -p 3.13 serena-agent`, then `serena init` | semantic navigation |
+| Guardian Angel | `command -v gga`, successful `gga version` | POSIX: existing Homebrew `brew install gentleman-programming/tap/gga`, otherwise clone `https://github.com/Gentleman-Programming/gentleman-guardian-angel` and run `./install.sh`; Windows is blocked without an official compatible path | commit/PR quality gate and hash cache |
+| Gentle AI / gentle-pi / Engram | `gentle-ai --version`, package/config detection for `gentle-pi` and `gentle-engram`, or `engram --version` | POSIX only: `curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh | bash`, then `gentle-ai install --agent pi` only when the Gentle Pi integration is missing; skip when an existing Gentle or PiWorkflow owner would be duplicated | durable memory, handoff and review workflows |
+| Herdr | `command -v herdr` and `herdr --version` | POSIX: `curl -fsSL https://herdr.dev/install.sh | sh`; Windows: `irm https://herdr.dev/install.ps1 | iex`; integrations/plugins are not installed automatically | panes, tabs and workspace layout |
 
-Wizard-AI is the preferred installer for its own registry and helper tools. Do not independently install a second copy of a tool already managed by Wizard-AI; record the source and version instead. TOON and LEA are adapters at a context boundary, not replacements for the canonical JSON state.
+The user-facing command matrix is in the repository README; keep this registry and the README synchronized. `skills add` installs skill files only and has no third-party postinstall hook; run `node scripts/bootstrap-dependencies.mjs` for a dry run and add `--apply` for mutations. The bootstrap never runs GGA `init` or `install`, which mutate repository hooks/config. Wizard-AI is the manager for TOON/LEA and its graphifyy/LLMLingua context stack. Do not independently install a second copy of a tool already managed by Wizard-AI; record the source and version instead. TOON and LEA are adapters at a context boundary, not replacements for the canonical JSON state.
 
 ## Status contract
 
@@ -58,7 +61,7 @@ It is read-only. It reports installed, missing and incompatible capabilities, th
 - Installation requires the user request, an explicit setup mode or repository policy granting it.
 - Before installation, show the package/repository, version, command, scope (project/user/global) and side effects.
 - After installation, verify the executable/package, version and the integration hook; record failures as `blocked`.
-- Do not install two competing compactors. If one third-party compactor is active, it is the sole owner for its managed paths; if multiple are active, report `incompatible` and stop. If none is active, use Pi's native compaction.
+- Do not install two competing compactors. Under the Vekexasia dotenv ownership model, `pi-codex-context` is the sole third-party owner and `@sting8k/pi-vcc` is intentionally skipped. If multiple owners are active, report `incompatible` and stop. If none is active, use Pi's native compaction.
 
 ## Overlap guard
 

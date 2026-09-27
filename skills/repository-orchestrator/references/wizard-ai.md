@@ -31,7 +31,7 @@ Guardian Angel (GGA)            → runs provider-agnostic commit/PR quality rev
 repository-orchestrator         → defines the master/chief/task protocol
 ```
 
-At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `wizard-ai-context`, `@darkrei08/wizard-ai-cli`, installed Pi extensions, the active Pi compaction owner (`pi-codex-context`, `@sting8k/pi-vcc`, legacy `@adamjen/pi-vcc`, or Pi core), and the actual `pi-extensible-workflows` version. Use the installed documentation, package exports and active Pi settings as the source of truth. The same orchestration contract must work with Pi.dev even when Wizard-AI's Cockpit proxy is absent; provider routing is an optional infrastructure capability, not a workflow dependency. If Wizard-AI is missing and the user asks for setup, prefer its guided installer so RTK, sqz, Serena and graphify are installed as one recorded bundle rather than as guessed independent packages.
+At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `wizard-ai-context`, `@darkrei08/wizard-ai-cli`, the Wizard-AI venv imports, installed Pi extensions, the active compaction owner (`pi-codex-context` under Vekexasia's dotenv model, Pi VCC only as an existing conflict, or Pi core), and the actual `pi-extensible-workflows` version. Use the installed documentation, package exports and active Pi settings as the source of truth. The same orchestration contract must work with Pi.dev even when Wizard-AI's Cockpit proxy is absent; provider routing is an optional infrastructure capability, not a workflow dependency. If Wizard-AI is missing and the user asks for setup, use `npx --no-cache -y @darkrei08/wizard-ai-cli@latest setup --verbose`. Wizard-AI manages TOON/LEA, graphifyy and LLMLingua; do not invent a standalone LEA installer. The explicit dependency bootstrap also covers Gentle AI/Engram, GGA and Herdr; `skills add` only installs skill files and must be followed by `bootstrap-dependencies.mjs --apply` for mutations.
 
 ## Recommended flow
 
@@ -40,10 +40,10 @@ At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `wizard-ai-context`,
 3. Build the canonical state envelope from [state-protocol.md](state-protocol.md).
 4. Encode regular evidence arrays as TOON for model input, or LEA when the main saving comes from repeated source and evidence labels. Keep canonical JSON for validation and storage.
 5. Send only the compact result to the next PiWorkflow stage. Keep logs, diffs, raw test output and graph artifacts behind file/CI references.
-6. Let Pi/Pi VCC own transcript compaction; use TOON/LEA/sqz only for bounded evidence and handoff preparation.
+6. Let `pi-codex-context` own transcript compaction under the Vekexasia dotenv model; never install `@sting8k/pi-vcc`. Use TOON/LEA/sqz only for bounded evidence and handoff preparation.
 7. Let Gentle/Engram persist only durable decisions and verified facts after the master accepts the result.
 8. Run GGA on the staged/PR diff before the chief reports `READY`; retain only its status, version, config digest and artifact reference in the envelope.
-9. Do not enable Wizard-AI memory, workflow, proxy, or provider-routing components when Gentle/Engram/PiWorkflow already provide the same responsibility.
+9. Do not enable Wizard-AI memory, workflow, proxy, or provider-routing components when Gentle/Engram/PiWorkflow already provide the same responsibility. If Wizard-AI remains present but graphify or LLMLingua is missing, use `uv tool install --force 'graphifyy[all]'` and `uv pip install --python <Wizard-AI-venv-python> llmlingua`; do not guess another package.
 
 ## Claims and compatibility limits
 
