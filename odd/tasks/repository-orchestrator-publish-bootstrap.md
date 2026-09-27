@@ -38,4 +38,5 @@ Publish the dependency bootstrap and make every README-managed software capabili
 - `git diff --check`: passed.
 - No dependency installer was run with `--apply`; the remote branch clone and Skills CLI verification were read/install tests only.
 - Windows and macOS rows were not run because this host is Linux.
-- Work-unit commit `258f37d` (`feat: add official dependency bootstrap`) and closure commit are pushed to `origin/docs/official-dependency-bootstrap`.
+- The feature commits were squashed into `35d3363` (`feat: publish official dependency bootstrap`), fast-forwarded into `main`, and the merged feature branches were deleted.
+- After the merge, the exact public `npx skills add darkrei08/repository-orchestrator --skill repository-orchestrator --agent pi --yes` command installed `scripts/bootstrap-dependencies.mjs` from `main`; its syntax check and dry run passed.
