@@ -103,4 +103,4 @@ node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
 node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
 ```
 
-It checks Pi, PiWorkflow, Gentle/Engram, Wizard-AI, TOON/LEA, graphify/graphifyy, LLMLingua, RTK, sqz, Serena, Guardian Angel, Herdr, skill roots, the Vekexasia `pi-codex-context` package path, and the active compaction owner. Missing optional tools select documented fallbacks; overlapping owners are `incompatible`.
+It checks Pi, PiWorkflow, Gentle/Engram, the GitHub CLI, Docker and Docker Compose, the Engineering Excellence, Matt Pocock and Gentle AI skill families, Wizard-AI, TOON/LEA, graphify/graphifyy, LLMLingua, RTK, sqz, Serena, Guardian Angel, Herdr, skill roots, the Vekexasia `pi-codex-context` package path, and the active compaction owner. Missing optional tools select documented fallbacks; overlapping owners are `incompatible`.

@@ -178,6 +178,8 @@ The report checks:
 
 - the skill, Node.js, and Git;
 - Pi, PiWorkflow, Gentle/Engram, Guardian Angel, and Herdr;
+- the GitHub CLI and Docker/Compose used for issue/PR work and runtime validation;
+- the Engineering Excellence, Matt Pocock and Gentle AI skill families used by [routing](skills/pi-herdr-orchestrator/references/routing.md);
 - optional Wizard-AI, Serena, graphify, RTK, and sqz tools;
 - Codex, Claude Code, Antigravity, and Antigravity CLI skill roots;
 - the active Pi compaction owner.
@@ -201,7 +203,7 @@ The orchestrator never runs a second compactor over the live transcript. Gentle 
 ## Layout
 
 - `skills/pi-herdr-orchestrator/SKILL.md`: operational contract.
-- `skills/pi-herdr-orchestrator/references/`: bootstrap, dependency, routing, state, execution, quality, memory, integration, and audit guidance.
+- `skills/pi-herdr-orchestrator/references/`: bootstrap, dependency, discovery, dispatch, routing, state, execution, quality, memory, integration, audit, and reporting guidance.
 - `skills/pi-herdr-orchestrator/scripts/check-environment.mjs`: read-only capability and host compatibility check.
 - `skills/pi-herdr-orchestrator/agents/openai.yaml`: OpenAI/Codex metadata.
 
@@ -214,6 +216,7 @@ The implementation follows the documented interfaces of these upstream projects:
 - [Google Antigravity skills](https://antigravity.google/docs/skills) for Antigravity skill discovery.
 - [Pi coding agent](https://github.com/badlogic/pi-mono) for Pi extensions and sessions.
 - [Pi extensible workflows](https://github.com/vekexasia/pi-extensible-workflows) for workflow orchestration.
+- [Engineering Excellence](https://github.com/darkrei08/Engineering-Excellence) (fork of [micio86dev/Engineering-Excellence](https://github.com/micio86dev/Engineering-Excellence)) and [Matt Pocock's skills](https://github.com/mattpocock/skills) for the methods the routing table selects.
 - [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai) and its [Pi setup](https://github.com/Gentleman-Programming/gentle-ai#installation) for continuity and integration installation.
 - [Gentle Engram](https://github.com/Gentleman-Programming/gentle-engram) and [Engram Pi setup](https://github.com/Gentleman-Programming/engram/blob/main/docs/AGENT-SETUP.md) for durable project memory.
 - [Gentleman Guardian Angel](https://github.com/Gentleman-Programming/gentleman-guardian-angel) for the optional provider-agnostic quality gate.

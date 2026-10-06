@@ -43,4 +43,4 @@ Rename each tab immediately after creation. Keep the ordering stable and underst
 
 ## Capability fallback
 
-If PiWorkflow or Pi cannot create a real child session, preserve the hierarchy in one session with clearly labeled role sections and reports. Do not simulate concurrent execution, pretend that tabs were closed, or report a chief handoff that did not occur. The protocol describes coordination; the available tools determine which parts can be executed.
+If PiWorkflow or Pi cannot create a real child session, preserve the hierarchy in one session with clearly labeled role sections and reports. When the host forbids nested subagents (for example the Gentle AI harness), the master dispatches task sessions directly and chiefs stay report roles. Do not simulate concurrent execution, pretend that tabs were closed, or report a chief handoff that did not occur. The protocol describes coordination; the available tools determine which parts can be executed.

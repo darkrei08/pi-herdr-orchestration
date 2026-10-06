@@ -19,7 +19,7 @@ function commandVersion(command, flag = "--version") {
     : [command];
   for (const candidate of candidates) {
     try {
-      const result = spawnSync(candidate, [flag], {
+      const result = spawnSync(candidate, [].concat(flag), {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"],
         shell: process.platform === "win32" && candidate.endsWith(".cmd"),
@@ -109,7 +109,7 @@ for (const [id, command, requiredFor] of [
   }));
 }
 
-for (const [id, command, requiredFor] of [
+for (const [id, command, requiredFor, flag] of [
   ["pi", "pi", ["Pi sessions"]],
   ["gga", "gga", ["optional quality gate"]],
   ["herdr", "herdr", ["optional workspace layout"]],
@@ -117,8 +117,11 @@ for (const [id, command, requiredFor] of [
   ["serena", "serena", ["optional semantic navigation"]],
   ["rtk", "rtk", ["optional output reduction"]],
   ["sqz", "sqz", ["optional output reduction"]],
+  ["gh", "gh", ["optional issue and PR provider"]],
+  ["docker", "docker", ["optional runtime validation"]],
+  ["docker-compose", "docker", ["optional Compose validation"], ["compose", "version"]],
 ]) {
-  const version = commandVersion(command);
+  const version = commandVersion(command, flag);
   checks.push(record(id, version ? "installed" : "missing", {
     command,
     version,
@@ -240,6 +243,17 @@ for (const [agent, root] of Object.entries(agentRoots)) {
     resolution: directInstalled ? "agent-root" : universalInstalled ? "universal-root" : null,
     required_for: [agent],
   }));
+}
+
+// Skill families the orchestrator may route to; installed when any marker skill exists in a known root.
+const skillRoots = [universalRoot, ...Object.values(agentRoots), join(home, ".pi", "agent", "npm", "node_modules", "gentle-pi", "skills")];
+for (const [id, markers] of [
+  ["skills-engineering-excellence", ["engineering-excellence"]],
+  ["skills-matt-pocock", ["to-tickets", "triage", "setup-matt-pocock-skills"]],
+  ["skills-gentle-ai", ["gentle-ai", "judgment-day", "work-unit-commits"]],
+]) {
+  const found = markers.filter((name) => skillRoots.some((root) => existsSync(join(root, name, "SKILL.md"))));
+  checks.push(record(id, found.length ? "installed" : "missing", { skills: found, required_for: ["optional skill routing"] }));
 }
 
 const requiredIds = new Set(["skill", "node", "git", "pi-compaction-owner"]);

@@ -55,7 +55,7 @@ node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
 node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
 ```
 
-It is read-only. It reports installed, missing and incompatible capabilities, the four supported agent skill roots, and the selected Pi compaction owner. Optional tools remain optional; `--strict` fails only when the skill, Node, Git, or compaction ownership is unavailable or conflicting.
+It is read-only. It reports installed, missing and incompatible capabilities, the supported agent skill roots, the selected Pi compaction owner, and detects (never installs) `gh`, Docker/Compose and the skill families named in [routing.md](routing.md). Optional tools remain optional; `--strict` fails only when the skill, Node, Git, or compaction ownership is unavailable or conflicting.
 
 - Detection is read-only and can happen during every bootstrap.
 - Installation requires the user request, an explicit setup mode or repository policy granting it.

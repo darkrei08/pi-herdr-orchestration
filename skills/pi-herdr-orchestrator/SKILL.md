@@ -7,20 +7,27 @@ description: Deterministic multi-agent repository orchestration for issues, pull
 
 Act as the control session for the current repository. Respect the user's actual scope: a request to fix one issue does not authorize an unlimited backlog sweep. For a repository-wide request, continue through independently actionable work and rescan after each integration. Never claim an unavailable tool ran.
 
+## Principles
+
+- Correctness before speed; small, reviewable, reversible changes; explicit ownership of every task; no completion claim without evidence.
+- Repository-agnostic: discover purpose, structure, commands and conventions from the repository. Repository-local instructions override these generic preferences unless they create a demonstrable safety or correctness problem.
+- Parallelism is a tool, not a goal: maximize independent, validated progress at minimum coordination cost. Every merge is backed by evidence; every temporary resource is reconciled or removed.
+
 ## Entry sequence
 
 1. Read repository instructions (`AGENTS.md` and project documentation), identify the requested scope, and inspect Git state before edits.
-2. Discover Pi, PiWorkflow, Pi compaction extensions, Gentle AI/Engram, Wizard-AI, Guardian Angel, Herdr, installed skills, runtimes and checks. Classify them as installed, missing or incompatible; read only their installed instructions. Run `node scripts/check-environment.mjs --json` when the checkout is available. See [bootstrap.md](references/bootstrap.md) and [dependencies.md](references/dependencies.md).
+2. Discover Pi, PiWorkflow, Pi compaction extensions, Gentle AI/Engram, Wizard-AI, Guardian Angel, Herdr, the issue/PR provider CLI, Docker/Compose, browser tools, installed skills (Engineering Excellence, Matt Pocock, Gentle AI, project-local), runtimes and checks. Classify them as installed, missing or incompatible; read only their installed instructions. Run `node scripts/check-environment.mjs --json` when the checkout is available. See [bootstrap.md](references/bootstrap.md) and [dependencies.md](references/dependencies.md).
 3. If the user requests setup, use the official dependency matrix in the repository README and `scripts/bootstrap-dependencies.mjs`. The Skills CLI installs skill files; it does not execute third-party installers or postinstall hooks. The bootstrap requires `--apply`, verifies every installation, and covers Gentle AI/Engram, Guardian Angel and Herdr alongside the existing tools. Keep `pi-codex-context` as the Vekexasia dotenv compaction owner, never install `@sting8k/pi-vcc`, and do not install components that overlap with the installed Gentle AI/Engram/PiWorkflow stack. Never run GGA `init` or `install` automatically because they mutate repository hooks/config.
 4. If Wizard-AI is installed or the repository exposes it, discover its context stack and compatibility layer. See [wizard-ai.md](references/wizard-ai.md).
 5. If installed, use Guardian Angel (GGA) as a provider-agnostic commit/PR quality gate after tests and before `READY`. See [guardian-angel.md](references/guardian-angel.md).
 6. Reconcile relevant persisted memory with current Git, issues, PRs and CI; load only task-relevant memory. See [memory.md](references/memory.md).
 7. Build a deduplicated work queue and dependency graph. Prioritize defects with material impact and unblockers. See [discovery.md](references/discovery.md). Dispatch only independent units in parallel; serialize or group related and conflicting ones. See [dispatch.md](references/dispatch.md).
-8. Select the smallest useful set of available skills, methods and roles. See [routing.md](references/routing.md).
+8. Select the smallest useful set of available skills, methods and roles; one owner per concern. See [routing.md](references/routing.md).
 9. Operate the session hierarchy: `[MASTER] Pi Herdr Orchestrator` coordinates department chiefs; chiefs coordinate issue, PR, feature, review and audit sessions. See [coordination.md](references/coordination.md).
 10. Pass compact structured state between workflow layers and sessions. Use JSON as the machine contract and Markdown as the human report generated from it. See [state-protocol.md](references/state-protocol.md).
 11. Execute in an isolated branch/worktree with an ordered, immediately renamed Pi tab when the task merits it. Verify and review the result. See [execution.md](references/execution.md) and [quality.md](references/quality.md).
 12. Decide destination from evidence: stable integration, preserved development branch, follow-up or blocked. Persist durable knowledge, close child sessions and tabs in order, report to the master, then rescan and audit. See [integration.md](references/integration.md) and [audit.md](references/audit.md).
+13. Close the cycle with the dashboard, evidence and final report. See [reporting.md](references/reporting.md).
 
 ## Control rules
 
@@ -52,5 +59,6 @@ Act as the control session for the current repository. Respect the user's actual
 | Tests, auto-grill and review | [quality.md](references/quality.md) |
 | Stable/dev decisions and cleanup | [integration.md](references/integration.md) |
 | Rescan, recovery and final audit | [audit.md](references/audit.md) |
+| Dashboard, evidence, completion criteria, final report | [reporting.md](references/reporting.md) |
 
 Read only the references relevant to the current phase. Avoid dumping every file into the context window.

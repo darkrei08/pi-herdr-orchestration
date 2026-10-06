@@ -2,6 +2,19 @@
 
 Define problem, acceptance criteria, root cause if applicable, affected files, risks, dependencies and checks before coding. Reuse an existing valid task worktree. For substantial independent work keep task → branch → worktree → session traceable, following project conventions. Example: `fix/42-config-loading`, `.worktrees/issue-42-config-loading`, `[I#42] Config loading`.
 
+## Branch, commit and publication
+
+One branch and one worktree per independent task; never edit the default branch directly. Follow repository naming, else `fix/<scope>`, `feat/<scope>`, `refactor/<scope>`, `test/<scope>`, `docs/<scope>`. While work is unstable, commit locally as logical checkpoints and do not push intermediate commits. Publish (push, PR) only when the unit is coherent and verified, and only with authorization. Squash or reorder only when it improves reviewability without destroying useful history.
+
+## Worker rules
+
+1. Understand the task and its allowed scope; inspect the relevant existing code.
+2. Reproduce the bug or record current behavior; define validation before substantial implementation.
+3. Implement the smallest coherent solution. No unrelated refactors or cleanup.
+4. Preserve public contracts unless explicitly authorized; a refactor needs behavior-preservation tests.
+5. Update tests, and documentation when behavior changes.
+6. Run the relevant validation, inspect your own diff, and hand off with evidence. Lifecycle: [dispatch.md](dispatch.md).
+
 ## Master and chiefs
 
 When Pi and PiWorkflow support multiple sessions, keep one master session named `[MASTER] Pi Herdr Orchestrator`. It is the source of repository-level decisions. It may assign bounded coordination areas to chiefs, for example:

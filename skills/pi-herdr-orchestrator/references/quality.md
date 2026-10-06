@@ -1,6 +1,6 @@
 # Verification and review
 
-For reproducible bugs, prefer a meaningful failing regression check followed by a minimal fix and passing check. Use TDD when it adds evidence; avoid tests that merely mirror implementation.
+For reproducible bugs, prefer a meaningful failing regression check followed by a minimal fix and passing check. Use TDD when it adds evidence; avoid tests that merely mirror implementation. A refactor needs explicit behavior-preservation tests before the change.
 
 Auto-grill cause versus symptom, assumptions, simpler alternatives, duplication, edge cases, regression, security/performance where relevant and repository conventions. Return to diagnosis if a material doubt remains.
 
