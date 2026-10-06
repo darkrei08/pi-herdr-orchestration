@@ -28,7 +28,7 @@ Engineering Excellence          → supplies engineering quality methods
 Gentle/gentle-pi + Engram       → hydrates and persists durable knowledge
 Herdr                           → owns panes, workspaces and runtime layout
 Guardian Angel (GGA)            → runs provider-agnostic commit/PR quality review
-repository-orchestrator         → defines the master/chief/task protocol
+pi-herdr-orchestrator         → defines the master/chief/task protocol
 ```
 
 At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `wizard-ai-context`, `@darkrei08/wizard-ai-cli`, the Wizard-AI venv imports, installed Pi extensions, the active compaction owner (`pi-codex-context` under Vekexasia's dotenv model, Pi VCC only as an existing conflict, or Pi core), and the actual `pi-extensible-workflows` version. Use the installed documentation, package exports and active Pi settings as the source of truth. The same orchestration contract must work with Pi.dev even when Wizard-AI's Cockpit proxy is absent; provider routing is an optional infrastructure capability, not a workflow dependency. If Wizard-AI is missing and the user asks for setup, use `npx --no-cache -y @darkrei08/wizard-ai-cli@latest setup --verbose`. Wizard-AI manages TOON/LEA, graphifyy and LLMLingua; do not invent a standalone LEA installer. The explicit dependency bootstrap also covers Gentle AI/Engram, GGA and Herdr; `skills add` only installs skill files and must be followed by `bootstrap-dependencies.mjs --apply` for mutations.

@@ -1,0 +1,13 @@
+interface:
+  display_name: Pi Herdr Orchestrator
+  short_description: Parallel, evidence-based orchestration of issues, PRs, tests and merges
+  default_prompt: Use $pi-herdr-orchestrator to inventory this repository, dispatch independent work, validate, merge and clean up the authorized work.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

@@ -13,4 +13,10 @@ Use coherent commits. Review PR diff, discussion, CI, conflicts and Issue before
 
 Before cleanup verify the merge or branch publication, target branch, unique commits and uncommitted changes. Remove only disposable branches/worktrees; never force-delete valuable work. Persist useful rationale and rescan. Seek a product decision for material requirement changes or breaking changes while continuing independent authorized tasks.
 
-For a completed child task, close in this order: persist Gentle/Engram development memory and the handoff; commit or preserve the branch state; send the chief report; let the master reconcile and decide; close the Pi session; close or archive the renamed tab; then update tracking, clean disposable resources and rescan. Keep `[MASTER] Pi Repository Orchestrator` open to receive the result and issue the next directive.
+For a completed child task, close in this order: persist Gentle/Engram development memory and the handoff; commit or preserve the branch state; send the chief report; let the master reconcile and decide; close the Pi session; close or archive the renamed tab; then update tracking, clean disposable resources and rescan. Keep `[MASTER] Pi Herdr Orchestrator` open to receive the result and issue the next directive.
+
+Merge only with evidence: required CI green, relevant tests pass, blocking review threads resolved, no conflicts, implementation matches the issue, dependent tasks compatible. A worker's own claim is not evidence; use an independent review when available. Follow repository merge conventions; squash tightly scoped PRs when policy allows. Close an issue only when its acceptance criteria are met; if only partly solved, keep it open and create explicit follow-up work.
+
+## Temporary resource cleanup
+
+Temporary worktrees and directories (for example under `/tmp`), local branches, Herdr panes, Pi sessions, test containers and disposable volumes are removed once their work is reconciled. First prove for each: its commits are pushed or merged (no unique unpushed commits, `git status` clean, or changes preserved in a recorded branch), then remove it and update the registry. If the proof fails, keep the resource and report it. In the final report list what was removed and what was retained and why.

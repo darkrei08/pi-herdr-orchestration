@@ -95,7 +95,7 @@ function pythonImports(python, modules) {
 const checks = [];
 checks.push(record("skill", existsSync(join(skillRoot, "SKILL.md")) ? "installed" : "blocked", {
   path: join(skillRoot, "SKILL.md"),
-  required_for: ["repository-orchestrator"],
+  required_for: ["pi-herdr-orchestrator"],
 }));
 for (const [id, command, requiredFor] of [
   ["node", "node", ["verification-script"]],
@@ -228,8 +228,8 @@ const agentRoots = {
 };
 const universalRoot = join(home, ".agents", "skills");
 for (const [agent, root] of Object.entries(agentRoots)) {
-  const directPath = join(root, "repository-orchestrator", "SKILL.md");
-  const universalPath = join(universalRoot, "repository-orchestrator", "SKILL.md");
+  const directPath = join(root, "pi-herdr-orchestrator", "SKILL.md");
+  const universalPath = join(universalRoot, "pi-herdr-orchestrator", "SKILL.md");
   const directInstalled = existsSync(directPath);
   const universalInstalled = existsSync(universalPath);
   const installedPath = directInstalled ? directPath : universalInstalled ? universalPath : null;
@@ -245,7 +245,7 @@ for (const [agent, root] of Object.entries(agentRoots)) {
 const requiredIds = new Set(["skill", "node", "git", "pi-compaction-owner"]);
 const requiredFailures = checks.filter((check) => requiredIds.has(check.id) && check.status !== "installed");
 const result = {
-  schema: "repository-orchestrator/capability-report-v1",
+  schema: "pi-herdr-orchestrator/capability-report-v1",
   skill_root: skillRoot,
   checks,
   summary: {

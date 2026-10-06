@@ -4,7 +4,7 @@ Define problem, acceptance criteria, root cause if applicable, affected files, r
 
 ## Master and chiefs
 
-When Pi and PiWorkflow support multiple sessions, keep one master session named `[MASTER] Pi Repository Orchestrator`. It is the source of repository-level decisions. It may assign bounded coordination areas to chiefs, for example:
+When Pi and PiWorkflow support multiple sessions, keep one master session named `[MASTER] Pi Herdr Orchestrator`. It is the source of repository-level decisions. It may assign bounded coordination areas to chiefs, for example:
 
 - `[CHIEF/SCOUT] Discovery and triage`
 - `[CHIEF/BUILD] Implementation and integration`
@@ -33,7 +33,7 @@ Do not close a child session as soon as its code appears to work. The chief must
 3. persist durable development knowledge and the exact handoff through Gentle/Engram when available;
 4. commit or preserve uncommitted work with its branch and worktree recorded;
 5. return the session report to the chief;
-6. let the chief forward the normalized report and recommendation to `[MASTER] Pi Repository Orchestrator`;
+6. let the chief forward the normalized report and recommendation to `[MASTER] Pi Herdr Orchestrator`;
 7. receive the master's decision about integration, follow-up, retry or block;
 8. close the Pi session and then close or archive its Pi tab only after the memory and report are confirmed.
 

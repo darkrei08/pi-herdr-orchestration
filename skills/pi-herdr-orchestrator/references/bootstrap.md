@@ -3,9 +3,9 @@
 Inspect the actual machine before planning. The Vercel Skills CLI installs skill files only; it cannot execute third-party installers. From a checkout, use this flow:
 
 ```bash
-npx skills add darkrei08/repository-orchestrator --skill repository-orchestrator --agent pi --global
-node skills/repository-orchestrator/scripts/bootstrap-dependencies.mjs
-node skills/repository-orchestrator/scripts/bootstrap-dependencies.mjs --apply
+npx skills add darkrei08/repository-orchestrator --skill pi-herdr-orchestrator --agent pi --global
+node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs
+node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs --apply
 ```
 
 The bootstrap defaults to a read-only dry run. `--apply` is required for mutations. It prints a compact plan, detects commands and configuration before installing, inherits stdio for real installers, and exits nonzero only for an apply-time command failure or required postcondition failure. It covers Gentle AI/Engram, Guardian Angel and Herdr in addition to the context and reduction tools. It refuses the full Wizard-AI setup when Gentle or PiWorkflow already owns an overlapping responsibility.
@@ -99,8 +99,8 @@ On Windows the bootstrap uses PowerShell for the documented pipelines and report
 Run the read-only report when a checkout is available:
 
 ```bash
-node skills/repository-orchestrator/scripts/check-environment.mjs --json
-node skills/repository-orchestrator/scripts/check-environment.mjs --strict
+node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
+node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
 ```
 
 It checks Pi, PiWorkflow, Gentle/Engram, Wizard-AI, TOON/LEA, graphify/graphifyy, LLMLingua, RTK, sqz, Serena, Guardian Angel, Herdr, skill roots, the Vekexasia `pi-codex-context` package path, and the active compaction owner. Missing optional tools select documented fallbacks; overlapping owners are `incompatible`.

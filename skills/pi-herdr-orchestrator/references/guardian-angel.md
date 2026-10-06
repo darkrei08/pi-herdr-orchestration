@@ -5,7 +5,7 @@
 ## Responsibility boundary
 
 ```text
-repository-orchestrator → scope, master/chief routing, branch and worktree decisions
+pi-herdr-orchestrator → scope, master/chief routing, branch and worktree decisions
 PiWorkflow/Pi.dev       → scheduling, sessions and tool execution
 Engineering Excellence  → specification, TDD, security, performance and accessibility gates
 GGA                     → provider-agnostic commit/PR review gate

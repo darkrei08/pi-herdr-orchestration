@@ -3,7 +3,7 @@
 Use a team model only when the host actually supports multiple Pi sessions, roles or PiWorkflow subagents. The hierarchy is:
 
 ```text
-[MASTER] Pi Repository Orchestrator
+[MASTER] Pi Herdr Orchestrator
             │
             ├── [CHIEF/SCOUT] discovery and triage
             ├── [CHIEF/BUILD] implementation and integration

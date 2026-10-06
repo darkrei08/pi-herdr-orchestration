@@ -51,8 +51,8 @@ Allowed statuses are `installed`, `missing`, `incompatible`, `disabled`, `blocke
 The capability report is executable from a checkout:
 
 ```bash
-node skills/repository-orchestrator/scripts/check-environment.mjs --json
-node skills/repository-orchestrator/scripts/check-environment.mjs --strict
+node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
+node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
 ```
 
 It is read-only. It reports installed, missing and incompatible capabilities, the four supported agent skill roots, and the selected Pi compaction owner. Optional tools remain optional; `--strict` fails only when the skill, Node, Git, or compaction ownership is unavailable or conflicting.

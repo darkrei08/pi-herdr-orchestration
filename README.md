@@ -1,6 +1,6 @@
-# Repository Orchestrator
+# Pi Herdr Orchestrator
 
-A portable agent skill for coordinating repository maintenance, issue and PR work, isolated worktrees, verification, review, integration, and final audit.
+Deterministic multi-agent repository orchestration for issues, pull requests, development, testing, integration and cleanup. Dynamically coordinates available coding agents, skills, worktrees and development environments while preserving clear ownership, evidence-based validation and safe merge workflows.
 
 The skill is provider-agnostic. It can run with plain Git and a single agent. PiWorkflow, Gentle/Engram, Herdr, Guardian Angel, Wizard-AI, and context tools are optional integrations discovered at runtime.
 
@@ -11,7 +11,7 @@ This repository does not require an npm package. Install the skill with the offi
 ```bash
 # From GitHub, for all supported agent targets
 npx skills add darkrei08/repository-orchestrator \
-  --skill repository-orchestrator \
+  --skill pi-herdr-orchestrator \
   --agent codex claude-code antigravity antigravity-cli pi \
   --global
 ```
@@ -20,7 +20,7 @@ For a local checkout:
 
 ```bash
 npx skills add . \
-  --skill repository-orchestrator \
+  --skill pi-herdr-orchestrator \
   --agent codex claude-code antigravity antigravity-cli pi \
   --global
 ```
@@ -28,8 +28,8 @@ npx skills add . \
 `skills add` installs skill files only. It deliberately does not execute arbitrary third-party installers or provide automatic postinstall hooks. After `skills add`, run the bootstrap; use `--apply` when missing dependencies should be installed:
 
 ```bash
-node skills/repository-orchestrator/scripts/bootstrap-dependencies.mjs
-node skills/repository-orchestrator/scripts/bootstrap-dependencies.mjs --apply
+node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs
+node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs --apply
 ```
 
 The first command is a read-only plan; `--apply` is required for mutations. The bootstrap detects installed commands and configuration before each action, reports blocked prerequisites, and rechecks required postconditions. It covers Gentle AI/Engram, Guardian Angel and Herdr as well as the existing Wizard-AI, PiWorkflow, context and reduction tools. It refuses the full Wizard-AI setup when Gentle or PiWorkflow already owns overlapping responsibilities; install only the non-overlapping context tools in that case.
@@ -56,7 +56,7 @@ Verify with:
 ```bash
 pi --version
 skills --version
-node skills/repository-orchestrator/scripts/check-environment.mjs --strict
+node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
 ```
 
 ### Gentle AI and Engram
@@ -78,7 +78,7 @@ Verify:
 
 ```bash
 gentle-ai --version
-node skills/repository-orchestrator/scripts/check-environment.mjs --json
+node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
 ```
 
 ### Guardian Angel and Herdr
@@ -170,8 +170,8 @@ The official CLI may instead install once in the shared `~/.agents/skills` root 
 Run the read-only capability report from a checkout:
 
 ```bash
-node skills/repository-orchestrator/scripts/check-environment.mjs --json
-node skills/repository-orchestrator/scripts/check-environment.mjs --strict
+node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
+node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
 ```
 
 The report checks:
@@ -200,10 +200,10 @@ The orchestrator never runs a second compactor over the live transcript. Gentle 
 
 ## Layout
 
-- `skills/repository-orchestrator/SKILL.md`: operational contract.
-- `skills/repository-orchestrator/references/`: bootstrap, dependency, routing, state, execution, quality, memory, integration, and audit guidance.
-- `skills/repository-orchestrator/scripts/check-environment.mjs`: read-only capability and host compatibility check.
-- `skills/repository-orchestrator/agents/openai.yaml`: OpenAI/Codex metadata.
+- `skills/pi-herdr-orchestrator/SKILL.md`: operational contract.
+- `skills/pi-herdr-orchestrator/references/`: bootstrap, dependency, routing, state, execution, quality, memory, integration, and audit guidance.
+- `skills/pi-herdr-orchestrator/scripts/check-environment.mjs`: read-only capability and host compatibility check.
+- `skills/pi-herdr-orchestrator/agents/openai.yaml`: OpenAI/Codex metadata.
 
 ## Sources
 
