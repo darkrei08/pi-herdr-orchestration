@@ -1,22 +1,284 @@
-# Pi Herdr Orchestrator
+# Pi Herdr Orchestration
 
-Deterministic multi-agent repository orchestration for issues, pull requests, development, testing, integration and cleanup. Dynamically coordinates available coding agents, skills, worktrees and development environments while preserving clear ownership, evidence-based validation and safe merge workflows.
+Deterministic, provider-agnostic multi-agent repository orchestration for coding agents. Dynamically coordinates task discovery, dependency graphs, isolated Git worktrees, terminal multiplexing with Herdr, and evidence-based verification across your entire development lifecycle.
 
-The skill is provider-agnostic. It can run with plain Git and a single agent. PiWorkflow, Gentle/Engram, Herdr, Guardian Angel, Wizard-AI, and context tools are optional integrations discovered at runtime.
+The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigravity**. It works out-of-the-box with plain Git and a single agent, and dynamically discovers optional high-leverage integrations at runtime: **PiWorkflow**, **Gentle AI / Engram**, **Herdr**, **Guardian Angel (GGA)**, **Engineering Excellence**, **Matt Pocock's skill suite**, and context reduction engines.
 
-## Install
+---
 
-This repository does not require an npm package. Install the skill with the official Vercel Skills CLI:
+## Table of Contents
+
+- [Overview & Core Problems Solved](#overview--core-problems-solved)
+- [Architecture & Workflow Lifecycle](#architecture--workflow-lifecycle)
+  - [The Command Hierarchy: Master, Chiefs, and Workers](#the-command-hierarchy-master-chiefs-and-workers)
+  - [Workspace Isolation with Herdr & Git Worktrees](#workspace-isolation-with-herdr--git-worktrees)
+- [Cognitive Model & Decision Pipeline](#cognitive-model--decision-pipeline)
+  - [1. Independence-First Dispatch & Task Graph](#1-independence-first-dispatch--task-graph)
+  - [2. Progressive Disclosure & Bounded Contexts](#2-progressive-disclosure--bounded-contexts)
+  - [3. Evidence-Based Validation (Proof Before Claim)](#3-evidence-based-validation-proof-before-claim)
+  - [4. Non-Polluting Compact State Protocol](#4-non-polluting-compact-state-protocol)
+  - [5. Two-Tier Integration & Merge Queue](#5-two-tier-integration--merge-queue)
+- [Skill Ecosystem Integrations](#skill-ecosystem-integrations)
+  - [PiWorkflow (`pi-extensible-workflows`)](#piworkflow-pi-extensible-workflows)
+  - [Gentle AI Suite & Engram](#gentle-ai-suite--engram)
+  - [Engineering Excellence](#engineering-excellence)
+  - [Matt Pocock Skill Suite](#matt-pocock-skill-suite)
+  - [Guardian Angel (GGA)](#guardian-angel-gga)
+  - [Context Reduction & Semantic Navigation Stack](#context-reduction--semantic-navigation-stack)
+  - [Dynamic Routing Table](#dynamic-routing-table)
+- [Installation & Dependency Management](#installation--dependency-management)
+  - [Install the Skill via Vercel Skills CLI](#install-the-skill-via-vercel-skills-cli)
+  - [Dependency Bootstrap](#dependency-bootstrap)
+  - [Environment Verification](#environment-verification)
+  - [Compaction & Overlap Rules](#compaction--overlap-rules)
+- [Sources & References](#sources--references)
+- [License](#license)
+
+---
+
+## Overview & Core Problems Solved
+
+When AI coding agents are assigned complex multi-step backlogs, monorepo refactors, or concurrent issue queues, they typically encounter critical failure modes:
+
+1. **Agent Sprawl & Race Conditions:** Multiple agents editing the same files on the same branch create merge conflicts, clobbered changes, and broken git history.
+2. **Context Window Degradation:** Ingesting full transcripts, logs, and whole-codebase dumps degrades LLM attention, leading to hallucinations and sloppy code.
+3. **Premature "Done" Claims:** Agents claiming completion based on conversational prose rather than machine-verifiable test runs, linter passes, and runtime evidence.
+4. **Coordination Debt:** Parallelizing tasks that secretly share dependencies or API contracts, leading to integration disasters.
+
+**Pi Herdr Orchestration** solves these problems deterministically. It establishes a strict division of labor, runs tasks in isolated Git worktrees under dedicated Herdr terminal panes, routes domain-specific skills on demand, and requires reproducible proof before any code is merged.
+
+---
+
+## Architecture & Workflow Lifecycle
+
+### The Command Hierarchy: Master, Chiefs, and Workers
+
+The orchestrator enforces a clean separation of concerns across three distinct operational tiers:
+
+```text
+               ┌──────────────────────────────────────────────┐
+               │         [MASTER] Pi Herdr Orchestrator       │
+               │  (Control plane, dependency graph, decisions)│
+               └──────────────────────┬───────────────────────┘
+                                      │
+         ┌──────────────┬─────────────┼──────────────┬──────────────┐
+         ▼              ▼             ▼              ▼              ▼
+   [CHIEF/SCOUT]  [CHIEF/BUILD] [CHIEF/QUALITY][CHIEF/MEMORY] [CHIEF/AUDIT]
+    (Discovery)    (Execution)   (Verification) (Persistence)    (Cleanup)
+         │              │             │              │              │
+         └──────────────┼─────────────┴──────────────┴──────────────┘
+                        │
+         ┌──────────────┴──────────────┐
+         ▼                             ▼
+    [I#42] Auth Fix              [PR#18] Review
+ (Worktree .worktrees/i42)    (Worktree .worktrees/pr18)
+```
+
+#### 1. `[MASTER] Pi Herdr Orchestrator` (The Control Plane)
+- **Role:** Owns the repository scope, backlog discovery, pairwise independence analysis, worktree reservations, merge queue, and final stop conditions.
+- **Golden Rule:** **The master never writes or implements code.** A master session editing code while coordinating workers is an architectural defect.
+
+#### 2. Department Chiefs (Bounded Supervision)
+When the host supports multiple sessions or subagents, the master delegates operational areas to specialized chiefs:
+- **`[CHIEF/SCOUT]` (Discovery & Triage):** Maps monorepo boundaries, default branches, CI configurations, and clusters issues by root cause.
+- **`[CHIEF/BUILD]` (Implementation & Worktrees):** Provisions worktrees, assigns tasks to workers, and supervises progress.
+- **`[CHIEF/QUALITY]` (Verification & Reviews):** Orchestrates test execution, auto-grilling, adversarial reviews, and quality gates.
+- **`[CHIEF/MEMORY]` (Hydration & Persistence):** Recalls historical ADRs and conventions via Engram and writes durable post-task learnings.
+- **`[CHIEF/AUDIT]` (Reconciliation & Teardown):** Audits overall repository health and verifies resource cleanup.
+
+*Fallback:* If the host cannot create independent subagents, the master flattens the hierarchy into structured phase headers without simulating false parallel execution.
+
+#### 3. Workers (Task Execution Sessions)
+- **Role:** Execute a single, bounded contract (`[I#42]`, `[PR#87]`, `[REV#12]`).
+- **Contract Lifecycle:**
+  $$\text{DISCOVER} \longrightarrow \text{UNDERSTAND} \longrightarrow \text{PLAN} \longrightarrow \text{IMPLEMENT} \longrightarrow \text{VERIFY} \longrightarrow \text{SELF-REVIEW} \longrightarrow \text{HANDOFF} \longrightarrow \text{READY}$$
+- Workers never declare themselves `READY` until all validation commands pass and evidence is logged.
+
+### Workspace Isolation with Herdr & Git Worktrees
+
+The orchestrator guarantees clean workspace boundaries:
+
+- **1 Task = 1 Branch = 1 Git Worktree = 1 Dedicated Session/Pane**
+- **Single-Writer Rule:** Exactly one writer modifies a given worktree at any time.
+- **Herdr Terminal Multiplexing:**
+  - One Herdr workspace per repository.
+  - Panes and tabs are created with semantic labels immediately upon startup (`repo:issue-42-auth`, `repo:pr-87-review`, `repo:compose-validation`).
+  - Terminal state and processes remain persistent and inspectable even during agent context switches.
+
+---
+
+## Cognitive Model & Decision Pipeline
+
+The orchestrator’s reasoning engine follows five deterministic principles:
+
+### 1. Independence-First Dispatch & Task Graph
+
+Concurrency is treated as an optimization tool, not an automatic default. Before dispatching any worker, the orchestrator constructs a dependency graph by performing pairwise relation analysis:
+
+| Relation | Condition | Handling Strategy |
+| --- | --- | --- |
+| **Independent** | Zero overlap in files, APIs, schemas, or migrations | Dispatched concurrently in isolated worktrees |
+| **Related** | Common subsystem or feature domain | Grouped into a single session or an ordered chain |
+| **Sequential** | Task B depends on the output of Task A | B waits until A merges or starts directly from A's branch |
+| **Conflicting** | Overlapping files, database schemas, or infrastructure | Strictly serialized; base change landed first |
+| **Duplicate / Superseded** | Redundant reports or obsolete requests | De-duplicated and closed with reference |
+| **Merge-Ready** | Code already exists in branch/PR | Routed to review-only session (no new code authored) |
+| **Blocked** | Missing architectural decision, API key, or spec | Held in queue; no worker session launched |
+
+Before an implementer starts, the master records an **ownership reservation** in the task registry (e.g. `frontend/auth/* -> I#42`). Any subsequent task claiming that surface is blocked or queued.
+
+### 2. Progressive Disclosure & Bounded Contexts
+
+Model context windows are treated as scarce, depleting resources:
+- Workers **never** receive a full dump of the repository, entire issue backlogs, or preceding conversation transcripts.
+- Each worker receives a **bounded brief**: exact objective, issue context, allowed and forbidden file scope, required verification commands, and completion criteria.
+- Domain skills are loaded only into the specific sessions that need them, keeping the master session lean.
+
+### 3. Evidence-Based Validation (Proof Before Claim)
+
+Prose claims of success are rejected. Validation follows a strict **narrow-to-wide verification funnel**:
+
+1. **Targeted Unit / Regression Check:** Failing reproduction test first, followed by minimal fix and passing test.
+2. **Package-Level Suite:** Ensures no localized regressions.
+3. **Type-Check & Linter:** Compiler and static analysis passes.
+4. **Package Build:** Artifact compilation verification.
+5. **Integration / E2E:** Cross-package compatibility.
+6. **Docker Compose / Runtime Validation:** Starting disposable stacks to check service startup, migrations, health checks, and API connectivity.
+7. **Browser / UI Verification:** Checking rendering, responsiveness, console logs, network errors, and accessibility.
+
+Every check is logged as `PASS`, `FAIL`, `BLOCKED`, or `NOT RUN`. A check marked `NOT RUN` is never treated as passing.
+
+### 4. Non-Polluting Compact State Protocol
+
+Parent sessions never ingest worker transcripts. All cross-session communication uses the canonical `repo-orchestrator/v1` JSON envelope:
+
+```json
+{
+  "v": "repo-orchestrator/v1",
+  "kind": "result",
+  "id": "r_20261008_042",
+  "parent": "chief-build-01",
+  "run": "repo-run-10",
+  "sender": {
+    "role": "implementer",
+    "session": "pi-i42",
+    "tab": "[I#42] Config loading",
+    "worktree": ".worktrees/issue-42-config-loading"
+  },
+  "task": { "id": "I#42", "type": "issue", "goal": "Fix config loading precedence" },
+  "state": "READY",
+  "branch": "fix/42-config-loading",
+  "summary": "Config precedence now prioritizes environment variables over file defaults.",
+  "checks": [
+    { "name": "unit", "status": "PASS", "ref": "test-run-884" },
+    { "name": "types", "status": "PASS", "ref": "tsc-clean" },
+    { "name": "gga", "status": "PASS", "ref": "gga-hash-cache" }
+  ],
+  "decisions": ["Preserve backward compatibility for legacy JSON configurations."],
+  "risks": [],
+  "blockers": [],
+  "memory": { "status": "persisted", "ref": "engram:obs-88219" },
+  "next": "chief-review"
+}
+```
+
+Human-readable Markdown reports (such as the cycle dashboard) are generated directly from these structured envelopes.
+
+### 5. Two-Tier Integration & Merge Queue
+
+The master categorizes completed work based on empirical evidence:
+- **`STABLE`:** All acceptance criteria, tests, and reviews pass. Ready to merge or publish to the primary branch (`main`).
+- **`DEVELOPMENT`:** Incomplete, exploratory, or partially verified work. Preserved on an isolated feature branch with a documented handoff state.
+
+Before merging individual green branches into `main`, the master executes an **Integration Pass** on the combined branch. Independent tasks that pass in isolation can still conflict when combined; the integration pass prevents broken main branches.
+
+---
+
+## Skill Ecosystem Integrations
+
+Pi Herdr Orchestration dynamically bridges and routes between major AI coding agent skill ecosystems:
+
+### PiWorkflow (`pi-extensible-workflows`)
+- **Role:** Execution engine substrate.
+- **Capabilities Used:** Primitives including `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, persistent `agent.create(...)` handles, role mappings, and recovery tools (`workflow_status`, `workflow_retry`, `workflow_resume`).
+
+### Gentle AI Suite & Engram
+- **Role:** Harness discipline, durable memory, and review authority.
+- **Capabilities Used:**
+  - `gentle-engram`: Persistent project memory across sessions, hydration of historical decisions, cross-agent handoffs.
+  - `work-unit-commits`: Atomic, reviewable, self-contained commit slices.
+  - `chained-pr`: Splitting changes exceeding 400 lines into stacked, reviewable PR chains.
+  - `branch-pr`: Issue-first branch and PR creation with human-in-the-loop confirmation.
+  - `rdd-defect-workflow` & `gentle_review`: Receipt-Driven Development with cryptographic review lineages.
+  - `judgment-day`: Blind dual or adversarial reviews for high-stakes changes.
+  - `systemic-issue-triage` & `issue-root-resolution`: Identifying shared root causes across large issue backlogs.
+
+### Engineering Excellence
+- **Role:** Software engineering standards, architecture, and production readiness.
+- **Capabilities Used:** SDD (Spec-Driven Development), TDD standards, quality gates, security audits, performance profiling, accessibility/i18n standards, Docker/CI rules, `container-test-matrix` for multi-distribution testing, and context budgeting.
+
+### Matt Pocock Skill Suite
+- **Role:** Tactical developer workflows and problem breakdown.
+- **Capabilities Used:**
+  - `triage`: Classifying incoming issues and bug reports.
+  - `wayfinder` & `to-spec`: Navigating fuzzy, ambiguous tasks into actionable specifications.
+  - `to-tickets`: Decomposing specifications into atomic ticket graphs with explicit blocking edges.
+  - `diagnosing-bugs`: Tight reproduction loops before code changes.
+  - `codebase-design` & `improve-codebase-architecture`: Seams, deep module boundaries, and interface contracts.
+  - `grill-with-docs` / `grill-me`: Adversarial stress-testing of plans and design assumptions.
+  - `retro`: Retrospective learnings capture.
+
+### Guardian Angel (GGA)
+- **Role:** Provider-agnostic pre-commit and pre-PR quality gate.
+- **Capabilities Used:** Verifies git diffs, rules, and repository invariants after tests and before declaring a worker `READY`. Uses hash caching to ensure idempotent verification.
+
+### Context Reduction & Semantic Navigation Stack
+- **Role:** Token preservation and AST-level exploration.
+- **Capabilities Used:**
+  - **Serena:** Language-server backed semantic code navigation (symbol search, call graphs) without exploratory file reads.
+  - **graphifyy & LLMLingua:** Code knowledge graph construction and prompt token reduction.
+  - **RTK & sqz:** Output compression and terminal filtering for large test logs and build output.
+  - **Wizard-AI:** Compatibility manager for TOON/LEA tabular data encodings.
+
+---
+
+### Dynamic Routing Table
+
+The orchestrator dynamically routes tasks to the minimal sufficient skill set based on the situation:
+
+| Situation | Minimal Selected Method (First Installed Wins) |
+| --- | --- |
+| **Raw issue or untriaged PR** | Matt Pocock `triage`; Gentle AI `issue-creation` |
+| **Backlog sharing common root causes** | Gentle AI `systemic-issue-triage` / `issue-root-resolution` |
+| **Ambiguous requirement or design doubt** | Matt Pocock `grill-with-docs` (`grill-me`), or targeted user question |
+| **Large ambiguous feature** | Matt Pocock `wayfinder` $\rightarrow$ `to-spec`; Gentle AI `sdd-explore` / `sdd-propose` |
+| **Decomposing plan into work items** | Matt Pocock `to-spec` $\rightarrow$ `to-tickets`; Engineering Excellence `sdd` |
+| **Reproducible or hard bug** | Matt Pocock `diagnosing-bugs` $\rightarrow$ `tdd` regression test; Gentle AI `rdd-defect-workflow` |
+| **Defined feature implementation** | Matt Pocock `implement` (`tdd` $\rightarrow$ review $\rightarrow$ commit); EE `sdd` + `tdd` |
+| **Refactoring** | Behavior-preservation tests first (`tdd`); Matt Pocock `codebase-design` |
+| **Infrastructure / Containers / CI** | Engineering Excellence `docker`, `ci`, `production-readiness`; `container-test-matrix` |
+| **Security or Performance Audit** | Engineering Excellence `security`, `performance` |
+| **Candidate Code Review** | Matt Pocock `code-review`; Gentle AI `judgment-day` (dual review); Guardian Angel before `READY` |
+| **Commit Creation & Pull Request** | Gentle AI `work-unit-commits`, `chained-pr` (>400 lines), `branch-pr`; Matt Pocock `pr` |
+| **Context Pressure & Session Handoff** | Gentle Engram handoff; Matt Pocock `handoff`; EE `context-budget` |
+
+---
+
+## Installation & Dependency Management
+
+### Install the Skill via Vercel Skills CLI
+
+Install the skill for any supported agent directly from GitHub:
 
 ```bash
-# From GitHub, for all supported agent targets
-npx skills add darkrei08/repository-orchestrator \
+# Global installation across supported agent runtimes
+npx skills add darkrei08/pi-herdr-orchestration \
   --skill pi-herdr-orchestrator \
   --agent codex claude-code antigravity antigravity-cli pi \
   --global
 ```
 
-For a local checkout:
+Or from a local clone:
 
 ```bash
 npx skills add . \
@@ -25,211 +287,71 @@ npx skills add . \
   --global
 ```
 
-`skills add` installs skill files only. It deliberately does not execute arbitrary third-party installers or provide automatic postinstall hooks. After `skills add`, run the bootstrap; use `--apply` when missing dependencies should be installed:
+### Dependency Bootstrap
+
+The Vercel Skills CLI installs skill definition files only; it deliberately does not run third-party installers or post-install scripts. Run the dependency bootstrap script to inspect missing dependencies:
 
 ```bash
+# 1. Read-only dry run (inspects existing software and prints a plan)
 node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs
+
+# 2. Apply installations (requires explicit --apply flag)
 node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs --apply
 ```
 
-The first command is a read-only plan; `--apply` is required for mutations. The bootstrap detects installed commands and configuration before each action, reports blocked prerequisites, and rechecks required postconditions. It covers Gentle AI/Engram, Guardian Angel and Herdr as well as the existing Wizard-AI, PiWorkflow, context and reduction tools. It refuses the full Wizard-AI setup when Gentle or PiWorkflow already owns overlapping responsibilities; install only the non-overlapping context tools in that case.
+### Environment Verification
 
-## Install managed dependencies
-
-The skill is usable with plain Git. The integrations below are optional, but every supported installer and verification command is explicit. Do not run an overlapping row: Gentle AI owns its Pi integrations, Engram owns durable memory, PiWorkflow owns workflow orchestration, and exactly one Pi compaction owner may be active. The bootstrap never installs `@sting8k/pi-vcc`: under Vekexasia's dotenv model, `pi-codex-context` is the sole compaction owner. An existing PiWorkflow package or configuration remains manager-owned; otherwise the bootstrap uses the official `pi install npm:pi-extensible-workflows` command.
-
-### Base runtimes and distribution
+Run the read-only capability and host compatibility check:
 
 ```bash
-# Pi coding agent, if `pi --version` is missing
-npm install --global @mariozechner/pi-coding-agent
+# Output JSON report
+node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
 
-# Vercel Skills CLI, if `skills --version` is missing
-npm install --global skills@latest
-
-# PiWorkflow, if `pi-extensible-workflows` is missing
-pi install npm:pi-extensible-workflows
-```
-
-Verify with:
-
-```bash
-pi --version
-skills --version
+# Strict validation (exits nonzero if core runtimes or compaction conflicts exist)
 node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
 ```
 
-### Gentle AI and Engram
+The report inspects:
+- Core prerequisites: Node.js, Git, and Skill definitions.
+- Agent runtimes: Pi, PiWorkflow, Gentle AI / Engram, Guardian Angel (GGA), and Herdr.
+- Supporting CLIs: GitHub CLI (`gh`), Docker, and Docker Compose.
+- Installed skill suites: Engineering Excellence, Matt Pocock, and Gentle AI.
+- Context tooling: Wizard-AI, Serena, graphifyy, RTK, and sqz.
+- Active Pi compaction owner.
 
-Install only when the capability report shows they are missing. The official Gentle AI installer provisions the Pi integrations, including `gentle-pi`, `gentle-engram`, and the MCP adapter; do not install those packages again individually:
+### Compaction & Overlap Rules
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh | bash
-gentle-ai install --agent pi
-```
+To prevent conflicting hooks and transcript corruption, the orchestrator enforces strict overlap guards:
+- **Pi Compaction Ownership:** Under Vekexasia's dotenv model, `pi-codex-context` is the sole third-party compaction owner. The bootstrap intentionally skips `@sting8k/pi-vcc`. Multiple active compaction owners trigger an `incompatible` error and halt.
+- **Workflow & Memory Ownership:** If Gentle AI / Engram or PiWorkflow is active, the orchestrator blocks the installation of overlapping Wizard-AI workflow, proxy, or memory modules, allowing only non-overlapping context tools (graphifyy, LLMLingua).
+- **Guardian Angel (GGA):** The bootstrap installs the `gga` binary but never runs `gga init` or `gga install` automatically, preserving repository configuration.
 
-For an existing Gentle installation that only lacks Engram, use its official setup instead of a second memory stack:
+---
 
-```bash
-engram setup pi
-```
+## Sources & References
 
-Verify:
+The architecture and routing logic follow the published interfaces and documentation of these upstream projects:
 
-```bash
-gentle-ai --version
-node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
-```
+- **[Vercel Agent Skills](https://github.com/vercel-labs/skills):** Specification and CLI for universal cross-agent skill installation.
+- **[OpenAI Codex Skills](https://developers.openai.com/plugins/concepts/skills):** Standardized `SKILL.md` operational contract format.
+- **[Google Antigravity Skills](https://antigravity.google/docs/skills):** Skill discovery specification for Google Antigravity agents.
+- **[Pi Coding Agent](https://github.com/badlogic/pi-mono):** Harness architecture, extensions, sessions, and tool calling by Mario Zechner.
+- **[Pi Extensible Workflows](https://github.com/vekexasia/pi-extensible-workflows):** Multi-agent orchestration engine (`workflow`, `parallel`, `withWorktree`, checkpoints) by Roberto De Virgilio (@vekexasia).
+- **[Engineering Excellence](https://github.com/darkrei08/Engineering-Excellence):** Framework-agnostic AI software engineering standards by @darkrei08 (upstream fork of [micio86dev/Engineering-Excellence](https://github.com/micio86dev/Engineering-Excellence)).
+- **[Matt Pocock's Skills](https://github.com/mattpocock/skills):** Agent workflows for triage, spec decomposition, bug diagnosis, architecture design, and grilling by Matt Pocock (@mattpocock).
+- **[Gentle AI](https://github.com/Gentleman-Programming/gentle-ai):** Harness discipline, Receipt-Driven Development (RDD), and review authority by Gentleman Programming.
+- **[Gentle Engram](https://github.com/Gentleman-Programming/gentle-engram):** Durable project memory and cross-session learning persistence by Gentleman Programming.
+- **[Gentleman Guardian Angel](https://github.com/Gentleman-Programming/gentleman-guardian-angel):** Provider-agnostic pre-commit and pre-PR quality gate by Gentleman Programming.
+- **[Herdr](https://herdr.dev/):** Terminal multiplexer and workspace coordinator designed for AI coding agents.
+- **[Serena](https://github.com/oraios/serena):** Language-server backed semantic navigation engine for AI agents by Oraios.
+- **[graphifyy](https://pypi.org/project/graphifyy/):** Graph-based code analysis and AST dependency extraction.
+- **[LLMLingua](https://github.com/microsoft/LLMLingua):** Prompt compression and token reduction framework by Microsoft.
+- **[RTK](https://github.com/rtk-ai/rtk):** Terminal output filter and token reducer for AI agent command execution.
+- **[sqz](https://github.com/ojuschugh1/sqz):** Token compression for CLI output and file reads by Ojus Chugh.
+- **[Wizard-AI](https://github.com/darkrei08/Wizard-AI):** Guided setup manager and adapter tooling by @darkrei08.
 
-### Guardian Angel and Herdr
-
-Guardian Angel (GGA) is installed only as an executable. On POSIX, use Homebrew only when it is already available; otherwise use the official repository installer:
-
-```bash
-# POSIX, if brew is already installed
-brew install gentleman-programming/tap/gga
-
-# POSIX fallback
-tmpdir="$(mktemp -d)" && trap 'rm -rf "$tmpdir"' EXIT && git clone --depth 1 https://github.com/Gentleman-Programming/gentleman-guardian-angel "$tmpdir/gga" && (cd "$tmpdir/gga" && ./install.sh)
-
-gga version
-```
-
-Do not run `gga init` or `gga install` from the dependency bootstrap. Those commands mutate the target repository's hooks/config and are intentionally left to an explicit repository setup step. No official compatible GGA installer is documented for Windows, so the bootstrap reports `BLOCKED` there.
-
-Herdr uses its official installers without enabling integrations or plugins automatically:
-
-```bash
-# macOS/Linux
-curl -fsSL https://herdr.dev/install.sh | sh
-herdr --version
-```
-
-```powershell
-# Windows PowerShell
-irm https://herdr.dev/install.ps1 | iex
-herdr --version
-```
-
-The bootstrap reports `BLOCKED` when the required POSIX shell tools or PowerShell are unavailable.
-
-### Optional context and reduction tools
-
-Wizard-AI is a manager for several tools, not an additional Gentle/Pi control plane. If Gentle AI, Engram, or PiWorkflow is already installed, do not run its full setup because it can provision overlapping memory, workflow, proxy, and provider-routing components. Use it only after reviewing those overlaps:
-
-```bash
-npx --no-cache -y @darkrei08/wizard-ai-cli@latest setup --verbose
-```
-
-The bootstrap uses Wizard-AI as the manager for TOON/LEA and its graphifyy/LLMLingua context stack. If Wizard-AI is missing and no Gentle/PiWorkflow owner would be overlapped, it runs the official setup above. If an overlap owner exists, it blocks the full setup and requires the non-overlapping commands below. If Wizard-AI remains present while graphify or LLMLingua is missing, it uses these exact manager-supported commands:
-
-```bash
-uv tool install --force 'graphifyy[all]'
-uv pip install --python "$WIZARD_AI_DIR/venv/bin/python" llmlingua
-```
-
-The venv path is detected from the Wizard-AI installation; no system-wide LLMLingua fallback or standalone LEA installer is guessed. RTK, sqz and Serena use their own official installers when still missing:
-
-```bash
-# POSIX
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh
-rtk init --global
-curl -fsSL https://raw.githubusercontent.com/ojuschugh1/sqz/main/install.sh | sh
-sqz init --global
-uv tool install -p 3.13 serena-agent
-serena init
-```
-
-On Windows, the documented PowerShell/WinGet commands are:
-
-```powershell
-winget install rtk-ai.rtk
-rtk init -g
-irm https://raw.githubusercontent.com/ojuschugh1/sqz/main/install.ps1 | iex
-sqz init --global
-uv tool install -p 3.13 serena-agent
-serena init
-```
-
-If a required installer tool (`npx`, `pi`, `uv`, POSIX `curl`/`sh`/`bash`/`git`/`mktemp`, Windows `winget` or PowerShell) is unavailable, the bootstrap reports `BLOCKED` instead of silently falling back. Wizard-AI wrappers do not prove that RTK, sqz, Serena, graphify or LLMLingua is available; rerun the capability report.
-
-The installer uses these global skill roots:
-
-| Agent | Agent-specific root |
-| --- | --- |
-| Codex | `~/.codex/skills` |
-| Claude Code | `~/.claude/skills` |
-| Antigravity | `~/.gemini/config/skills` |
-| Antigravity CLI | `~/.gemini/antigravity-cli/skills` |
-| Pi | `~/.pi/agent/skills` |
-
-The official CLI may instead install once in the shared `~/.agents/skills` root and expose the skill to several agents through links or its agent registry. Verify the actual resolution with the capability report before relying on a path.
-
-## Verify
-
-Run the read-only capability report from a checkout:
-
-```bash
-node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
-node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
-```
-
-The report checks:
-
-- the skill, Node.js, and Git;
-- Pi, PiWorkflow, Gentle/Engram, Guardian Angel, and Herdr;
-- the GitHub CLI and Docker/Compose used for issue/PR work and runtime validation;
-- the Engineering Excellence, Matt Pocock and Gentle AI skill families used by [routing](skills/pi-herdr-orchestrator/references/routing.md);
-- optional Wizard-AI, Serena, graphify, RTK, and sqz tools;
-- Codex, Claude Code, Antigravity, and Antigravity CLI skill roots;
-- the active Pi compaction owner.
-
-Missing optional tools are reported, not treated as failures. `--strict` fails for a missing core runtime, conflicting compaction owners, or a missing skill.
-
-## Runtime and dependency policy
-
-The orchestrator is usable with plain Git. It never assumes that a command or integration exists because a package or repository is mentioned in a prompt.
-
-At bootstrap it detects the installed implementation, version, supported operations, configuration, and constraints. It then chooses a documented fallback when an optional capability is missing. It does not install software silently.
-
-Pi compaction is selected from active settings and hooks. Under Vekexasia's dotenv ownership model, `pi-codex-context` is the sole third-party owner and the bootstrap intentionally skips `@sting8k/pi-vcc`. The supported outcomes are:
-
-- `pi-codex-context` as the configured third-party owner;
-- Pi native compaction when no third-party owner is active;
-- `incompatible` when multiple owners are active.
-
-The orchestrator never runs a second compactor over the live transcript. Gentle AI/Engram and PiWorkflow remain authoritative when installed; Wizard-AI memory, workflow, proxy, or provider-routing components are not installed on top of them unless explicitly required and verified as non-overlapping.
-
-## Layout
-
-- `skills/pi-herdr-orchestrator/SKILL.md`: operational contract.
-- `skills/pi-herdr-orchestrator/references/`: bootstrap, dependency, discovery, dispatch, routing, state, execution, quality, memory, integration, audit, and reporting guidance.
-- `skills/pi-herdr-orchestrator/scripts/check-environment.mjs`: read-only capability and host compatibility check.
-- `skills/pi-herdr-orchestrator/agents/openai.yaml`: OpenAI/Codex metadata.
-
-## Sources
-
-The implementation follows the documented interfaces of these upstream projects:
-
-- [Vercel Agent Skills CLI](https://github.com/vercel-labs/skills) for cross-agent skill installation.
-- [OpenAI Codex skills](https://developers.openai.com/plugins/concepts/skills) for the `SKILL.md` skill contract.
-- [Google Antigravity skills](https://antigravity.google/docs/skills) for Antigravity skill discovery.
-- [Pi coding agent](https://github.com/badlogic/pi-mono) for Pi extensions and sessions.
-- [Pi extensible workflows](https://github.com/vekexasia/pi-extensible-workflows) for workflow orchestration.
-- [Engineering Excellence](https://github.com/darkrei08/Engineering-Excellence) (fork of [micio86dev/Engineering-Excellence](https://github.com/micio86dev/Engineering-Excellence)) and [Matt Pocock's skills](https://github.com/mattpocock/skills) for the methods the routing table selects.
-- [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai) and its [Pi setup](https://github.com/Gentleman-Programming/gentle-ai#installation) for continuity and integration installation.
-- [Gentle Engram](https://github.com/Gentleman-Programming/gentle-engram) and [Engram Pi setup](https://github.com/Gentleman-Programming/engram/blob/main/docs/AGENT-SETUP.md) for durable project memory.
-- [Gentleman Guardian Angel](https://github.com/Gentleman-Programming/gentleman-guardian-angel) for the optional provider-agnostic quality gate.
-- [Wizard-AI](https://github.com/darkrei08/Wizard-AI) for optional guided setup, TOON/LEA adapters and graphifyy/LLMLingua context tooling.
-- [graphifyy](https://pypi.org/project/graphifyy/) and [LLMLingua](https://github.com/microsoft/LLMLingua) for the manager-supported context stack.
-- [Herdr](https://herdr.dev/) and its [installation guide](https://herdr.dev/docs/install/) for optional workspace and tab management.
-- [RTK installation](https://github.com/rtk-ai/rtk/blob/develop/docs/guide/getting-started/installation.md) for standalone output reduction.
-- [sqz](https://github.com/ojuschugh1/sqz) for standalone output compression.
-- [Serena installation](https://github.com/oraios/serena/blob/main/docs/02-usage/010_installation.md) for semantic navigation.
-- [Vekexasia Pi extensible workflows](https://github.com/vekexasia/pi-extensible-workflows) and its dotenv ownership model for Pi package/compaction overlap policy.
-
-Upstream availability and package versions can change. The runtime report and installed package metadata are authoritative; README links are references, not proof that a tool is installed.
+---
 
 ## License
 
-See [LICENSE](LICENSE).
+This project is licensed under the [MIT License](LICENSE).

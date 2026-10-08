@@ -3,7 +3,7 @@
 Inspect the actual machine before planning. The Vercel Skills CLI installs skill files only; it cannot execute third-party installers. From a checkout, use this flow:
 
 ```bash
-npx skills add darkrei08/repository-orchestrator --skill pi-herdr-orchestrator --agent pi --global
+npx skills add darkrei08/pi-herdr-orchestration --skill pi-herdr-orchestrator --agent pi --global
 node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs
 node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs --apply
 ```
