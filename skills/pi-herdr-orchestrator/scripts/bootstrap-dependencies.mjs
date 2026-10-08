@@ -476,11 +476,54 @@ function ensureSerena() {
   });
 }
 
+function ensureSkillsCli() {
+  if (commandAvailable("skills")) {
+    status("skills-cli", "installed", "existing skills command detected; installer skipped");
+    return;
+  }
+  if (!commandAvailable("npm")) {
+    fail("skills-cli", "npm is required to install Vercel Skills CLI (@latest)");
+    return;
+  }
+  action("skills-cli", "npm", ["install", "--global", "skills@latest"], {
+    postcondition: () => commandAvailable("skills"),
+    onPlan: () => { state.skillsCli = true; },
+  });
+}
+
+const REQUIRED_SKILL_SUITES = [
+  { id: "skill-engineering-excellence", pkg: "darkrei08/Engineering-Excellence", skill: null },
+  { id: "skill-matt-pocock", pkg: "mattpocock/skills", skill: null },
+  { id: "skill-gentle-ai", pkg: "Gentleman-Programming/gentle-ai", skill: null },
+  { id: "skill-pi-herdr-orchestration", pkg: "darkrei08/pi-herdr-orchestration", skill: "pi-herdr-orchestrator" },
+];
+
+function ensureSkillSuites() {
+  const canRun = commandAvailable("skills") || !apply;
+  if (!canRun) {
+    fail("skill-suites", "skills CLI is unavailable; cannot install skill suites");
+    return;
+  }
+  for (const suite of REQUIRED_SKILL_SUITES) {
+    const args = ["add", suite.pkg, "-g", "-a", "*", "-y"];
+    if (suite.skill) {
+      args.push("--skill", suite.skill);
+    }
+    action(suite.id, "skills", args, {
+      available: canRun,
+      display: `skills ${args.join(" ")}`,
+      onPlan: () => {},
+    });
+  }
+}
+
 ensureGga();
 ensureHerdr();
 ensureRtk();
 ensureSqz();
 ensureSerena();
+ensureSkillsCli();
+ensureSkillSuites();
 
 console.log(failures === 0 ? `Result: ${apply ? "completed" : "dry run complete"}` : `Result: failed (${failures})`);
 if (failures > 0) process.exitCode = 1;

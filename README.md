@@ -28,7 +28,8 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Dynamic Routing Table](#dynamic-routing-table)
 - [Installation & Dependency Management](#installation--dependency-management)
   - [Install the Skill via Vercel Skills CLI](#install-the-skill-via-vercel-skills-cli)
-  - [Dependency Bootstrap](#dependency-bootstrap)
+  - [Dependency Bootstrap (System Runtimes & Skill Suites)](#dependency-bootstrap-system-runtimes--skill-suites)
+  - [Mandatory Per-Repository Initialization](#mandatory-per-repository-initialization)
   - [Environment Verification](#environment-verification)
   - [Compaction & Overlap Rules](#compaction--overlap-rules)
 - [Sources & References](#sources--references)
@@ -287,17 +288,46 @@ npx skills add . \
   --global
 ```
 
-### Dependency Bootstrap
+### Dependency Bootstrap (System Runtimes & Skill Suites)
 
-The Vercel Skills CLI installs skill definition files only; it deliberately does not run third-party installers or post-install scripts. Run the dependency bootstrap script to inspect missing dependencies:
+The Vercel Skills CLI installs skill definition files only; it deliberately does not run third-party installers or post-install scripts. Run the dependency bootstrap script to inspect missing dependencies and install required runtimes as well as all 4 required skill suites (**Engineering Excellence**, **Matt Pocock skills**, **Gentle AI skills**, and **Pi Herdr Orchestration**):
 
 ```bash
-# 1. Read-only dry run (inspects existing software and prints a plan)
-node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs
+# 1. Read-only dry run (inspects existing software/skills and prints a plan)
+node scripts/bootstrap.mjs
+# or: npm run bootstrap
 
 # 2. Apply installations (requires explicit --apply flag)
-node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs --apply
+node scripts/bootstrap.mjs --apply
+# or: npm run bootstrap:apply
 ```
+
+### Mandatory Per-Repository Initialization
+
+Every project or repository orchestrated by this skill must be initialized before workers begin execution. Run the repository initialization script:
+
+```bash
+# 1. Dry run in current repository
+node scripts/init-repo.mjs
+# or: npm run init-repo
+
+# 2. Apply repository initialization
+node scripts/init-repo.mjs --apply
+# or: npm run init-repo:apply
+
+# Or target a specific repository path:
+node scripts/init-repo.mjs --dir /path/to/my-repo --apply
+```
+
+This command automatically configures:
+- **Git Baseline:** Ensures repository initialization on `main` and creates `.worktrees/`.
+- **Gitignore Rules:** Appends `.worktrees/`, `.codegraph/`, and `.atl/` to `.gitignore`.
+- **Engram Memory Identity:** Generates `.git/engram-project-identity.json` for isolated, persistent repository memory.
+- **Guardian Angel (GGA):** Creates `.gga` quality-gate configuration and baseline `AGENTS.md` guidelines.
+- **Semantic Code Navigation:** Deploys Serena project configuration for LSP symbol analysis.
+- **Token Compression:** Injects `sqz` and `rtk` local hooks for terminal and tool reduction.
+- **Herdr Workspace:** Creates a dedicated Herdr workspace named after the repository.
+- **Skill Registry:** Catalogs all available skills into `.atl/skill-registry.md`.
 
 ### Environment Verification
 
@@ -305,10 +335,12 @@ Run the read-only capability and host compatibility check:
 
 ```bash
 # Output JSON report
-node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
+node scripts/check.mjs --json
+# or: npm run check:json
 
 # Strict validation (exits nonzero if core runtimes or compaction conflicts exist)
-node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
+node scripts/check.mjs --strict
+# or: npm run check:strict
 ```
 
 The report inspects:

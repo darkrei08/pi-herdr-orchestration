@@ -1,14 +1,39 @@
-# Bootstrap and capability discovery
+# Bootstrap, capability discovery, and repository initialization
 
-Inspect the actual machine before planning. The Vercel Skills CLI installs skill files only; it cannot execute third-party installers. From a checkout, use this flow:
+Inspect the actual machine before planning. The setup process consists of two distinct stages:
+
+1. **System & Skills Bootstrap (`bootstrap-dependencies.mjs`):** Installs missing agent runtimes, CLI utilities, and adds the required skill suites (Engineering Excellence, Matt Pocock, Gentle AI, and Pi Herdr Orchestration).
+2. **Per-Repository Initialization (`init-repository.mjs`):** Initializes and verifies all integrated tools for the specific repository or project.
+
+From a checkout or project root, use this flow:
 
 ```bash
+# 1. Install or update the orchestration skill
 npx skills add darkrei08/pi-herdr-orchestration --skill pi-herdr-orchestrator --agent pi --global
+
+# 2. Bootstrap missing system runtimes and required skill suites
 node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs
 node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs --apply
+
+# 3. Initialize the target repository
+node skills/pi-herdr-orchestrator/scripts/init-repository.mjs
+node skills/pi-herdr-orchestrator/scripts/init-repository.mjs --apply
 ```
 
 The bootstrap defaults to a read-only dry run. `--apply` is required for mutations. It prints a compact plan, detects commands and configuration before installing, inherits stdio for real installers, and exits nonzero only for an apply-time command failure or required postcondition failure. It covers Gentle AI/Engram, Guardian Angel and Herdr in addition to the context and reduction tools. It refuses the full Wizard-AI setup when Gentle or PiWorkflow already owns an overlapping responsibility.
+
+## Mandatory Per-Repository Initialization
+
+Every repository managed by Pi Herdr Orchestrator must be initialized using `init-repository.mjs --apply`. This script provisions:
+
+- **Git Baseline:** Ensures a Git repository exists on branch `main` and creates `.worktrees/`.
+- **Gitignore Policies:** Ensures `.worktrees/`, `.codegraph/`, and `.atl/` are excluded from Git.
+- **Engram Memory Identity:** Establishes `.git/engram-project-identity.json` with a dedicated UUID and project name so memories are strictly scoped.
+- **Guardian Angel Gate:** Generates `.gga` configuration and baseline repository `AGENTS.md` guidelines.
+- **Semantic Code Navigation:** Creates `.serena` project configuration for language-server symbol exploration.
+- **Token Compression:** Deploys local `sqz` and `rtk` hooks to compress terminal and tool outputs.
+- **Herdr Workspace:** Registers a named Herdr workspace pointing to the repository path.
+- **Skill Registry:** Renders `.atl/skill-registry.md` to catalog all accessible agent skills.
 
 ## Ownership and managers
 

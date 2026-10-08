@@ -2,3 +2,16 @@
 .atl/
 .codegraph/
 CLAUDE.md
+
+# Pi Herdr Orchestration runtime state
+.worktrees/
+.serena/
+
+# Local agent hooks & settings
+.claude/settings.local.json
+.cursor/
+.windsurf/
+.clinerules
+.gemini/
+.kiro/
+opencode.json

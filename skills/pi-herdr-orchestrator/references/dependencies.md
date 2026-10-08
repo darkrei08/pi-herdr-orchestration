@@ -48,11 +48,17 @@ Allowed statuses are `installed`, `missing`, `incompatible`, `disabled`, `blocke
 
 ## Installation policy
 
-The capability report is executable from a checkout:
+The capability report and repository initialization are executable from a checkout:
 
 ```bash
-node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
+# Capability inspection
 node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
+
+# Dependency and skill suites bootstrap
+node skills/pi-herdr-orchestrator/scripts/bootstrap-dependencies.mjs --apply
+
+# Per-repository initialization
+node skills/pi-herdr-orchestrator/scripts/init-repository.mjs --apply
 ```
 
 It is read-only. It reports installed, missing and incompatible capabilities, the supported agent skill roots, the selected Pi compaction owner, and detects (never installs) `gh`, Docker/Compose and the skill families named in [routing.md](routing.md). Optional tools remain optional; `--strict` fails only when the skill, Node, Git, or compaction ownership is unavailable or conflicting.
