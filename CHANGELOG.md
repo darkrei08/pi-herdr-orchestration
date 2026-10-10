@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-10-10
+
+### Added
+- **Automated Release & Publish Pipeline (`.github/workflows/publish.yml`)**: Tag-triggered GitHub Action that automatically extracts version-specific changelog notes from `CHANGELOG.md`, attaches them to GitHub Releases, and publishes to the npm registry.
+- **Cross-Platform CI Validation Matrix (`.github/workflows/validate.yml`)**: Automated CI verifying test suites and environment checks across Ubuntu, macOS, and Windows.
+
 ## [1.2.0] - 2026-10-10
 
 ### Added

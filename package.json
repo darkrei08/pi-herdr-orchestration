@@ -1,6 +1,6 @@
 {
   "name": "pi-herdr-orchestration",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Deterministic multi-agent repository orchestration for Pi, Herdr, and AI coding agents",
   "type": "module",
   "main": "skills/pi-herdr-orchestrator/scripts/check-environment.mjs",
