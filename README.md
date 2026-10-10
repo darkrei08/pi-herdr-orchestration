@@ -17,10 +17,11 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [2. Progressive Disclosure & Bounded Contexts](#2-progressive-disclosure--bounded-contexts)
   - [3. Evidence-Based Validation (Proof Before Claim)](#3-evidence-based-validation-proof-before-claim)
   - [4. Non-Polluting Compact State Protocol](#4-non-polluting-compact-state-protocol)
-  - [5. Multi-Agent Supervision & Report-Back Mailbox](#5-multi-agent-supervision--report-back-mailbox)
+  - [5. Multi-Agent Supervision & Context-Preserving Architecture](#5-multi-agent-supervision--context-preserving-architecture)
   - [6. Two-Tier Integration & Merge Queue](#6-two-tier-integration--merge-queue)
 - [Skill Ecosystem Integrations](#skill-ecosystem-integrations)
-  - [PiWorkflow (`pi-extensible-workflows`)](#piworkflow-pi-extensible-workflows)
+  - [PiWorkflow (`pi-extensible-workflows` v6.2.0)](#piworkflow-pi-extensible-workflows-v620)
+  - [Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)](#pi-extensible-roles-piewfpi-ext-roles-v020)
   - [Gentle AI Suite & Engram](#gentle-ai-suite--engram)
   - [Engineering Excellence](#engineering-excellence)
   - [Matt Pocock Skill Suite](#matt-pocock-skill-suite)
@@ -177,6 +178,7 @@ Parent sessions never ingest worker transcripts. All cross-session communication
     { "name": "types", "status": "PASS", "ref": "tsc-clean" },
     { "name": "gga", "status": "PASS", "ref": "gga-hash-cache" }
   ],
+  "evidence_ref": "ref:sha256:2df2a23aa02e0171",
   "decisions": ["Preserve backward compatibility for legacy JSON configurations."],
   "risks": [],
   "blockers": [],
@@ -187,31 +189,35 @@ Parent sessions never ingest worker transcripts. All cross-session communication
 
 Human-readable Markdown reports (such as the cycle dashboard) are generated directly from these structured envelopes.
 
-### 5. Multi-Agent Supervision & Report-Back Mailbox
+### 5. Multi-Agent Supervision & Context-Preserving Architecture
 
-Dispatched sessions that operate without supervision or feedback loops lead to silent failures, runaway tokens, or deadlock at unhandled prompts. Real-world multi-agent orchestration operates like an executive control office:
+Dispatched sessions that operate without supervision or feedback loops lead to silent failures, runaway tokens, or deadlocks. Real-world multi-agent orchestration operates like an executive corporate office: master coordinates, workers execute, and communication strictly protects model context windows.
 
-#### The Communication & Transport Channels
-1. **Native Pi Extension (`extensions/index.mjs`):** Registers model-facing orchestration tools (`orch_report`, `orch_status`, `orch_ask`, `orch_reply`, `orch_evidence`) and an interactive `/orch` dashboard command directly inside Pi, eliminating the need to spawn shell processes or pollute context windows.
-2. **The Shared File Mailbox (`scripts/mailbox.mjs`):** The authoritative, durable file transport. Located under `<git-common-dir>/orchestrator/<run>/`, this directory is shared across all linked Git worktrees while remaining untracked by Git. Protected by directory-based file locking (`lock.mjs`), it ensures zero race conditions across concurrent panes.
-3. **Semantic Result & Evidence Storage:** Large test suites, compile outputs, or diffs are hashed and saved to `<git-common-dir>/orchestrator/<run>/evidence/<sha256>.txt`. Only a compact semantic reference (`ref:sha256:...`) is forwarded upstream, preserving model context.
-4. **Bi-directional Ask / Reply Protocol:** Blocked workers can submit questions with `orch_ask` (or `mailbox.mjs ask`). The master sees the `ASK` flag, replies with `orch_reply`, and automatically unblocks the worker without blind waiting or busy loops.
-5. **Herdr Agent Liveness (`herdr agent list/get/wait/read`):** The master continuously tracks process lifecycle states (`working`, `idle`, `done`, `blocked`). Terminal state alone is never proof of completion.
-6. **Mandatory Report-Back Clause in Every Brief:** No worker session is dispatched without a strict contractual reporting clause:
-   - Report `WORKING` at every lifecycle phase transition and at least every 10 minutes.
-   - If blocked on a question or decision, invoke `orch_ask` immediately.
-   - Store large evidence logs via `--evidence` or `orch_evidence`.
-   - Report `READY`, `DEVELOPMENT`, or `FAILED` as the final action with full check results.
-   - Never exit silently without a mailbox report.
-7. **Master Supervision Loop:** The master remains active, joining mailbox reports with live `herdr agent list` snapshots to classify each task into actionable flags:
-   - **`OK`:** Healthy, reporting on schedule or cleanly closed.
-   - **`ASK`:** Worker submitted a blocking question. Master replies and unblocks it.
-   - **`DECIDE`:** Worker reported terminal state (`READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED`). Master reconciles with Git/CI and decides next steps.
-   - **`SILENT`:** Agent is idle or done in Herdr, but the last mailbox report was still `ASSIGNED` or `WORKING`. Master reads recent pane output and issues a targeted nudge.
-   - **`STALE`:** Agent is still working in Herdr, but has not reported within the stale threshold (default 10 minutes).
-   - **`NEEDS_HUMAN`:** Herdr detects an approval or input dialog. Master escalates to the human operator; it never approves dialogs on the user's behalf.
-   - **`GONE`:** Worker agent process exited or is missing from Herdr. Master inspects the worktree and recovers or restarts.
-8. **Span of Control & Discipline:** A master session supervises at most 4–6 concurrent workers (honoring host memory and cognitive capacity). Bounded retries (at most 2 nudges or restarts) prevent infinite loops. Prompt cache continuity is protected by keeping role headers static at the prompt prefix.
+#### How the Architecture Preserves and Improves Context Windows
+1. **Semantic Evidence Offloading (`ref:sha256:...`):**
+   - *The Problem:* Dumping 300+ lines of raw `npm test`, compiler diagnostics, or multi-file git diffs directly into conversation tokens pollutes attention, degrades reasoning, and forces premature, lossy compaction.
+   - *The Fix:* Raw artifacts are SHA-256 hashed and stored on disk under `<git-common-dir>/orchestrator/<run>/evidence/<sha256>.txt`. Only the immutable reference `ref:sha256:...` transits through prompts. The master inspects raw evidence only by exception.
+2. **Native Pi Extension (`extensions/index.mjs`) vs Subshell Clutter:**
+   - *The Problem:* Repeatedly spawning subshells (`node scripts/mailbox.mjs ...`) injects shell process wrappers, terminal ANSI codes, and stderr noise into conversation history.
+   - *The Fix:* Native in-process Pi tools (`orch_report`, `orch_status`, `orch_ask`, `orch_reply`, `orch_evidence`) communicate purely via in-memory JavaScript objects and JSON files, bypassing shell noise completely.
+3. **Prompt Cache Continuity:**
+   - Static brief headers, role definitions, and invariant repository rules are anchored at the prefix of worker prompts. Dynamic per-task arguments are appended at the end. This guarantees maximum prompt cache hits on upstream providers (Anthropic, OpenAI, Gemini), dramatically cutting latency and API costs.
+4. **Bi-directional Ask / Reply Protocol (`orch_ask` / `orch_reply`):**
+   - When a worker encounters an ambiguous architectural question or missing credential, it invokes `orch_ask`, setting its state to `BLOCKED` with flag `ASK`.
+   - The master sees the question in its supervision dashboard, provides an explicit decision via `orch_reply`, and automatically transitions the worker back to `WORKING` without hanging or busy-polling.
+5. **Cross-Platform Directory Locking (`lock.mjs`):**
+   - Protected by atomic directory locks using `node:path` `basename`, ensuring zero file corruption or interleaved JSON writes even when 4–6 parallel Herdr panes report simultaneously across Linux, macOS, or Windows.
+6. **Continuous Herdr Supervision Loop:**
+   - Master stays active, reconciling mailbox states with live Herdr process liveness (`working`, `idle`, `done`, `blocked`):
+     - **`OK`:** Healthy and reporting on schedule.
+     - **`ASK`:** Worker submitted a blocking question awaiting master reply.
+     - **`DECIDE`:** Worker reported terminal state (`READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED`). Master reconciles with Git/CI.
+     - **`SILENT`:** Agent is idle in Herdr but last mailbox report was `WORKING`. Master reads recent pane output and nudges.
+     - **`STALE`:** Agent is working in Herdr but has not reported within the stale threshold (default 10 minutes).
+     - **`NEEDS_HUMAN`:** Herdr recognizes an approval or question dialog; master escalates to the human operator.
+     - **`GONE`:** Worker agent process missing from Herdr; master checks the worktree and restarts if needed.
+7. **Interactive TUI Command (`/orch`):**
+   - Instant visual fleet status directly inside the active Pi session without context pollution.
 
 ### 6. Two-Tier Integration & Merge Queue
 
@@ -227,9 +233,21 @@ Before merging individual green branches into `main`, the master executes an **I
 
 Pi Herdr Orchestration dynamically bridges and routes between major AI coding agent skill ecosystems:
 
-### PiWorkflow (`pi-extensible-workflows`)
+### PiWorkflow (`pi-extensible-workflows` v6.2.0)
 - **Role:** Execution engine substrate.
-- **Capabilities Used:** Primitives including `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, persistent `agent.create(...)` handles, role mappings, and recovery tools (`workflow_status`, `workflow_retry`, `workflow_resume`).
+- **Capabilities Used:**
+  - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
+  - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
+  - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
+  - **Reliable Linux Process Liveness:** Uses `/proc/<pid>/stat` starttime instead of `ctime` to eliminate false positives from kernel PID recycling.
+  - **Workflow Recovery:** Replaying completed operations through `workflow_status`, `workflow_retry`, and `workflow_resume`.
+
+### Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)
+- **Role:** Independent role authoring, configuration, and runtime preparation.
+- **Capabilities Used:**
+  - Reusable Markdown role definitions (`roles/*.md`) with tool, skill, and context file selectors.
+  - Independent CLI inspection: `pi-role --identify <role>` prints the resolved file path and complete role frontmatter.
+  - Native workflow preparation adapter (`registerRolePreparationHook`) decoupling roles from the workflow core.
 
 ### Gentle AI Suite & Engram
 - **Role:** Harness discipline, durable memory, and review authority.
@@ -259,7 +277,10 @@ Pi Herdr Orchestration dynamically bridges and routes between major AI coding ag
 
 ### Guardian Angel (GGA)
 - **Role:** Provider-agnostic pre-commit and pre-PR quality gate.
-- **Capabilities Used:** Verifies git diffs, rules, and repository invariants after tests and before declaring a worker `READY`. Uses hash caching to ensure idempotent verification.
+- **Capabilities Used:**
+  - Reviewed by default via `kilo:cliproxyapi/gemini-3.8-flash-high` with high reasoning effort.
+  - Bridge integration `agents/gga-pi/` routing reviews directly through `pi --print` to the local CLIProxyAPI gateway.
+  - Verifies git diffs, rules, and repository invariants after tests and before declaring a worker `READY`. Uses hash caching to ensure idempotent verification.
 
 ### Context Reduction & Semantic Navigation Stack
 - **Role:** Token preservation and AST-level exploration.
@@ -380,8 +401,11 @@ Supervise distributed worker sessions and inspect the shared mailbox:
 node scripts/mailbox.mjs status --run <run-id>
 # or: npm run mailbox:status -- --run <run-id>
 
-# Run unit tests for supervision classification logic
+# Run unit tests for supervision classification logic and file locking
 npm test
+
+# Native Pi interactive inspection (inside an active Pi session):
+/orch
 ```
 
 The report inspects:
