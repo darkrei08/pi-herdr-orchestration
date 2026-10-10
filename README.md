@@ -17,7 +17,8 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [2. Progressive Disclosure & Bounded Contexts](#2-progressive-disclosure--bounded-contexts)
   - [3. Evidence-Based Validation (Proof Before Claim)](#3-evidence-based-validation-proof-before-claim)
   - [4. Non-Polluting Compact State Protocol](#4-non-polluting-compact-state-protocol)
-  - [5. Two-Tier Integration & Merge Queue](#5-two-tier-integration--merge-queue)
+  - [5. Multi-Agent Supervision & Report-Back Mailbox](#5-multi-agent-supervision--report-back-mailbox)
+  - [6. Two-Tier Integration & Merge Queue](#6-two-tier-integration--merge-queue)
 - [Skill Ecosystem Integrations](#skill-ecosystem-integrations)
   - [PiWorkflow (`pi-extensible-workflows`)](#piworkflow-pi-extensible-workflows)
   - [Gentle AI Suite & Engram](#gentle-ai-suite--engram)
@@ -31,6 +32,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Dependency Bootstrap (System Runtimes & Skill Suites)](#dependency-bootstrap-system-runtimes--skill-suites)
   - [Mandatory Per-Repository Initialization](#mandatory-per-repository-initialization)
   - [Environment Verification](#environment-verification)
+  - [Mailbox & Supervision Commands](#mailbox--supervision-commands)
   - [Compaction & Overlap Rules](#compaction--overlap-rules)
 - [Sources & References](#sources--references)
 - [License](#license)
@@ -185,7 +187,33 @@ Parent sessions never ingest worker transcripts. All cross-session communication
 
 Human-readable Markdown reports (such as the cycle dashboard) are generated directly from these structured envelopes.
 
-### 5. Two-Tier Integration & Merge Queue
+### 5. Multi-Agent Supervision & Report-Back Mailbox
+
+Dispatched sessions that operate without supervision or feedback loops lead to silent failures, runaway tokens, or deadlock at unhandled prompts. Real-world multi-agent orchestration operates like an executive control office:
+
+#### The Communication & Transport Channels
+1. **Native Pi Extension (`extensions/index.mjs`):** Registers model-facing orchestration tools (`orch_report`, `orch_status`, `orch_ask`, `orch_reply`, `orch_evidence`) and an interactive `/orch` dashboard command directly inside Pi, eliminating the need to spawn shell processes or pollute context windows.
+2. **The Shared File Mailbox (`scripts/mailbox.mjs`):** The authoritative, durable file transport. Located under `<git-common-dir>/orchestrator/<run>/`, this directory is shared across all linked Git worktrees while remaining untracked by Git. Protected by directory-based file locking (`lock.mjs`), it ensures zero race conditions across concurrent panes.
+3. **Semantic Result & Evidence Storage:** Large test suites, compile outputs, or diffs are hashed and saved to `<git-common-dir>/orchestrator/<run>/evidence/<sha256>.txt`. Only a compact semantic reference (`ref:sha256:...`) is forwarded upstream, preserving model context.
+4. **Bi-directional Ask / Reply Protocol:** Blocked workers can submit questions with `orch_ask` (or `mailbox.mjs ask`). The master sees the `ASK` flag, replies with `orch_reply`, and automatically unblocks the worker without blind waiting or busy loops.
+5. **Herdr Agent Liveness (`herdr agent list/get/wait/read`):** The master continuously tracks process lifecycle states (`working`, `idle`, `done`, `blocked`). Terminal state alone is never proof of completion.
+6. **Mandatory Report-Back Clause in Every Brief:** No worker session is dispatched without a strict contractual reporting clause:
+   - Report `WORKING` at every lifecycle phase transition and at least every 10 minutes.
+   - If blocked on a question or decision, invoke `orch_ask` immediately.
+   - Store large evidence logs via `--evidence` or `orch_evidence`.
+   - Report `READY`, `DEVELOPMENT`, or `FAILED` as the final action with full check results.
+   - Never exit silently without a mailbox report.
+7. **Master Supervision Loop:** The master remains active, joining mailbox reports with live `herdr agent list` snapshots to classify each task into actionable flags:
+   - **`OK`:** Healthy, reporting on schedule or cleanly closed.
+   - **`ASK`:** Worker submitted a blocking question. Master replies and unblocks it.
+   - **`DECIDE`:** Worker reported terminal state (`READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED`). Master reconciles with Git/CI and decides next steps.
+   - **`SILENT`:** Agent is idle or done in Herdr, but the last mailbox report was still `ASSIGNED` or `WORKING`. Master reads recent pane output and issues a targeted nudge.
+   - **`STALE`:** Agent is still working in Herdr, but has not reported within the stale threshold (default 10 minutes).
+   - **`NEEDS_HUMAN`:** Herdr detects an approval or input dialog. Master escalates to the human operator; it never approves dialogs on the user's behalf.
+   - **`GONE`:** Worker agent process exited or is missing from Herdr. Master inspects the worktree and recovers or restarts.
+8. **Span of Control & Discipline:** A master session supervises at most 4–6 concurrent workers (honoring host memory and cognitive capacity). Bounded retries (at most 2 nudges or restarts) prevent infinite loops. Prompt cache continuity is protected by keeping role headers static at the prompt prefix.
+
+### 6. Two-Tier Integration & Merge Queue
 
 The master categorizes completed work based on empirical evidence:
 - **`STABLE`:** All acceptance criteria, tests, and reviews pass. Ready to merge or publish to the primary branch (`main`).
@@ -341,6 +369,19 @@ node scripts/check.mjs --json
 # Strict validation (exits nonzero if core runtimes or compaction conflicts exist)
 node scripts/check.mjs --strict
 # or: npm run check:strict
+```
+
+### Mailbox & Supervision Commands
+
+Supervise distributed worker sessions and inspect the shared mailbox:
+
+```bash
+# Check current run status and flagged tasks against Herdr agent liveness
+node scripts/mailbox.mjs status --run <run-id>
+# or: npm run mailbox:status -- --run <run-id>
+
+# Run unit tests for supervision classification logic
+npm test
 ```
 
 The report inspects:

@@ -1,6 +1,6 @@
 {
   "name": "pi-herdr-orchestration",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Deterministic multi-agent repository orchestration for Pi, Herdr, and AI coding agents",
   "type": "module",
   "main": "skills/pi-herdr-orchestrator/scripts/check-environment.mjs",
@@ -11,20 +11,32 @@
     "bootstrap": "node scripts/bootstrap.mjs",
     "bootstrap:apply": "node scripts/bootstrap.mjs --apply",
     "init-repo": "node scripts/init-repo.mjs",
-    "init-repo:apply": "node scripts/init-repo.mjs --apply"
+    "init-repo:apply": "node scripts/init-repo.mjs --apply",
+    "mailbox": "node scripts/mailbox.mjs",
+    "mailbox:status": "node scripts/mailbox.mjs status",
+    "test": "node --test skills/pi-herdr-orchestrator/scripts/mailbox.test.mjs"
   },
   "keywords": [
     "pi",
+    "pi-package",
     "herdr",
     "orchestrator",
     "multi-agent",
     "skills",
     "ai-agents"
   ],
+  "pi": {
+    "extensions": [
+      "./extensions/index.mjs"
+    ],
+    "skills": [
+      "./skills/pi-herdr-orchestrator"
+    ]
+  },
   "author": "darkrei08",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/darkrei08/pi-herdr-orchestration.git"
+    "url": "git+https://github.com/darkrei08/pi-herdr-orchestration.git"
   }
 }

@@ -44,6 +44,7 @@ Act as the control session for the current repository. Respect the user's actual
 - Prefer finishing existing PRs over duplicating them. Close an issue only when its acceptance criteria are met, referencing the resolving PR or commit.
 - Use PiWorkflow's actual installed workflow/session APIs if present; its current documentation governs commands. Keep `[MASTER] Pi Herdr Orchestrator` as the control plane, chiefs as bounded coordinators, and task sessions in their own worktrees. Do not pretend a terminal tab or agent exists when it does not.
 - Maintain a traceable command chain: master assigns to a chief, the chief dispatches and supervises task sessions, child sessions return evidence to the chief, and the chief returns a normalized report to the master. Only the master decides the next repository-level action, integration target, retry, escalation or stop condition.
+- Dispatch is not delegation until supervised: every brief carries the report-back clause, and after dispatch the master stays in the supervision loop (mailbox status, Herdr liveness, Git reconciliation) until every task is `CLOSED` or escalated. Never end a turn with dispatched sessions unattended. See [supervision.md](references/supervision.md).
 - Treat Git and verified code state as authoritative for implementation status. Memory explains intent and decisions; it cannot override current evidence.
 - Delegate or parallelize only when permitted by the host, user and project instructions and when task dependencies allow it. A separate reviewer is desirable when available, never mandatory theater.
 - Do not automatically merge, push, close PRs/issues, delete branches, or broaden the user's scope without applicable authorization. Preserve unrelated work and uncommitted changes.
@@ -68,6 +69,7 @@ Act as the control session for the current repository. Respect the user's actual
 | Tests, auto-grill and review | [quality.md](references/quality.md) |
 | Stable/dev decisions and cleanup | [integration.md](references/integration.md) |
 | Rescan, recovery and final audit | [audit.md](references/audit.md) |
+| Report-back mailbox, supervision loop, escalation rules | [supervision.md](references/supervision.md) |
 | Dashboard, evidence, completion criteria, final report | [reporting.md](references/reporting.md) |
 
 Read only the references relevant to the current phase. Avoid dumping every file into the context window.

@@ -69,6 +69,12 @@ Required fields are `v`, `kind`, `id`, `parent`, `sender`, `task`, `state`, `sum
 
 The chief may summarize several child results, but must preserve child IDs and evidence references. The master consumes `chief_report`, reconciles it with current Git and CI, then emits a `decision`. A Markdown report can be rendered from the JSON for people; it is not a second source of truth.
 
+## Transport
+
+The envelope needs a concrete channel or it is only a description. Between Herdr panes the canonical channel is the mailbox written by `scripts/mailbox.mjs report` or native tool `orch_report` (a subset of the envelope with `seq`, atomic directory locks, and timestamps), read by `mailbox.mjs status` / `orch_status`; `herdr agent prompt` carries only directives and wake-up nudges.
+
+Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 hashed files under `<git-common-dir>/orchestrator/<run>/evidence/` via `storeEvidence` (`orch_evidence`) and referenced as `ref:sha256:<hash>`. The envelope passes the semantic reference only, ensuring prompt contexts remain completely unpolluted. See [supervision.md](supervision.md).
+
 ## Token and reliability rules
 
 - Keep `summary`, `decisions`, `risks` and `next` short and factual.

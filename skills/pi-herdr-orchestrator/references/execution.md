@@ -14,6 +14,7 @@ One branch and one worktree per independent task; never edit the default branch 
 4. Preserve public contracts unless explicitly authorized; a refactor needs behavior-preservation tests.
 5. Update tests, and documentation when behavior changes.
 6. Run the relevant validation, inspect your own diff, and hand off with evidence. Lifecycle: [dispatch.md](dispatch.md).
+7. Report through the mailbox (`scripts/mailbox.mjs report`) at every phase change, at least every 10 minutes, immediately when blocked, and as the last action with all checks. Silence is a defect. See [supervision.md](supervision.md).
 
 ## Master and chiefs
 

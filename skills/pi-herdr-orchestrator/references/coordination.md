@@ -27,7 +27,7 @@ task evidence → chief report → master decision → next directive
 
 Every report must identify the task, session/tab, branch, worktree, checks, result, risks, memory state and next action. A child cannot promote its own work, close a related Issue or discard a worktree merely because its local task is finished.
 
-Use the compact envelope in [state-protocol.md](state-protocol.md) for these reports. The chief forwards a `chief_report`; the master returns a `decision`. This keeps communication machine-readable and avoids injecting transcripts into every parent session.
+A chief supervises its children with the loop in [supervision.md](supervision.md) and forwards only flagged or closed tasks. Use the compact envelope in [state-protocol.md](state-protocol.md) for these reports. The chief forwards a `chief_report`; the master returns a `decision`. This keeps communication machine-readable and avoids injecting transcripts into every parent session.
 
 ## Tab registry
 

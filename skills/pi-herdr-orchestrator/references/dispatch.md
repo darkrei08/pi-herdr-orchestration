@@ -32,13 +32,13 @@ The master inventories, builds the graph, assigns, checks evidence and decides m
 
 ## Worker contract
 
-Each worker receives a bounded brief only: objective, issue/PR context, allowed and forbidden scope, branch/worktree, dependencies, validation to run, completion criteria. Progressive disclosure: no whole-project dumps. Skills are chosen per task by [routing.md](routing.md); never load every installed skill into every session.
+Each worker receives a bounded brief only: objective, issue/PR context, allowed and forbidden scope, branch/worktree, dependencies, validation to run, completion criteria, and the mandatory report-back clause from [supervision.md](supervision.md). A brief without it is not dispatchable. Progressive disclosure: no whole-project dumps. Skills are chosen per task by [routing.md](routing.md); never load every installed skill into every session.
 
-Worker lifecycle: `DISCOVER -> UNDERSTAND -> PLAN -> IMPLEMENT -> VERIFY -> SELF-REVIEW -> HANDOFF -> READY`. Not `READY` until validation has run. Master lifecycle: `INVENTORY -> DEPENDENCY GRAPH -> DISPATCH -> SUPERVISION -> INTEGRATION -> REVIEW -> MERGE -> CLEANUP`.
+Worker lifecycle: `DISCOVER -> UNDERSTAND -> PLAN -> IMPLEMENT -> VERIFY -> SELF-REVIEW -> HANDOFF -> READY`. Not `READY` until validation has run. Master lifecycle: `INVENTORY -> DEPENDENCY GRAPH -> DISPATCH -> SUPERVISION -> INTEGRATION -> REVIEW -> MERGE -> CLEANUP`. SUPERVISION is an active loop, not a phase name: see [supervision.md](supervision.md).
 
 ## Task registry
 
-Keep one registry (master context or authorized artifact): `task_id`, repo, issue/PR, session/pane, worktree, branch, status, dependencies, owner, validation state, next action. Check it before creating a pane so no two sessions own the same task. Name panes semantically (`repo:issue-142-auth-timeout`, `repo:pr-87-review`, `repo:compose-validation`).
+Keep one registry (master context or authorized artifact): `task_id`, repo, issue/PR, session/pane, Herdr agent name, worktree, branch, status, dependencies, owner, validation state, next action. Check it before creating a pane so no two sessions own the same task. Name panes semantically (`repo:issue-142-auth-timeout`, `repo:pr-87-review`, `repo:compose-validation`).
 
 ## Multiple repositories
 
