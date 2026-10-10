@@ -89,7 +89,23 @@ Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 h
 
 ## PiWorkflow and Herdr mapping
 
-In PiWorkflow, return the envelope from an agent/workflow step and feed only the compact object to the next step. Use `parallel` for independent chiefs or review tasks, `pipeline` for ordered phases, `withWorktree` for isolated implementation, and a persistent agent handle when a chief must continue across turns. In Herdr, use one workspace per repository, one master pane, chief panes grouped by department and child panes named after their task. Multiple panes may observe or coordinate inside a worktree; only one writer may modify a given worktree at a time. Give every implementation a dedicated linked worktree.
+In PiWorkflow scripts, agents and workflow functions can directly call the registered native tools:
+```javascript
+// Worker report
+await tools.orch_report({ task: "I#42", state: "WORKING", phase: "IMPLEMENT", summary: "Refactored auth module" });
+
+// Offload heavy test/diff outputs to protect context windows
+const evidence = await tools.orch_evidence({ content: testTrace }); // returns ref:sha256:...
+await tools.orch_report({ task: "I#42", state: "READY", summary: "All tests pass", checks: ["unit=PASS"], evidence: testTrace });
+
+// Worker asks master a blocking question (maps to PiWorkflow checkpoint)
+await tools.orch_ask({ task: "I#42", question: "Should we deprecate the legacy auth token?" });
+
+// Master replies to worker
+await tools.orch_reply({ task: "I#42", answer: "Yes, deprecate with a warning" });
+```
+
+Feed only compact envelopes or semantic evidence references (`ref:sha256:...`) to the next step. Use `parallel` for independent chiefs or review tasks, `pipeline` for ordered phases, `withWorktree` for isolated implementation, and a persistent agent handle when a chief must continue across turns. In Herdr, use one workspace per repository, one master pane, chief panes grouped by department and child panes named after their task. Multiple panes may observe or coordinate inside a worktree; only one writer may modify a given worktree at a time. Give every implementation a dedicated linked worktree.
 
 Run Guardian Angel after implementation checks and before a result becomes `READY`. Record the GGA review status, version, configuration digest and reviewed file hashes in `checks`; a stale cached pass is `BLOCKED` until invalidated and rerun.
 

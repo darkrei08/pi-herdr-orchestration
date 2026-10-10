@@ -22,12 +22,13 @@ The communication path is explicit:
 
 ```text
 master directive → chief assignment → named task session
-task evidence → chief report → master decision → next directive
+task evidence (orch_report / orch_evidence) → chief report → master decision → next directive
+worker question (orch_ask) ↔ master answer (orch_reply)
 ```
 
 Every report must identify the task, session/tab, branch, worktree, checks, result, risks, memory state and next action. A child cannot promote its own work, close a related Issue or discard a worktree merely because its local task is finished.
 
-A chief supervises its children with the loop in [supervision.md](supervision.md) and forwards only flagged or closed tasks. Use the compact envelope in [state-protocol.md](state-protocol.md) for these reports. The chief forwards a `chief_report`; the master returns a `decision`. This keeps communication machine-readable and avoids injecting transcripts into every parent session.
+A chief supervises its children with the loop in [supervision.md](supervision.md) and forwards only flagged or closed tasks. Use the compact envelope in [state-protocol.md](state-protocol.md) for these reports. The chief forwards a `chief_report`; the master returns a `decision`. This keeps communication machine-readable and avoids injecting transcripts into every parent session. In PiWorkflow environments, `orch_ask` and `orch_reply` seamlessly bridge asynchronous Herdr workers with workflow script checkpoints.
 
 ## Tab registry
 
