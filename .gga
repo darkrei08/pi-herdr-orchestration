@@ -30,7 +30,7 @@ PROVIDER="kilo:cliproxyapi/gemini-3.8-flash-high"
 #   FILE_PATTERNS="*.ts,*.tsx"
 #   FILE_PATTERNS="*.py"
 #   FILE_PATTERNS="*.go,*.mod"
-FILE_PATTERNS="*.mjs,*.md,*.yaml"
+FILE_PATTERNS="*.mjs,*.md,*.yaml,*.yml"
 
 # File patterns to exclude from review (comma-separated)
 # Default: none

@@ -1,0 +1,116 @@
+name: Release & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g. v1.2.0)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Run checks & tests
+        run: |
+          npm test
+          node scripts/check.mjs
+
+      - name: Resolve Release Tag & Version
+        id: resolve-tag
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            TAG="v$VERSION"
+          fi
+          CLEAN_VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$CLEAN_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Extract Detailed Changelog for Tag
+        id: extract-changelog
+        env:
+          VERSION: ${{ steps.resolve-tag.outputs.version }}
+        run: |
+          CHANGELOG_FILE="CHANGELOG.md"
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+
+          if [ -f "$CHANGELOG_FILE" ]; then
+            # Extract section for this version from CHANGELOG.md
+            awk -v ver="$VERSION" '
+              $0 ~ "^## \\[" ver "\\]" { flag=1; next }
+              flag && /^## \[/ { flag=0 }
+              flag { print }
+            ' "$CHANGELOG_FILE" > "$NOTES_FILE"
+          fi
+
+          # Fallback to generated git notes if section is empty
+          if [ ! -s "$NOTES_FILE" ]; then
+            echo "### Detailed Commit Log" > "$NOTES_FILE"
+            git log -10 --pretty=format:"* %s (%h)" >> "$NOTES_FILE"
+          fi
+
+          echo "notes_file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure GitHub Release with Detailed Changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.resolve-tag.outputs.tag }}
+          NOTES_FILE: ${{ steps.extract-changelog.outputs.notes_file }}
+        run: |
+          TITLE="$TAG: Multi-Agent Orchestration Release"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Creating GitHub Release for $TAG with detailed changelog"
+            gh release create "$TAG" --title "$TITLE" --notes-file "$NOTES_FILE"
+          else
+            echo "Updating existing GitHub Release $TAG with detailed changelog"
+            gh release edit "$TAG" --title "$TITLE" --notes-file "$NOTES_FILE"
+          fi
+
+      - name: Publish to npm registry (official pi.dev store index)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::warning::NPM_TOKEN secret is not set in repository secrets. Skipping npm publish."
+            echo "To enable automatic publishing to npm and the pi.dev store, add NPM_TOKEN in GitHub Settings -> Secrets -> Actions."
+            exit 0
+          fi
+
+          PACKAGE=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+
+          if npm view "$PACKAGE@$VERSION" version >/dev/null 2>&1; then
+            echo "$PACKAGE@$VERSION is already published to npm; skipping."
+          else
+            echo "Publishing $PACKAGE@$VERSION to npm registry..."
+            npm publish --access public
+            echo "Successfully published $PACKAGE@$VERSION to npm!"
+          fi
