@@ -1,9 +1,9 @@
 // Lightweight atomic lock based on directory creation (atomic on all POSIX/Windows filesystems)
 import { mkdirSync, rmdirSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 export function withLock(filePath, fn, timeoutMs = 5000) {
-  const lockDir = join(dirname(filePath), `.${filePath.split("/").pop()}.lock`);
+  const lockDir = join(dirname(filePath), `.${basename(filePath)}.lock`);
   const start = Date.now();
   let acquired = false;
 
