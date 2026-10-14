@@ -45,11 +45,15 @@ Act as the control session for the current repository. Respect the user's actual
 - Use PiWorkflow's actual installed workflow/session APIs if present; its current documentation governs commands. Keep `[MASTER] Pi Herdr Orchestrator` as the control plane, chiefs as bounded coordinators, and task sessions in their own worktrees. Do not pretend a terminal tab or agent exists when it does not.
 - Maintain a traceable command chain: master assigns to a chief, the chief dispatches and supervises task sessions, child sessions return evidence to the chief, and the chief returns a normalized report to the master. Only the master decides the next repository-level action, integration target, retry, escalation or stop condition.
 - Dispatch is not delegation until supervised: every brief carries the report-back clause, and after dispatch the master stays in the supervision loop (mailbox status, Herdr liveness, Git reconciliation) until every task is `CLOSED` or escalated. Never end a turn with dispatched sessions unattended. See [supervision.md](references/supervision.md).
+- Select Agents by effective runtime capabilities, not bundled filenames or assumed names. A configured child allowance does not prove that the child is available to the current controller; when no suitable Agent is available, investigate locally and record the capability gap instead of simulating delegation.
+- Treat runtime capability discovery and configuration management as separate views: use live discovery for assignment, and inspect layered role/definition sources when changing configuration. Disabled or unavailable required children must not be presented as selectable runtime capabilities.
 - Treat Git and verified code state as authoritative for implementation status. Memory explains intent and decisions; it cannot override current evidence.
 - Delegate or parallelize only when permitted by the host, user and project instructions and when task dependencies allow it. A separate reviewer is desirable when available, never mandatory theater.
 - Do not automatically merge, push, close PRs/issues, delete branches, or broaden the user's scope without applicable authorization. Preserve unrelated work and uncommitted changes.
 - Report `PASS`, `FAIL`, `BLOCKED` or `NOT RUN` accurately for relevant checks. State exact remaining blockers and next action.
 - Skill distribution is host-specific: verify Codex, Claude Code, Antigravity and Antigravity CLI roots after installation; never claim support merely because a `SKILL.md` exists in one agent's directory.
+- Treat Herdr tab labels as presentation only. A role-derived label such as `Lead`, `Managed Lead`, `Manager`, or `Chief` does not grant authority, replace assignment checks, or prove ownership; preserve custom names unless the runtime owns the canonical label.
+- Treat model execution failure as a nonterminal fact. Do not automatically retry the model, replay tools, stop child Agents, integrate partial work, or emit a successful handoff. Inspect exact assignment and external effects before an authorized continuation.
 
 ## Reference map
 

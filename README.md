@@ -219,6 +219,18 @@ Dispatched sessions that operate without supervision or feedback loops lead to s
 7. **Interactive TUI Command (`/orch`):**
    - Instant visual fleet status directly inside the active Pi session without context pollution.
 
+#### Current Herdsman alignment
+
+The orchestration contract follows the latest upstream Herdsman behavior:
+
+- Select Agents by effective runtime capabilities, not filenames or configured child names. If no suitable child is available, investigate locally and record the capability gap instead of simulating delegation.
+- Keep runtime capability discovery separate from layered definition configuration. Disabled definitions or definitions with unavailable required children are not selectable runtime capabilities.
+- Treat role-derived Herdr tab labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) as presentation only. They never grant authority or prove assignment ownership.
+- Prefer deterministic simulated smoke for covered Pi/Herdr boundary scenarios; use live-model smoke when model/provider behavior or instruction adherence is under test.
+- Treat model execution failure as nonterminal evidence: do not retry automatically, replay tools, stop children, integrate partial work, or publish a successful handoff.
+
+These points are aligned with `boadij/pi-herdsman` commits `0dc62d39`, `a422c804`, `c72acadf`, `44698e40`, `56bd0258`, and `321114de` (October 2026).
+
 ### 6. Two-Tier Integration & Merge Queue
 
 The master categorizes completed work based on empirical evidence:
