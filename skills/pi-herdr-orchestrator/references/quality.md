@@ -15,3 +15,11 @@ For Pi/Herdr boundary changes, prefer a relevant deterministic simulated smoke s
 When the project has Compose or equivalent runtime definitions and it is practical, validate integrated behavior: validate the config, check required env without exposing secrets, check port conflicts, never destroy persistent development data, start the smallest stack first, then verify startup, health, dependency resolution, logs, migrations, API connectivity and frontend/backend communication. Run it from a dedicated validation session and tear down disposable containers and volumes afterwards.
 
 For frontend changes with a browser tool available, verify that the target route renders, console and network are clean, loading/empty/error states, responsive layouts, keyboard navigation and basic accessibility; capture screenshots as evidence when they help review. Report `NOT RUN` when tooling is absent.
+
+### Non-destructive smoke test isolation
+
+Smoke tests, capability probes, and automated audit workflows must observe strict non-destructive isolation:
+- Never inspect, echo, print, or record private tokens, API keys, or provider authentication files (`auth.json`, `config.yaml`, `.secrets/`, or environment exports).
+- Treat absent credentials or offline endpoints as explicit, non-fatal `NOT RUN` or `UNVERIFIED` outcomes rather than exceptions or false failures.
+- Test against loopback mock fixtures or unauthenticated status endpoints (`GET /`) before testing authenticated endpoints.
+- When validating gateway-dependent models or services (such as Docker Compose CLIProxyAPI stacks), decouple catalog exposure from inference execution: discovery of a model does not prove inference capability.
