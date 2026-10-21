@@ -10,9 +10,9 @@ S2. Publish the first clean package version through the OIDC workflow after the 
 
 ## Tasks
 
-- T1 | S1 | Align package.json to version 1.2.6 without modifying the preserved v1.2.5 tag/release | commit: pending
-- T2 | S1-S2 | Add changelog notes for the clean OIDC release preparation | commit: pending
-- T3 | S2 | Run release checks and prepare the tag/PR path without touching the active dirty worktree | commit: pending
+- T1 | S1 | Align package.json to version 1.2.6 without modifying the preserved v1.2.5 tag/release | commit: 47f6513
+- T2 | S1-S2 | Add changelog notes for the clean OIDC release preparation | commit: 47f6513
+- T3 | S2 | Run release checks and prepare the tag/PR path without touching the active dirty worktree | commit: 47f6513
 
 ## Log
 
