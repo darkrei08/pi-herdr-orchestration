@@ -8,9 +8,9 @@ Branch: feat/herdsman-lifecycle-evidence
 3. S3: "puoi contorllare e capire dove correggere e commttare le modifiche e pubblicare le variazioni"
 
 ## Tasks
-- T1 | S1 | Enable trusted project Herdr workflow transport and preserve deterministic numbered tab order | commit: 00ef20d
-- T2 | S2 | Make PiWorkflow agent routing pass verified skills, extensions, labels, and worktrees explicitly | commit: 00ef20d
-- T3 | S1-S3 | Add structural/runtime smoke checks and synchronize operator documentation | commit: 00ef20d
+- T1 | S1 | Enable trusted project Herdr workflow transport and preserve deterministic numbered tab order | commit: 906a7c8
+- T2 | S2 | Make PiWorkflow agent routing pass verified skills, extensions, labels, and worktrees explicitly | commit: 906a7c8
+- T3 | S1-S3 | Add structural/runtime smoke checks and synchronize operator documentation | commit: 906a7c8
 
 ## Log
 - L1: mi sono reso conto che pi herder orchestration non avvia correttamente tutte le direttive seocno cui deve avviare altre sessioni pi in parallelo seocnod un ordine di tabs e nuemrate ed etichetatte, in altri pane o tabs herdr, inoltre non esegue correttamente pi worjflow e ed engienring exellence o altre skills, puoi contorllare e capire dove correggere e commttare le modifiche e pubblicare le variazioni — da vero developer e team agentico che opera con git e aiuta llm ad avere una cornistoria
