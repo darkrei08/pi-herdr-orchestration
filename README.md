@@ -35,6 +35,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Environment Verification](#environment-verification)
   - [Mailbox & Supervision Commands](#mailbox--supervision-commands)
   - [Compaction & Overlap Rules](#compaction--overlap-rules)
+- [Release and npm Trusted Publishing](#release-and-npm-trusted-publishing)
 - [Sources & References](#sources--references)
 - [License](#license)
 
@@ -436,6 +437,10 @@ To prevent conflicting hooks and transcript corruption, the orchestrator enforce
 - **Guardian Angel (GGA):** The bootstrap installs the `gga` binary but never runs `gga init` or `gga install` automatically, preserving repository configuration.
 
 ---
+
+## Release and npm Trusted Publishing
+
+Release tags must match the `package.json` version. The GitHub Actions workflow uses npm Trusted Publishing through OIDC; it does not depend on a long-lived `NPM_TOKEN` for normal releases. The one-time package bootstrap, `npm login`, `npm trust`, 2FA, GAT deprecation, and reusable commands are documented in [`docs/releasing.md`](docs/releasing.md).
 
 ## Sources & References
 

@@ -34,6 +34,10 @@ jobs:
           node-version: 22
           registry-url: 'https://registry.npmjs.org'
 
+      # npm trust requires npm 11.15+ for GitHub Actions OIDC publishing.
+      - name: Use npm with trusted publishing support
+        run: npm install --global 'npm@^11.15.0'
+
       - name: Run checks & tests
         run: |
           npm test
@@ -42,17 +46,22 @@ jobs:
       - name: Resolve Release Tag & Version
         id: resolve-tag
         run: |
+          PACKAGE=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
           if [ -n "${{ inputs.tag }}" ]; then
             TAG="${{ inputs.tag }}"
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            VERSION=$(node -p "require('./package.json').version")
             TAG="v$VERSION"
           fi
-          CLEAN_VERSION="${TAG#v}"
+          test "$TAG" = "v$VERSION" || {
+            echo "release tag $TAG does not match $PACKAGE version $VERSION" >&2
+            exit 1
+          }
+          echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$CLEAN_VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Extract Detailed Changelog for Tag
         id: extract-changelog
@@ -94,23 +103,14 @@ jobs:
             gh release edit "$TAG" --title "$TITLE" --notes-file "$NOTES_FILE"
           fi
 
-      - name: Publish to npm registry (official pi.dev store index)
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm with trusted publishing (OIDC)
         run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::warning::NPM_TOKEN secret is not set in repository secrets. Skipping npm publish."
-            echo "To enable automatic publishing to npm and the pi.dev store, add NPM_TOKEN in GitHub Settings -> Secrets -> Actions."
-            exit 0
-          fi
-
-          PACKAGE=$(node -p "require('./package.json').name")
-          VERSION=$(node -p "require('./package.json').version")
-
+          PACKAGE="${{ steps.resolve-tag.outputs.package }}"
+          VERSION="${{ steps.resolve-tag.outputs.version }}"
           if npm view "$PACKAGE@$VERSION" version >/dev/null 2>&1; then
             echo "$PACKAGE@$VERSION is already published to npm; skipping."
           else
-            echo "Publishing $PACKAGE@$VERSION to npm registry..."
-            npm publish --access public
+            echo "Publishing $PACKAGE@$VERSION to npm registry with GitHub OIDC..."
+            npm publish --access public --provenance
             echo "Successfully published $PACKAGE@$VERSION to npm!"
           fi
