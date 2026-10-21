@@ -221,13 +221,16 @@ Dispatched sessions that operate without supervision or feedback loops lead to s
 
 #### Current Herdsman alignment
 
-The orchestration contract follows the latest upstream Herdsman behavior:
+The orchestration contract follows the latest upstream Herdsman (`boadij/pi-herdsman`) supervision semantics:
 
-- Select Agents by effective runtime capabilities, not filenames or configured child names. If no suitable child is available, investigate locally and record the capability gap instead of simulating delegation.
-- Keep runtime capability discovery separate from layered definition configuration. Disabled definitions or definitions with unavailable required children are not selectable runtime capabilities.
-- Treat role-derived Herdr tab labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) as presentation only. They never grant authority or prove assignment ownership.
-- Prefer deterministic simulated smoke for covered Pi/Herdr boundary scenarios; use live-model smoke when model/provider behavior or instruction adherence is under test.
-- Treat model execution failure as nonterminal evidence: do not retry automatically, replay tools, stop children, integrate partial work, or publish a successful handoff.
+- **State compatibility & derived lifecycle:** Preserves existing canonical uppercase states (`ASSIGNED`, `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED`, `CLOSED`) while adding an optional derived lowercase lifecycle field (`pending`, `running`, `ready`, `blocked`, `failed`, `closed`) for full backward and upstream interoperability without wire migration.
+- **Deduplicated full SHA-256 evidence store:** Large logs and diffs are hashed to full 64-char SHA-256 content-addressed files under `evidence/<sha256>.txt` and referenced as `ref:sha256:<hash>`. Evidence is inspectable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into model prompts.
+- **Non-blocking notifications:** Notifications to master sessions (`herdr agent prompt`) run non-blockingly (`spawn` unref) so delivery issues or unavailable Herdr runtimes cannot block mailbox report persistence or turn a completed task into a false failure.
+- **Fail-closed supervision:** Terminal agent states that report `unknown` liveness fail closed to `DECIDE`, mandating that the master reconcile with Git and CI before proceeding rather than assuming tasks are healthy.
+- **Operational boundaries:** Role-derived Herdr tab labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) are presentation only. Chiefs coordinate and normalize reports within their bounded department; they never perform destructive worktree operations without explicit confirmation from the Master control plane.
+- **Capability-aware dispatch:** Select Agents by effective runtime capabilities, not filenames or configured child names. If no suitable child is available, investigate locally and record the capability gap instead of simulating delegation.
+- **Simulation before live smoke:** Prefer deterministic simulated smoke for covered Pi/Herdr boundary scenarios; use live-model smoke when model/provider behavior or instruction adherence is under test.
+- **Nonterminal execution failure:** Treat model execution failure as nonterminal evidence: do not retry automatically, replay tools, stop children, integrate partial work, or publish a successful handoff.
 
 These points are aligned with `boadij/pi-herdsman` commits `0dc62d39`, `a422c804`, `c72acadf`, `44698e40`, `56bd0258`, and `321114de` (October 2026).
 

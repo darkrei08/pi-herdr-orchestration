@@ -43,6 +43,7 @@ When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In bo
   "sender": {"role": "implementer", "session": "pi-i42", "tab": "[I#42] Config loading", "worktree": ".worktrees/issue-42-config-loading"},
   "task": {"id": "I#42", "type": "issue", "goal": "Fix config loading"},
   "state": "READY",
+  "lifecycle": "ready",
   "branch": "fix/42-config-loading",
   "summary": "Config precedence now follows repository rules.",
   "checks": [{"name": "unit", "status": "PASS", "ref": "test-run-884"}],
@@ -54,7 +55,18 @@ When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In bo
 }
 ```
 
-Required fields are `v`, `kind`, `id`, `parent`, `sender`, `task`, `state`, `summary`, `checks`, `memory` and `next`. Add fields only when they carry decision value. Use stable IDs and references instead of embedding logs, diffs or transcript text. Allowed states include `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED` and `CLOSED`; checks use `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`.
+Required fields are `v`, `kind`, `id`, `parent`, `sender`, `task`, `state`, `summary`, `checks`, `memory` and `next`. Add fields only when they carry decision value. Use stable IDs and references instead of embedding logs, diffs or transcript text. Allowed canonical states include `ASSIGNED`, `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED` and `CLOSED`; checks use `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`.
+
+For upstream Herdsman (`boadij/pi-herdsman`) compatibility, the envelope includes an optional derived `lifecycle` field:
+- `ASSIGNED` $\rightarrow$ `pending`
+- `WORKING` $\rightarrow$ `running`
+- `READY` $\rightarrow$ `ready`
+- `DEVELOPMENT` $\rightarrow$ `running`
+- `BLOCKED` $\rightarrow$ `blocked`
+- `FAILED` $\rightarrow$ `failed`
+- `CLOSED` $\rightarrow$ `closed`
+
+Legacy consumers continue to consume uppercase `state` safely without a wire migration. Generic workflow evidence remains durable and authoritative over terminal coordination; an `unknown` or lost terminal liveness state fails closed into `DECIDE` to mandate master reconciliation before proceeding.
 
 ## Message directions
 
@@ -73,7 +85,7 @@ The chief may summarize several child results, but must preserve child IDs and e
 
 The envelope needs a concrete channel or it is only a description. Between Herdr panes the canonical channel is the mailbox written by `scripts/mailbox.mjs report` or native tool `orch_report` (a subset of the envelope with `seq`, atomic directory locks, and timestamps), read by `mailbox.mjs status` / `orch_status`; `herdr agent prompt` carries only directives and wake-up nudges.
 
-Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 hashed files under `<git-common-dir>/orchestrator/<run>/evidence/` via `storeEvidence` (`orch_evidence`) and referenced as `ref:sha256:<hash>`. The envelope passes the semantic reference only, ensuring prompt contexts remain completely unpolluted. See [supervision.md](supervision.md).
+Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 hashed files under `<git-common-dir>/orchestrator/<run>/evidence/` via `storeEvidence` (`orch_evidence`) and referenced as full SHA-256 content-addressed records `ref:sha256:<hash>`. The envelope passes the semantic reference only, ensuring prompt contexts remain completely unpolluted; content remains readable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into prompts. Mailbox report notifications to the master are dispatched non-blockingly, guaranteeing that notification failures never prevent report persistence. See [supervision.md](supervision.md).
 
 ## Token and reliability rules
 
