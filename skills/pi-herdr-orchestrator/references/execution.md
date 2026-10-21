@@ -31,7 +31,9 @@ A chief may dispatch issue, PR or feature sessions, but it must return a concise
 
 ## Ordered tabs and session startup
 
-Open a task session only after the master or responsible chief has identified the task, checked dependencies and selected the branch/worktree. Rename the Pi tab immediately, before implementation, using a stable label such as `[I#42] Config loading`, `[PR#18] Parser fix`, `[F] Schema validation`, `[REV#42] Config review` or `[AUDIT] Final repository Audit`. Set the task worktree as that session's working directory. Keep the master tab visible and the child tabs ordered by chief, task type and identifier so the relationship is obvious at a glance.
+Open a task session only after the master or responsible chief has identified the task, checked dependencies and selected the branch/worktree. Rename the Pi tab immediately, before implementation, using a stable label such as `[I#42] Config loading`, `[PR#18] Parser fix`, `[F] Schema validation`, `[REV#42] Config review` or `[AUDIT] Final repository Audit`. Set the task worktree as that session's working directory. Keep the master tab visible and the child tabs numbered and ordered by chief, task type and identifier so the relationship is obvious at a glance.
+
+For PiWorkflow dispatch, use direct `agent(...)` calls inside a named `parallel(...)` or `pipeline(...)` operation. Pass `label`, `skills`, `extensions`, and `worktree` in the agent options. The trusted `.pi/pi-extensible-workflows/settings.json` created by repository initialization enables `extensionSettings.herdr.enableFullyInspectableMode`; with Pi running inside Herdr, `@piewf/herdr` owns the workflow workspace and renders tabs as `#1`, `#2`, ... in scheduler admission order. Do not manually create duplicate panes or infer a pane from a label. If the runtime is not Herdr-managed, use the direct fallback and report that tab transport was not applicable.
 
 Do not let two implementers use the same working directory. Do not create a tab for a trivial edit. A child session must send its completion or handoff report to its chief; the chief normalizes it and forwards it to the master.
 

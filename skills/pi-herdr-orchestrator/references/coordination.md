@@ -50,6 +50,8 @@ Keep a small registry in the master context or an authorized workflow artifact:
 
 Rename each tab immediately after creation. Keep the ordering stable and understandable; close a child tab only after its session memory, report and master decision have been recorded.
 
+PiWorkflow and `@piewf/herdr` provide the runtime implementation for workflow-owned tabs. With fully inspectable mode enabled, the scheduler's admission index is rendered as `#1`, `#2`, ... and the agent's `label` supplies the semantic name. Keep the `parallel` object keys and labels stable so replay and visual ordering agree; never treat the numeric index or a role label as authority. The trusted project setting is created by `init-repository.mjs`; a manual global setting is not required for initialized repositories.
+
 ## Capability fallback
 
 If PiWorkflow or Pi cannot create a real child session, preserve the hierarchy in one session with clearly labeled role sections and reports. When the host forbids nested subagents (for example the Gentle AI harness), the master dispatches task sessions directly and chiefs stay report roles. Do not simulate concurrent execution, pretend that tabs were closed, or report a chief handoff that did not occur. The protocol describes coordination; the available tools determine which parts can be executed.

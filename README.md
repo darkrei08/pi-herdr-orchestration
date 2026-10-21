@@ -106,8 +106,9 @@ The orchestrator guarantees clean workspace boundaries:
 - **Single-Writer Rule:** Exactly one writer modifies a given worktree at any time.
 - **Herdr Terminal Multiplexing:**
   - One Herdr workspace per repository.
-  - Panes and tabs are created with semantic labels immediately upon startup (`repo:issue-42-auth`, `repo:pr-87-review`, `repo:compose-validation`).
-  - Terminal state and processes remain persistent and inspectable even during agent context switches.
+  - PiWorkflow agents are launched with explicit `label`, `skills`, `extensions`, and isolated `worktree` options.
+  - With trusted fully inspectable mode, the scheduler's stable admission order becomes numbered tabs (`#1`, `#2`, ...) with semantic labels (`repo:issue-42-auth`, `repo:pr-87-review`, `repo:compose-validation`).
+  - Terminal state and processes remain persistent and inspectable even during agent context switches; pane liveness never replaces mailbox or Git evidence.
 
 ---
 
@@ -248,14 +249,36 @@ Before merging individual green branches into `main`, the master executes an **I
 
 Pi Herdr Orchestration dynamically bridges and routes between major AI coding agent skill ecosystems:
 
-### PiWorkflow (`pi-extensible-workflows` v6.2.0)
+### PiWorkflow (`pi-extensible-workflows` v6.2.2)
 - **Role:** Execution engine substrate.
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
+  - **Explicit child loadouts:** Every routed child receives a stable `label`, verified `skills` selectors, required `extensions`, and an isolated `worktree` when it writes.
+  - **Ordered Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents are created in a dedicated workspace and rendered as numbered labeled tabs in scheduler admission order.
   - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
   - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
   - **Reliable Linux Process Liveness:** Uses `/proc/<pid>/stat` starttime instead of `ctime` to eliminate false positives from kernel PID recycling.
   - **Workflow Recovery:** Replaying completed operations through `workflow_status`, `workflow_retry`, and `workflow_resume`.
+
+Example dispatch:
+
+```javascript
+const reports = await parallel("repository-audit", {
+  scout: () => agent("Map the repository.", {
+    label: "[CHIEF/SCOUT] Discovery",
+    skills: ["pi-herdr-orchestrator", "engineering-excellence"],
+    worktree: "scout",
+  }),
+  tests: () => agent("Define and run focused checks.", {
+    label: "[CHIEF/QUALITY] Tests",
+    skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
+    worktree: "tests",
+  }),
+});
+return reports;
+```
+
+Use `pipeline(...)` for ordered stages. Do not use `Promise.all`/`map` agent fan-out, omit required skills, or claim Herdr tabs when the runtime capability report says Herdr is unavailable.
 
 ### Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)
 - **Role:** Independent role authoring, configuration, and runtime preparation.
@@ -386,6 +409,7 @@ node scripts/init-repo.mjs --dir /path/to/my-repo --apply
 This command automatically configures:
 - **Git Baseline:** Ensures repository initialization on `main` and creates `.worktrees/`.
 - **Gitignore Rules:** Appends `.worktrees/`, `.codegraph/`, and `.atl/` to `.gitignore`.
+- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`, preserving existing workflow settings.
 - **Engram Memory Identity:** Generates `.git/engram-project-identity.json` for isolated, persistent repository memory.
 - **Guardian Angel (GGA):** Creates `.gga` quality-gate configuration and baseline `AGENTS.md` guidelines.
 - **Semantic Code Navigation:** Deploys Serena project configuration for LSP symbol analysis.

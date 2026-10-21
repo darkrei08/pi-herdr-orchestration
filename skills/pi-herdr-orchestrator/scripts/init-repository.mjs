@@ -116,6 +116,51 @@ if (existsSync(worktreesDir)) {
   }
 }
 
+// 2.1 PiWorkflow + Herdr transport
+const workflowSettingsDir = join(targetDir, ".pi", "pi-extensible-workflows");
+const workflowSettingsPath = join(workflowSettingsDir, "settings.json");
+let workflowSettings = {};
+let workflowSettingsValid = true;
+if (existsSync(workflowSettingsPath)) {
+  try {
+    workflowSettings = JSON.parse(readFileSync(workflowSettingsPath, "utf8"));
+  } catch {
+    workflowSettingsValid = false;
+    status("pi-workflow-herdr", "misconfigured", `invalid JSON at ${workflowSettingsPath}`);
+  }
+}
+if (workflowSettingsValid) {
+  const extensionSettings = workflowSettings.extensionSettings && typeof workflowSettings.extensionSettings === "object"
+    ? workflowSettings.extensionSettings
+    : {};
+  const herdrSettings = extensionSettings.herdr && typeof extensionSettings.herdr === "object"
+    ? extensionSettings.herdr
+    : {};
+  const configuredSettings = {
+    ...workflowSettings,
+    extensionSettings: {
+      ...extensionSettings,
+      herdr: { ...herdrSettings, enableFullyInspectableMode: true },
+    },
+  };
+  const serializedSettings = `${JSON.stringify(configuredSettings, null, 2)}\n`;
+  const currentSettings = existsSync(workflowSettingsPath)
+    ? readFileSync(workflowSettingsPath, "utf8")
+    : "";
+  if (currentSettings === serializedSettings) {
+    status("pi-workflow-herdr", "configured", "fully inspectable Herdr workflow transport enabled");
+  } else {
+    status("pi-workflow-herdr", "pending", "enable numbered, labeled Herdr tabs for workflow agents");
+    if (apply) {
+      mkdirSync(workflowSettingsDir, { recursive: true });
+      writeFileSync(workflowSettingsPath, serializedSettings, "utf8");
+      console.log(`WROTE ${workflowSettingsPath}`);
+    } else {
+      console.log(`PLAN: write ${workflowSettingsPath}`);
+    }
+  }
+}
+
 function resolveGitDir(cwd) {
   try {
     const res = spawnSync("git", ["rev-parse", "--git-dir"], { cwd, encoding: "utf8" });

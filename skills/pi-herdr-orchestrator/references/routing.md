@@ -2,6 +2,24 @@
 
 Read installed skill instructions and select the smallest sufficient set. Every name below is a candidate, never a guarantee: confirm it in the capability report or the host's skill list and skip what is missing. Load a skill in the session that needs it, not in the master.
 
+## Executable PiWorkflow loadout
+
+A routing decision is incomplete until it is encoded in the child-agent options:
+
+```javascript
+agent(taskPrompt, {
+  label: "[CHIEF/QUALITY] Verification",
+  skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
+  extensions: ["builtin:codemode"],
+  worktree: "quality",
+});
+```
+
+- `skills` selects skill names, `extensions` selects Pi extensions, `label` becomes the human-facing Herdr tab label, and `worktree` gives a writing agent an isolated Git worktree. Use only selectors confirmed by the live capability report and the current Pi settings.
+- Use `parallel("<operation>", { ... })` for independent agents and `pipeline("<operation>", items, stages)` for repeated ordered stages. The object insertion order is the intended launch order; PiWorkflow assigns the display indices and `@piewf/herdr` renders them as numbered tabs when fully inspectable mode is enabled.
+- The common Engineering Excellence loadout is `skills: ["engineering-excellence"]`; add `tdd`, `code-review`, `testing`, `security`, `ci`, or `platform-testing` only when the capability report confirms those skill files exist and the task needs them. Add `gentle-ai`, `work-unit-commits`, or `judgment-day` only for their applicable lifecycle responsibilities.
+- A missing requested skill or extension is a routing failure. Record `BLOCKED` with the missing selector and do not silently launch a child with a weaker contract. A host without PiWorkflow or Herdr uses the documented direct-session fallback and reports `NOT APPLICABLE` for tab transport.
+
 ## Ecosystems
 
 | Source | Provides | Notes |
