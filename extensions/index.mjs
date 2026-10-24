@@ -14,10 +14,24 @@ import {
   ask,
   reply,
 } from "../skills/pi-herdr-orchestrator/scripts/mailbox.mjs";
+import {
+  acknowledgeDirective,
+  createDirective,
+  recordDecision,
+  recordParentReceipt,
+  recordWorkerState,
+  reassignDirective,
+} from "../skills/pi-herdr-orchestrator/scripts/directives.mjs";
+import { planSupervision } from "../skills/pi-herdr-orchestrator/scripts/supervisor.mjs";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export default function (pi) {
+  const directiveOptions = (params) => ({
+    ...params,
+    dir: runDir({ run: params.run ?? process.env.ORCH_RUN }),
+  });
+
   // 1. Tool: orch_report
   pi.registerTool({
     name: "orch_report",
@@ -156,7 +170,149 @@ export default function (pi) {
     }
   });
 
-  // 5. Tool: orch_evidence
+  // 5. Tool: orch_assign
+  pi.registerTool({
+    name: "orch_assign",
+    label: "Orchestrator Assign Directive",
+    description: "Create a durable Master-to-Chief or Chief-to-Worker directive with explicit authority, worktree, paths, dependencies, and retry budget.",
+    parameters: {
+      type: "object",
+      properties: {
+        run: { type: "string", description: "Run identifier" },
+        assignment_id: { type: "string" },
+        parent: { type: "string" },
+        supervisor: { type: "string" },
+        worker: { type: "string" },
+        task: { type: "string" },
+        branch: { type: "string" },
+        worktree: { type: "string" },
+        allowed_paths: { type: "array", items: { type: "string" } },
+        dependencies: { type: "array", items: { type: "string" } },
+        max_retries: { type: "integer", minimum: 0 }
+      },
+      required: ["assignment_id", "parent", "supervisor", "worker", "task", "branch", "worktree", "allowed_paths"]
+    },
+    async execute(_id, params) {
+      const entry = createDirective(directiveOptions(params));
+      return { content: [{ type: "text", text: JSON.stringify({ assignment_id: entry.assignment_id, state: entry.state, directive_digest: entry.directive_digest }) }] };
+    }
+  });
+
+  // 6. Tool: orch_directive_ack
+  pi.registerTool({
+    name: "orch_directive_ack",
+    label: "Orchestrator Acknowledge Directive",
+    description: "Acknowledge a directive using the exact assigned worker identity.",
+    parameters: {
+      type: "object",
+      properties: { run: { type: "string" }, assignment_id: { type: "string" }, actor: { type: "string" } },
+      required: ["assignment_id", "actor"]
+    },
+    async execute(_id, params) {
+      const entry = acknowledgeDirective(directiveOptions(params));
+      return { content: [{ type: "text", text: `${entry.assignment_id} ${entry.state} seq=${entry.sequence}` }] };
+    }
+  });
+
+  // 7. Tool: orch_directive_state
+  pi.registerTool({
+    name: "orch_directive_state",
+    label: "Orchestrator Worker State",
+    description: "Record a worker state using the directive's exact authority binding.",
+    parameters: {
+      type: "object",
+      properties: {
+        run: { type: "string" }, assignment_id: { type: "string" }, actor: { type: "string" },
+        state: { type: "string", enum: ["WORKING", "WAITING_PARENT", "READY", "BLOCKED", "FAILED"] },
+        result_id: { type: "string" }, summary: { type: "string" }
+      },
+      required: ["assignment_id", "actor", "state"]
+    },
+    async execute(_id, params) {
+      const entry = recordWorkerState(directiveOptions(params));
+      return { content: [{ type: "text", text: `${entry.assignment_id} ${entry.state} seq=${entry.sequence}` }] };
+    }
+  });
+
+  // 8. Tool: orch_directive_decide
+  pi.registerTool({
+    name: "orch_directive_decide",
+    label: "Orchestrator Directive Decision",
+    description: "Record a parent decision. Only the directive parent may accept, continue, escalate, or stop it.",
+    parameters: {
+      type: "object",
+      properties: {
+        run: { type: "string" }, assignment_id: { type: "string" }, actor: { type: "string" },
+        decision: { type: "string", enum: ["continue", "accept", "escalate", "stop"] },
+        result_id: { type: "string" }, reason: { type: "string" }
+      },
+      required: ["assignment_id", "actor", "decision"]
+    },
+    async execute(_id, params) {
+      const entry = recordDecision(directiveOptions(params));
+      return { content: [{ type: "text", text: `${entry.assignment_id} ${entry.state} decision=${entry.decision.value}` }] };
+    }
+  });
+
+  // 9. Tool: orch_directive_reassign
+  pi.registerTool({
+    name: "orch_directive_reassign",
+    label: "Orchestrator Reassign Directive",
+    description: "Reassign a directive to a replacement worker within its bounded retry budget.",
+    parameters: {
+      type: "object",
+      properties: {
+        run: { type: "string" }, assignment_id: { type: "string" }, actor: { type: "string" },
+        worker: { type: "string" }, reason: { type: "string" }
+      },
+      required: ["assignment_id", "actor", "worker", "reason"]
+    },
+    async execute(_id, params) {
+      const entry = reassignDirective(directiveOptions(params));
+      return { content: [{ type: "text", text: `${entry.assignment_id} ${entry.state} worker=${entry.worker} attempt=${entry.retry.attempt}` }] };
+    }
+  });
+
+  // 10. Tool: orch_directive_receipt
+  pi.registerTool({
+    name: "orch_directive_receipt",
+    label: "Orchestrator Parent Receipt",
+    description: "Close an accepted directive only after the parent records a matching result receipt.",
+    parameters: {
+      type: "object",
+      properties: { run: { type: "string" }, assignment_id: { type: "string" }, actor: { type: "string" }, result_id: { type: "string" } },
+      required: ["assignment_id", "actor", "result_id"]
+    },
+    async execute(_id, params) {
+      const entry = recordParentReceipt(directiveOptions(params));
+      return { content: [{ type: "text", text: `${entry.assignment_id} ${entry.state} receipt=${entry.parent_receipt.receipt_id}` }] };
+    }
+  });
+
+  // 11. Tool: orch_supervise
+  pi.registerTool({
+    name: "orch_supervise",
+    label: "Orchestrator Supervision Plan",
+    description: "Produce a deterministic supervision plan from durable directives, reports, Herdr liveness, and Git evidence. This tool never auto-replies or closes work.",
+    parameters: {
+      type: "object",
+      properties: {
+        snapshot: { type: "object" },
+        stale_min: { type: "number" },
+        max_nudges: { type: "integer", minimum: 0 }
+      },
+      required: ["snapshot"]
+    },
+    async execute(_id, params) {
+      const options = {
+        staleMs: Number(params.stale_min ?? 10) * 60_000,
+        maxNudges: Number(params.max_nudges ?? 2),
+      };
+      return { content: [{ type: "text", text: JSON.stringify(planSupervision(params.snapshot, options)) }] };
+    }
+  });
+
+  // 12. Tool: orch_evidence
   pi.registerTool({
     name: "orch_evidence",
     label: "Orchestrator Store or Read Evidence",

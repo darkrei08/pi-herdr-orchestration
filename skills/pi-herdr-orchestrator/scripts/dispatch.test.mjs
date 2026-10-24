@@ -26,6 +26,14 @@ test("dispatch contract names deterministic workflow fan-out and explicit loadou
   assert.match(execution, /worktree/);
 });
 
+test("native extension exposes durable directive and supervision controls", () => {
+  const extension = read("extensions/index.mjs");
+  for (const tool of ["orch_assign", "orch_directive_ack", "orch_directive_state", "orch_directive_decide", "orch_directive_reassign", "orch_directive_receipt", "orch_supervise"]) {
+    assert.match(extension, new RegExp(`name: \\\"${tool}\\\"`));
+  }
+  assert.match(read("skills/pi-herdr-orchestrator/references/supervisor-loop.md"), /parent receipt/);
+});
+
 test("repository initialization owns the project workflow settings contract", () => {
   const init = read("skills/pi-herdr-orchestrator/scripts/init-repository.mjs");
   assert.match(init, /pi-extensible-workflows/);

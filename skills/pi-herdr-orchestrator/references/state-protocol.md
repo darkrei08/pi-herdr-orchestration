@@ -19,7 +19,7 @@ Choose the representation by boundary rather than using one format everywhere:
 | Human handoff or review | Markdown generated from the envelope | Readable rendering without becoming a second source of truth |
 | Trusted service-to-service transport | CBOR, MessagePack or Protocol Buffers | Compact binary transport; decode before exposing data to a model |
 
-Use JSON as the canonical durable representation even when TOON, CSV, YAML or XML is used at a boundary. TOON is a useful optimization for regular tabular data, but its own project describes it as an evolving format and recommends JSON for deeply nested or irregular data. CSV is not a general object format: use it only with a versioned typed header and escaping rules. YAML is convenient for humans but must be parsed and normalized before validation. XML tags improve prompt separation for Claude-style prompts; they do not provide schema-constrained output. Binary encodings such as CBOR, MessagePack or Protocol Buffers belong between trusted programs, not in an LLM prompt. Experimental proposals such as ADOL or ANML can inform future adapters, but they are not treated as production standards until the relevant ecosystem and implementation are stable.
+Use JSON as the canonical durable representation even when TOON, CSV, YAML or XML is used at a boundary. TOON is a useful optimization for regular tabular data, but its own project describes it as an evolving format and recommends JSON for deeply nested or irregular data. Directive records follow `schemas/repo-orchestrator-v1.json` and retain the legacy uppercase mailbox states. CSV is not a general object format: use it only with a versioned typed header and escaping rules. YAML is convenient for humans but must be parsed and normalized before validation. XML tags improve prompt separation for Claude-style prompts; they do not provide schema-constrained output. Binary encodings such as CBOR, MessagePack or Protocol Buffers belong between trusted programs, not in an LLM prompt. Experimental proposals such as ADOL or ANML can inform future adapters, but they are not treated as production standards until the relevant ecosystem and implementation are stable.
 
 ## Pi and Pi VCC compaction boundary
 
@@ -78,12 +78,15 @@ Legacy consumers continue to consume uppercase `state` safely without a wire mig
 | `chief_report` | chief → master | normalized results from one department |
 | `decision` | master → chief/session | integrate, continue development, retry, escalate or stop |
 | `handoff` | any → successor | exact resume point and durable memory reference |
+| `acknowledgement` | assigned worker → parent | exact acceptance of one directive identity |
+| `decision` | parent → child | continue, accept, escalate, stop, or reassign |
+| `parent_receipt` | parent → durable run | matching accepted result and closure proof |
 
 The chief may summarize several child results, but must preserve child IDs and evidence references. The master consumes `chief_report`, reconciles it with current Git and CI, then emits a `decision`. A Markdown report can be rendered from the JSON for people; it is not a second source of truth.
 
 ## Transport
 
-The envelope needs a concrete channel or it is only a description. Between Herdr panes the canonical channel is the mailbox written by `scripts/mailbox.mjs report` or native tool `orch_report` (a subset of the envelope with `seq`, atomic directory locks, and timestamps), read by `mailbox.mjs status` / `orch_status`; `herdr agent prompt` carries only directives and wake-up nudges.
+The envelope needs a concrete channel or it is only a description. Between Herdr panes the canonical channel is the mailbox written by `scripts/mailbox.mjs report` or native tool `orch_report` (a subset of the envelope with `seq`, atomic directory locks, and timestamps), read by `mailbox.mjs status` / `orch_status`; `herdr agent prompt` carries only directives and wake-up nudges. Durable directive records are written by the directive API under `directives/<assignment_id>.json`; they bind parent, supervisor, worker, task, worktree, allowed paths, dependencies, retry budget, decisions, and parent receipts. The supervisor planner consumes these records with mailbox, Herdr, and Git evidence and returns a bounded action plan; it does not auto-answer questions or close work.
 
 Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 hashed files under `<git-common-dir>/orchestrator/<run>/evidence/` via `storeEvidence` (`orch_evidence`) and referenced as full SHA-256 content-addressed records `ref:sha256:<hash>`. The envelope passes the semantic reference only, ensuring prompt contexts remain completely unpolluted; content remains readable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into prompts. Mailbox report notifications to the master are dispatched non-blockingly, guaranteeing that notification failures never prevent report persistence. See [supervision.md](supervision.md).
 

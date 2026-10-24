@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/darkrei08/pi-herdr-orchestration/schemas/repo-orchestrator-v1.json",
+  "title": "Repository orchestrator directive",
+  "type": "object",
+  "required": [
+    "v",
+    "kind",
+    "assignment_id",
+    "run",
+    "parent",
+    "supervisor",
+    "worker",
+    "task",
+    "branch",
+    "worktree",
+    "allowed_paths",
+    "dependencies",
+    "retry",
+    "state",
+    "sequence",
+    "directive_digest"
+  ],
+  "properties": {
+    "v": { "const": "repo-orchestrator/v1" },
+    "kind": { "const": "directive" },
+    "assignment_id": { "type": "string", "minLength": 1 },
+    "run": { "type": "string", "minLength": 1 },
+    "parent": { "type": "string", "minLength": 1 },
+    "supervisor": { "type": "string", "minLength": 1 },
+    "worker": { "type": "string", "minLength": 1 },
+    "task": { "type": "string", "minLength": 1 },
+    "branch": { "type": "string", "minLength": 1 },
+    "worktree": { "type": "string", "minLength": 1 },
+    "allowed_paths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "dependencies": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "retry": {
+      "type": "object",
+      "required": ["attempt", "max"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "state": {
+      "enum": ["ASSIGNED", "ACKNOWLEDGED", "WORKING", "WAITING_PARENT", "READY", "BLOCKED", "FAILED", "REASSIGNED", "ACCEPTED", "CLOSED"]
+    },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "directive_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "nudge_count": { "type": "integer", "minimum": 0 },
+    "decision": { "type": ["object", "null"] },
+    "result_id": { "type": ["string", "null"] },
+    "parent_receipt": { "type": ["object", "null"] }
+  },
+  "additionalProperties": true
+}

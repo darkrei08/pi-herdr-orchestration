@@ -15,6 +15,10 @@ A dispatched session that nobody watches and that never reports is not delegatio
 
 Pane state says whether an agent is busy. Only a mailbox report plus Git evidence says what it achieved.
 
+## Durable directive lifecycle
+
+The Master creates a directive before dispatch. The receiving worker acknowledges the exact assignment identity before working. A worker result remains `READY`, `BLOCKED`, or `FAILED` until the parent records a decision. Reassignment increments a bounded retry counter and changes the worker identity; stale reports from the previous worker are not accepted. Closure requires an accepted result and a matching parent receipt. Use `orch_assign`, `orch_directive_ack`, `orch_directive_state`, `orch_directive_decide`, `orch_directive_reassign`, and `orch_directive_receipt` for these transitions. `orch_supervise` plans actions from mailbox, Herdr, and Git evidence but never auto-replies or closes a task.
+
 ## Dispatch
 
 1. Pick a run id (`ORCH_RUN`, for example `repo-20261009`) and a unique agent name per task matching `[a-z][a-z0-9_-]{0,31}` (`issue84`, `pr127`).
