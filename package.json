@@ -14,7 +14,7 @@
     "init-repo:apply": "node scripts/init-repo.mjs --apply",
     "mailbox": "node scripts/mailbox.mjs",
     "mailbox:status": "node scripts/mailbox.mjs status",
-    "test": "node --test skills/pi-herdr-orchestrator/scripts/mailbox.test.mjs"
+    "test": "node --test skills/pi-herdr-orchestrator/scripts/*.test.mjs"
   },
   "keywords": [
     "pi",
