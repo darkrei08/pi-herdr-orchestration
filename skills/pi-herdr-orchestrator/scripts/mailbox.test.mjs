@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { classify, storeEvidence, fileFor } from "./mailbox.mjs";
+import { classify, storeEvidence, readEvidence, fileFor } from "./mailbox.mjs";
 import { withLock } from "./lock.mjs";
 
 const now = Date.parse("2026-10-09T12:00:00Z");
@@ -28,14 +28,59 @@ test("classify flags what needs master action", () => {
   assert.equal(classify(entry("BLOCKED", 0, { pending_ask: { question: "Q?" } }), live("idle"), now, 10 * min), "ASK");
 });
 
-test("storeEvidence hashes and stores files deduplicated", () => {
+test("storeEvidence returns a full hash and readEvidence retrieves valid refs", () => {
   const dir = mkdtempSync(join(tmpdir(), "orch-test-"));
   try {
     const content = "Very large test log output that would pollute context windows";
     const ref1 = storeEvidence(dir, content);
     const ref2 = storeEvidence(dir, content);
     assert.equal(ref1, ref2);
-    assert.ok(ref1.startsWith("ref:sha256:"));
+    assert.match(ref1, /^ref:sha256:[0-9a-f]{64}$/);
+    assert.equal(readEvidence(dir, ref1), content);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("readEvidence rejects traversal and invalid prefixes", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-evidence-traversal-"));
+  try {
+    assert.throws(() => readEvidence(dir, "ref:sha256:../outside"), /invalid evidence reference/);
+    assert.throws(() => readEvidence(dir, `ref:sha256:${"a".repeat(63)}\\outside`), /invalid evidence reference/);
+    assert.throws(() => readEvidence(dir, `ref:md5:${"a".repeat(64)}`), /invalid evidence reference/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("readEvidence rejects symlink escapes from the evidence directory", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-evidence-symlink-"));
+  const hash = "b".repeat(64);
+  const outside = join(dir, "outside.txt");
+  try {
+    mkdirSync(join(dir, "evidence"));
+    writeFileSync(outside, "outside evidence");
+    symlinkSync(outside, join(dir, "evidence", `${hash}.txt`));
+    assert.throws(() => readEvidence(dir, `ref:sha256:${hash}`), /invalid evidence reference/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("readEvidence rejects malformed hash lengths", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-evidence-length-"));
+  try {
+    assert.throws(() => readEvidence(dir, `ref:sha256:${"a".repeat(16)}`), /invalid evidence reference/);
+    assert.throws(() => readEvidence(dir, `ref:sha256:${"a".repeat(65)}`), /invalid evidence reference/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("readEvidence reports missing full-hash evidence", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-evidence-missing-"));
+  try {
+    assert.throws(() => readEvidence(dir, `ref:sha256:${"a".repeat(64)}`), /evidence not found for reference/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

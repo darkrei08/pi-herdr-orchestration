@@ -8,8 +8,8 @@
 //   - Status dashboard joining mailbox records with Herdr agent liveness
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withLock } from "./lock.mjs";
 
@@ -61,7 +61,32 @@ export function storeEvidence(dir, content) {
   if (!existsSync(evidenceFile)) {
     writeFileSync(evidenceFile, content);
   }
-  return `ref:sha256:${hash.slice(0, 16)}`;
+  return `ref:sha256:${hash}`;
+}
+
+export function readEvidence(dir, ref) {
+  if (typeof ref !== "string" || !/^ref:sha256:[0-9a-f]{64}$/.test(ref)) {
+    throw new Error(`invalid evidence reference: ${ref}`);
+  }
+
+  const hash = ref.slice("ref:sha256:".length);
+  const evidenceDir = resolve(dir, "evidence");
+  const evidenceFile = resolve(evidenceDir, `${hash}.txt`);
+  let canonicalEvidenceDir;
+  let canonicalEvidenceFile;
+  try {
+    canonicalEvidenceDir = realpathSync(evidenceDir);
+    canonicalEvidenceFile = realpathSync(evidenceFile);
+  } catch (error) {
+    if (error?.code === "ENOENT") throw new Error(`evidence not found for reference: ${ref}`);
+    throw error;
+  }
+
+  const relativeFile = relative(canonicalEvidenceDir, canonicalEvidenceFile);
+  if (!relativeFile || relativeFile === ".." || relativeFile.startsWith(`..${sep}`) || isAbsolute(relativeFile)) {
+    throw new Error(`invalid evidence reference: ${ref}`);
+  }
+  return readFileSync(canonicalEvidenceFile, "utf8");
 }
 
 export function report(opts) {
