@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { classify, storeEvidence, fileFor } from "./mailbox.mjs";
@@ -59,4 +59,39 @@ test("fileFor sanitizes task names correctly", () => {
   assert.equal(fileFor("I#42"), "I-42.json");
   assert.equal(fileFor("PR#127"), "PR-127.json");
   assert.equal(fileFor("task:sub"), "task-sub.json");
+});
+
+test("withLock does not reclaim a live owner after the lock ages", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-live-lock-"));
+  const testFile = join(dir, "data.json");
+  const lockDir = join(dir, ".data.json.lock");
+  try {
+    withLock(testFile, () => {
+      const old = new Date(Date.now() - 60_000);
+      utimesSync(lockDir, old, old);
+      assert.throws(
+        () => withLock(testFile, () => {}, 20),
+        /Timed out waiting for lock|Unable to verify lock ownership/,
+      );
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("withLock fails closed on an unowned stale lock", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-invalid-lock-"));
+  const testFile = join(dir, "data.json");
+  const lockDir = join(dir, ".data.json.lock");
+  try {
+    mkdirSync(lockDir);
+    const old = new Date(Date.now() - 60_000);
+    utimesSync(lockDir, old, old);
+    assert.throws(
+      () => withLock(testFile, () => {}, 20),
+      /Unable to verify lock ownership/,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
