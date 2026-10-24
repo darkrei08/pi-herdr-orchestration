@@ -27,7 +27,9 @@ Pane state says whether an agent is busy. Only a mailbox report plus Git evidenc
 ```text
 REPORTING: ORCH_RUN=<run>, ORCH_AGENT=<name>, ORCH_MASTER=<master agent name>.
 Report with either native Pi tools (orch_report, orch_ask) or CLI:
-  node <skill>/scripts/mailbox.mjs report --task <id> --state <STATE> --summary "<one line>" [--phase P] [--branch B] [--check name=PASS|FAIL|BLOCKED|NOT RUN] [--evidence "<large output>"] [--risk R] [--next N]
+  node <skill>/scripts/mailbox.mjs report --task <id> --state <STATE> --summary "<one line>" [--identity '<json>'] [--phase P] [--branch B] [--check name=PASS|FAIL|BLOCKED|NOT RUN] [--evidence "<large output>"] [--risk R] [--next N]
+  node <skill>/scripts/mailbox.mjs ack --task <id> --parent <parent-id> --decision "<decision>"
+- An identified report must carry exact session, tab, workspace, worktree, branch, task, parent, phase, and directive/execution/result/receipt anchors; malformed or mismatched identity is rejected. Legacy reports without identity remain valid.
 - Report WORKING at each lifecycle phase change and at least every 10 minutes while working.
 - If blocked, ask immediately with `orch_ask` (or `node mailbox.mjs ask --task <id> --question "<exact question>"`).
 - Large test logs or diffs should be passed via --evidence or `orch_evidence` to avoid context window pollution.
@@ -57,7 +59,7 @@ The master does not end its turn after dispatch. Repeat until every task is `CLO
 
 3. To block efficiently between checks use `herdr agent wait <name> --timeout 300000`, or wait on whichever agent finishes first, then rerun `status`. Do not poll in a tight loop and do not sleep blindly.
 4. After a report, reconcile with Git (commits, diff, CI) before accepting it. A report that conflicts with Git is `BLOCKED`, not `READY`.
-5. Record the `decision` as a mailbox report on the task (`--state CLOSED` once the decision is executed and the tab may be closed) and refresh the dashboard in [reporting.md](reporting.md).
+5. Record the parent `decision` with `mailbox.mjs ack`; this writes a durable `parent_receipt` without changing the child's uppercase result state. Then record a mailbox `CLOSED` decision only when the decision is executed and the tab may be closed, and refresh the dashboard in [reporting.md](reporting.md). Herdr liveness remains observational and never substitutes for the acknowledgement.
 
 ## Management rules
 

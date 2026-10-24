@@ -15,7 +15,7 @@ One branch and one worktree per independent task; never edit the default branch 
 5. Update tests, and documentation when behavior changes.
 6. Run the relevant validation, inspect your own diff, and hand off with evidence. Lifecycle: [dispatch.md](dispatch.md).
 7. Treat a terminal Pi execution failure as a failed result, not a completed assignment. Preserve the exact session and assignment, inspect possible external effects, and continue only through the existing authorized path. Never replay tools or automatically create a second writer.
-8. Report through the mailbox (`scripts/mailbox.mjs report`) at every phase change, at least every 10 minutes, immediately when blocked, and as the last action with all checks. Silence is a defect. See [supervision.md](supervision.md).
+8. Report through the mailbox (`scripts/mailbox.mjs report`) at every phase change, at least every 10 minutes, immediately when blocked, and as the last action with all checks. Identified reports use exact session/tab/workspace/worktree/branch/task/parent identity and lifecycle anchors; `BLOCKED` and `FAILED` reports include typed failure provenance. Silence is a defect. See [supervision.md](supervision.md).
 
 ## Master and chiefs
 
@@ -37,7 +37,7 @@ Do not let two implementers use the same working directory. Do not create a tab 
 
 Give each implementation session its own directory. Sequence dependent tasks. Parallelize only with host permission and little overlap in files, API and schema. Avoid worktrees/tabs for trivial edits.
 
-A session returns task/status, branch/worktree/session, commits/files, check outcomes, review findings, decisions/risks, memory changes, `READY`/`NOT READY`/`BLOCKED`, and next action. The controller independently judges readiness. Triage unrelated findings before expanding scope.
+A session returns task/status, branch/worktree/session, commits/files, check outcomes, review findings, decisions/risks, memory changes, `READY`/`NOT READY`/`BLOCKED`, and next action. A `READY` result is only delivered until the parent records an explicit mailbox acknowledgement and decision; Herdr liveness or a tab label cannot close the lifecycle. The controller independently judges readiness. Triage unrelated findings before expanding scope.
 
 ## Child-session closure and return to master
 
@@ -49,7 +49,7 @@ Do not close a child session as soon as its code appears to work. The chief must
 4. commit or preserve uncommitted work with its branch and worktree recorded;
 5. return the session report to the chief;
 6. let the chief forward the normalized report and recommendation to `[MASTER] Pi Herdr Orchestrator`;
-7. receive the master's decision about integration, follow-up, retry or block;
-8. close the Pi session and then close or archive its Pi tab only after the memory and report are confirmed.
+7. receive the master's decision about integration, follow-up, retry or block, and record the parent acknowledgement;
+8. close the Pi session and then close or archive its Pi tab only after the memory, report, durable receipt, and decision are confirmed.
 
 The master remains open until all child reports are reconciled. Closing a tab must never be the mechanism used to discard uncommitted work or unpersisted context.

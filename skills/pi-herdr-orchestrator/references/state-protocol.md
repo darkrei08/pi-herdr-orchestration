@@ -40,9 +40,22 @@ When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In bo
   "id": "r_20260927_001",
   "parent": "chief-build-01",
   "run": "repo-run-42",
-  "sender": {"role": "implementer", "session": "pi-i42", "tab": "[I#42] Config loading", "worktree": ".worktrees/issue-42-config-loading"},
+  "sender": {"role": "implementer", "session": "pi-i42", "tab": "[I#42] Config loading", "workspace": "repo-workspace", "worktree": ".worktrees/issue-42-config-loading", "branch": "fix/42-config-loading"},
+  "identity": {
+    "session": "pi-i42",
+    "tab": "[I#42] Config loading",
+    "workspace": "repo-workspace",
+    "worktree": ".worktrees/issue-42-config-loading",
+    "branch": "fix/42-config-loading",
+    "task": "I#42",
+    "parent": "chief-build-01",
+    "phase": "RESULT",
+    "lifecycle": {"directive": "d-42", "execution": "e-42", "result": "r-42", "receipt": "p-42"}
+  },
   "task": {"id": "I#42", "type": "issue", "goal": "Fix config loading"},
   "state": "READY",
+  "delivery": {"status": "delivered", "delivered_at": "2026-09-27T12:00:00Z"},
+  "parent_receipt": null,
   "branch": "fix/42-config-loading",
   "summary": "Config precedence now follows repository rules.",
   "checks": [{"name": "unit", "status": "PASS", "ref": "test-run-884"}],
@@ -54,7 +67,13 @@ When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In bo
 }
 ```
 
-Required fields are `v`, `kind`, `id`, `parent`, `sender`, `task`, `state`, `summary`, `checks`, `memory` and `next`. Add fields only when they carry decision value. Use stable IDs and references instead of embedding logs, diffs or transcript text. Allowed states include `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED` and `CLOSED`; checks use `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`.
+Required fields are `v`, `kind`, `id`, `parent`, `sender`, `task`, `state`, `summary`, `checks`, `memory` and `next`. Identified mailbox reports additionally carry an exact `identity` with `session`, `tab`, `workspace`, `worktree`, `branch`, `task`, `parent`, `phase`, and four lifecycle anchors (`directive`, `execution`, `result`, `receipt`). Legacy reports may omit `identity` and retain the uppercase state contract. Add fields only when they carry decision value. Use stable IDs and references instead of embedding logs, diffs or transcript text. Allowed states include `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED` and `CLOSED`; checks use `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`.
+
+## Mailbox identity, failure, and receipt rules
+
+`mailbox.mjs report` accepts an optional `identity` object (or equivalent `sender` plus identity fields). When supplied, all identity fields and lifecycle anchors are required, task/branch/parent values must agree with the command, and later reports must keep the same stable identity. Malformed or mismatched identity is rejected at the public interface. A legacy report with no identity remains valid and keeps its uppercase `state`.
+
+`BLOCKED` and `FAILED` reports carry `failure: {kind, code, message, retryable}`. `kind` and `code` are stable lowercase identifiers; `retryable` is a boolean. A blocked question uses the same typed failure shape. A result or handoff is persisted with `delivery.status: "delivered"`; only the parent `mailbox.mjs ack` transition writes `parent_receipt.status: "acknowledged"` and its decision. Herdr liveness, agent status, and tab labels are presentation or wake-up signals only, never completion or receipt authority.
 
 ## Message directions
 

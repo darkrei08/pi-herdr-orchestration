@@ -26,7 +26,7 @@ task evidence (orch_report / orch_evidence) → chief report → master decision
 worker question (orch_ask) ↔ master answer (orch_reply)
 ```
 
-Every report must identify the task, session/tab, branch, worktree, checks, result, risks, memory state and next action. A child cannot promote its own work, close a related Issue or discard a worktree merely because its local task is finished.
+Every identified report must carry exact session, tab, workspace, worktree, branch, task, parent, phase, and directive/execution/result/receipt anchors, plus checks, result, risks, memory state and next action. `BLOCKED` and `FAILED` reports include typed `failure` provenance. A delivered result is not a parent decision until the parent writes `parent_receipt` through the mailbox acknowledgement transition. A child cannot promote its own work, close a related Issue or discard a worktree merely because its local task is finished; Herdr liveness and presentation labels are not authority.
 
 A chief supervises its children with the loop in [supervision.md](supervision.md) and forwards only flagged or closed tasks. Use the compact envelope in [state-protocol.md](state-protocol.md) for these reports. The chief forwards a `chief_report`; the master returns a `decision`. This keeps communication machine-readable and avoids injecting transcripts into every parent session. In PiWorkflow environments, `orch_ask` and `orch_reply` seamlessly bridge asynchronous Herdr workers with workflow script checkpoints.
 
@@ -40,7 +40,7 @@ Keep a small registry in the master context or an authorized workflow artifact:
 | `[CHIEF/BUILD]` | department chief | implementation queue | control | chief worktree | active |
 | `[I#42]` | implementation | Config loading | `fix/42-config-loading` | `.worktrees/issue-42-config-loading` | working |
 
-Rename each tab immediately after creation. Keep the ordering stable and understandable; close a child tab only after its session memory, report and master decision have been recorded.
+Rename each tab immediately after creation. Keep the ordering stable and understandable; close a child tab only after its session memory, report, durable parent receipt, and master decision have been recorded.
 
 ## Capability fallback
 

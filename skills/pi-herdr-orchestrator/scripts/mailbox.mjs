@@ -16,6 +16,83 @@ import { withLock } from "./lock.mjs";
 export const STATES = ["ASSIGNED", "WORKING", "READY", "DEVELOPMENT", "BLOCKED", "FAILED", "CLOSED"];
 const PENDING = new Set(["ASSIGNED", "WORKING"]);
 const CHECKS = new Set(["PASS", "FAIL", "BLOCKED", "NOT RUN"]);
+const FAILURE_STATES = new Set(["BLOCKED", "FAILED"]);
+const IDENTITY_FIELDS = ["session", "tab", "workspace", "worktree", "branch", "task", "parent", "phase"];
+const LIFECYCLE_ANCHORS = ["directive", "execution", "result", "receipt"];
+
+const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const parseObject = (value, name) => {
+  if (typeof value === "string") {
+    try { value = JSON.parse(value); } catch { throw new Error(`${name} must be valid JSON`); }
+  }
+  if (!isRecord(value)) throw new Error(`${name} must be an object`);
+  return value;
+};
+
+export function validateIdentity(value) {
+  const identity = parseObject(value, "identity");
+  for (const field of IDENTITY_FIELDS) {
+    if (typeof identity[field] !== "string" || !identity[field].trim()) {
+      throw new Error(`identity.${field} is required`);
+    }
+  }
+  const lifecycle = parseObject(identity.lifecycle ?? identity.anchors, "identity.lifecycle");
+  for (const anchor of LIFECYCLE_ANCHORS) {
+    if (typeof lifecycle[anchor] !== "string" || !lifecycle[anchor].trim()) {
+      throw new Error(`identity.lifecycle.${anchor} is required`);
+    }
+  }
+  return { ...identity, lifecycle: Object.fromEntries(LIFECYCLE_ANCHORS.map((anchor) => [anchor, lifecycle[anchor]])) };
+}
+
+export function validateFailure(value) {
+  const failure = parseObject(value, "failure");
+  for (const field of ["kind", "code", "message"]) {
+    if (typeof failure[field] !== "string" || !failure[field].trim()) throw new Error(`failure.${field} is required`);
+  }
+  if (!/^[a-z][a-z0-9._-]*$/.test(failure.kind) || !/^[a-z][a-z0-9._-]*$/.test(failure.code)) {
+    throw new Error("failure.kind and failure.code must be stable lowercase identifiers");
+  }
+  if (typeof failure.retryable !== "boolean") throw new Error("failure.retryable must be a boolean");
+  return { kind: failure.kind, code: failure.code, message: failure.message, retryable: failure.retryable };
+}
+
+function identityInput(opts) {
+  const fields = ["session", "tab", "workspace", "worktree", "lifecycle", "anchors"];
+  const supplied = opts.identity !== undefined || opts.sender !== undefined || fields.some((field) => opts[field] !== undefined);
+  if (!supplied) return null;
+  if (opts.identity !== undefined && opts.sender !== undefined && JSON.stringify(opts.identity) !== JSON.stringify(opts.sender)) {
+    throw new Error("identity and sender mismatch");
+  }
+  const input = opts.identity !== undefined ? parseObject(opts.identity, "identity") : opts.sender !== undefined ? parseObject(opts.sender, "sender") : {};
+  for (const field of [...IDENTITY_FIELDS, "lifecycle", "anchors"]) {
+    if (opts[field] !== undefined) {
+      if (input[field] !== undefined && JSON.stringify(input[field]) !== JSON.stringify(opts[field])) {
+        throw new Error(`identity.${field} mismatch`);
+      }
+      input[field] = opts[field];
+    }
+  }
+  return validateIdentity(input);
+}
+
+function assertIdentityContinuity(previous, current, opts) {
+  if (!current) {
+    if (previous?.identity) throw new Error("identity is required for an existing identified report");
+    return;
+  }
+  if (opts.task !== undefined && current.task !== opts.task) throw new Error("identity.task mismatch");
+  if (opts.branch !== undefined && current.branch !== opts.branch) throw new Error("identity.branch mismatch");
+  if (opts.parent !== undefined && current.parent !== opts.parent) throw new Error("identity.parent mismatch");
+  if (opts.phase !== undefined && current.phase !== opts.phase) throw new Error("identity.phase mismatch");
+  if (!previous?.identity) return;
+  for (const field of ["session", "tab", "workspace", "worktree", "branch", "task", "parent"]) {
+    if (previous.identity[field] !== current[field]) throw new Error(`identity.${field} mismatch`);
+  }
+  if (JSON.stringify(previous.identity.lifecycle) !== JSON.stringify(current.lifecycle)) {
+    throw new Error("identity.lifecycle mismatch");
+  }
+}
 
 export function classify(entry, agent, now, staleMs) {
   const live = agent?.agent_status;
@@ -93,23 +170,27 @@ export function report(opts) {
   const dir = runDir(opts);
   if (!opts.task) throw new Error("--task is required");
   if (!STATES.includes(opts.state)) throw new Error(`--state must be one of ${STATES.join(", ")}`);
-  for (const c of opts.check) {
+  const checks = opts.check ?? [];
+  for (const c of checks) {
     if (!CHECKS.has(c.split("=").slice(1).join("="))) throw new Error(`--check must be name=${[...CHECKS].join("|")}: ${c}`);
   }
   mkdirSync(dir, { recursive: true });
   const file = join(dir, fileFor(opts.task));
 
   let evidenceRef = null;
-  if (opts.evidence) {
-    evidenceRef = storeEvidence(dir, opts.evidence);
-  }
+  if (opts.evidence) evidenceRef = storeEvidence(dir, opts.evidence);
 
   const now = new Date().toISOString();
   let entry = null;
-
   withLock(file, () => {
     let prev = {};
     try { prev = JSON.parse(readFileSync(file, "utf8")); } catch { /* first report */ }
+    const currentIdentity = identityInput(opts);
+    assertIdentityContinuity(prev, currentIdentity, opts);
+    const failure = opts.failure === undefined ? (FAILURE_STATES.has(opts.state) ? prev.failure : null) : validateFailure(opts.failure);
+    if (FAILURE_STATES.has(opts.state) && !failure) throw new Error(`failure is required for ${opts.state} reports`);
+    if (!FAILURE_STATES.has(opts.state) && opts.failure !== undefined) throw new Error(`failure is only valid for ${[...FAILURE_STATES].join(" or ")} reports`);
+    const delivered = !PENDING.has(opts.state);
     entry = {
       v: "repo-orchestrator/v1",
       kind: opts.state === "ASSIGNED" || opts.state === "WORKING" ? "progress" : "result",
@@ -118,12 +199,25 @@ export function report(opts) {
       agent: opts.agent ?? process.env.ORCH_AGENT ?? prev.agent ?? null,
       seq: (prev.seq ?? 0) + 1,
       state: opts.state,
-      phase: opts.phase ?? prev.phase ?? null,
-      branch: opts.branch ?? prev.branch ?? null,
+      phase: opts.phase ?? currentIdentity?.phase ?? prev.phase ?? null,
+      branch: opts.branch ?? currentIdentity?.branch ?? prev.branch ?? null,
+      parent: currentIdentity?.parent ?? prev.parent ?? null,
+      sender: currentIdentity ? {
+        session: currentIdentity.session,
+        tab: currentIdentity.tab,
+        workspace: currentIdentity.workspace,
+        worktree: currentIdentity.worktree,
+        branch: currentIdentity.branch,
+      } : (prev.sender ?? null),
+      identity: currentIdentity ?? prev.identity,
+      lifecycle: currentIdentity?.lifecycle ?? prev.lifecycle ?? null,
       summary: opts.summary ?? "",
-      checks: opts.check.map((c) => ({ name: c.split("=")[0], status: c.split("=").slice(1).join("=") })),
+      checks: checks.map((c) => ({ name: c.split("=")[0], status: c.split("=").slice(1).join("=") })),
       evidence_ref: evidenceRef ?? prev.evidence_ref ?? null,
       pending_ask: prev.pending_ask ?? null,
+      failure,
+      delivery: prev.delivery ?? (delivered ? { status: "delivered", delivered_at: now } : null),
+      parent_receipt: prev.parent_receipt ?? null,
       risks: opts.risk,
       next: opts.next ?? null,
       created_at: prev.created_at ?? now,
@@ -163,6 +257,7 @@ export function ask(opts) {
       state: "BLOCKED",
       seq: (prev.seq ?? 0) + 1,
       pending_ask: { question: opts.question, asked_at: now },
+      failure: { kind: "question", code: "parent_input_required", message: opts.question, retryable: true },
       summary: `[QUESTION] ${opts.question}`,
       updated_at: now,
     };
@@ -196,6 +291,7 @@ export function reply(opts) {
       seq: (prev.seq ?? 0) + 1,
       state: "WORKING",
       pending_ask: null,
+      failure: null,
       last_reply: { answer: opts.answer, replied_at: now },
       summary: `[ANSWERED] ${opts.answer}`,
       updated_at: now,
@@ -211,6 +307,40 @@ export function reply(opts) {
   }
   console.log(`Reply sent to ${opts.task}`);
 }
+
+export function acknowledge(opts) {
+  const dir = runDir(opts);
+  if (!opts.task) throw new Error("--task is required");
+  if (typeof opts.parent !== "string" || !opts.parent.trim()) throw new Error("--parent is required");
+  if (typeof opts.decision !== "string" || !opts.decision.trim()) throw new Error("--decision is required");
+  const file = join(dir, fileFor(opts.task));
+  if (!existsSync(file)) throw new Error(`no report file found for task ${opts.task}`);
+  const now = new Date().toISOString();
+  let entry = null;
+  withLock(file, () => {
+    const prev = JSON.parse(readFileSync(file, "utf8"));
+    const expectedParent = prev.identity?.parent ?? prev.parent;
+    if (expectedParent && expectedParent !== opts.parent) throw new Error("parent identity mismatch");
+    if (!prev.delivery || prev.delivery.status !== "delivered") throw new Error("report has no delivered result to acknowledge");
+    entry = {
+      ...prev,
+      seq: (prev.seq ?? 0) + 1,
+      parent_receipt: {
+        status: "acknowledged",
+        decision: opts.decision,
+        parent: opts.parent,
+        acknowledged_at: now,
+      },
+      updated_at: now,
+    };
+    writeFileSync(`${file}.tmp`, `${JSON.stringify(entry, null, 2)}\n`);
+    renameSync(`${file}.tmp`, file);
+    appendFileSync(join(dir, "events.jsonl"), `${JSON.stringify({ event: "parent_acknowledgement", task: opts.task, parent: opts.parent, decision: opts.decision, timestamp: now })}\n`);
+  });
+  console.log(`Acknowledged ${entry.task} seq=${entry.seq}`);
+}
+
+export const ack = acknowledge;
 
 export function liveAgents() {
   const list = spawnSync("herdr", ["agent", "list"], { encoding: "utf8" });
@@ -259,7 +389,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     else if (cmd === "status") status(parse(rest));
     else if (cmd === "ask") ask(parse(rest));
     else if (cmd === "reply") reply(parse(rest));
-    else throw new Error("usage: mailbox.mjs report|status|ask|reply --run R [...]");
+    else if (cmd === "ack" || cmd === "acknowledge") acknowledge(parse(rest));
+    else throw new Error("usage: mailbox.mjs report|status|ask|reply|ack --run R [...]");
   } catch (err) {
     console.error(err.message);
     process.exit(2);

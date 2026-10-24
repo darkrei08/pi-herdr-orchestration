@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { classify, storeEvidence, readEvidence, fileFor } from "./mailbox.mjs";
+import { acknowledge, classify, report, storeEvidence, readEvidence, validateIdentity, fileFor } from "./mailbox.mjs";
 import { withLock } from "./lock.mjs";
 
 const now = Date.parse("2026-10-09T12:00:00Z");
@@ -14,6 +14,37 @@ const entry = (state, agoMin = 0, extra = {}) => ({
   ...extra
 });
 const live = (agent_status) => ({ agent_status });
+
+const identity = (overrides = {}) => ({
+  session: "pi-session-o4",
+  tab: "[O4] Parent lifecycle",
+  workspace: "/repo",
+  worktree: "/repo/.worktrees/o4",
+  branch: "feat/o4-parent-lifecycle",
+  task: "O4",
+  parent: "master-orchestration",
+  phase: "RESULT",
+  lifecycle: {
+    directive: "directive-o4-1",
+    execution: "execution-o4-1",
+    result: "result-o4-1",
+    receipt: "receipt-o4-1"
+  },
+  ...overrides
+});
+
+const withMailboxDir = (fn) => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-mailbox-"));
+  const previous = process.env.ORCH_DIR;
+  process.env.ORCH_DIR = dir;
+  try {
+    return fn(dir);
+  } finally {
+    if (previous === undefined) delete process.env.ORCH_DIR;
+    else process.env.ORCH_DIR = previous;
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
 
 test("classify flags what needs master action", () => {
   assert.equal(classify(entry("WORKING"), live("working"), now, 10 * min), "OK");
@@ -84,6 +115,72 @@ test("readEvidence reports missing full-hash evidence", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("public reports persist exact identity anchors", () => {
+  withMailboxDir((dir) => {
+    report({ run: "run-o4", task: "O4", state: "READY", identity: identity(), summary: "result delivered", notify: "" });
+    const stored = JSON.parse(readFileSync(join(dir, "run-o4", "O4.json"), "utf8"));
+    assert.deepEqual(stored.identity, identity());
+    assert.equal(stored.delivery.status, "delivered");
+  });
+});
+
+test("public identity validation rejects missing fields and mismatches", () => {
+  assert.throws(() => validateIdentity({ session: "only-session" }), /identity.*required/i);
+  withMailboxDir(() => {
+    assert.throws(
+      () => report({ run: "run-o4", task: "other-task", state: "WORKING", identity: identity(), summary: "mismatch", notify: "" }),
+      /identity.*task/i,
+    );
+    report({ run: "run-o4", task: "O4", state: "WORKING", identity: identity({ phase: "PROGRESS" }), summary: "progress", notify: "" });
+    assert.throws(
+      () => report({ run: "run-o4", task: "O4", state: "WORKING", identity: identity({ branch: "wrong-branch", phase: "PROGRESS" }), summary: "mismatch", notify: "" }),
+      /identity.*mismatch/i,
+    );
+  });
+});
+
+test("blocked and failed reports require typed failure provenance", () => {
+  withMailboxDir((dir) => {
+    const failure = { kind: "verification", code: "test_failed", message: "Focused test failed", retryable: true };
+    report({ run: "run-o4", task: "O4", state: "FAILED", identity: identity(), failure, summary: "failed", notify: "" });
+    const stored = JSON.parse(readFileSync(join(dir, "run-o4", "O4.json"), "utf8"));
+    assert.deepEqual(stored.failure, failure);
+    assert.throws(
+      () => report({ run: "run-o4", task: "other", state: "BLOCKED", identity: identity({ task: "other" }), summary: "missing failure", notify: "" }),
+      /failure.*required/i,
+    );
+  });
+});
+
+test("directive, progress, result, and parent acknowledgement are distinct lifecycle records", () => {
+  withMailboxDir((dir) => {
+    report({ run: "run-o4", task: "O4", state: "WORKING", identity: identity({ phase: "DIRECTIVE" }), summary: "directive received", notify: "" });
+    report({ run: "run-o4", task: "O4", state: "WORKING", identity: identity({ phase: "PROGRESS" }), summary: "execution progressing", notify: "" });
+    report({ run: "run-o4", task: "O4", state: "READY", identity: identity({ phase: "RESULT" }), summary: "handoff delivered", notify: "" });
+    acknowledge({ run: "run-o4", task: "O4", parent: "master-orchestration", decision: "accepted", notify: "" });
+    const stored = JSON.parse(readFileSync(join(dir, "run-o4", "O4.json"), "utf8"));
+    assert.equal(stored.delivery.status, "delivered");
+    assert.deepEqual(stored.parent_receipt, {
+      status: "acknowledged",
+      decision: "accepted",
+      parent: "master-orchestration",
+      acknowledged_at: stored.parent_receipt.acknowledged_at,
+    });
+    assert.equal(stored.state, "READY");
+    assert.throws(() => acknowledge({ run: "run-o4", task: "O4", parent: "other-parent", decision: "accepted", notify: "" }), /parent.*mismatch/i);
+  });
+});
+
+test("legacy uppercase reports remain accepted without identity", () => {
+  withMailboxDir((dir) => {
+    report({ run: "legacy-run", task: "legacy-task", state: "WORKING", phase: "PROGRESS", branch: "legacy-branch", summary: "legacy progress", notify: "" });
+    const stored = JSON.parse(readFileSync(join(dir, "legacy-run", "legacy-task.json"), "utf8"));
+    assert.equal(stored.state, "WORKING");
+    assert.equal(stored.agent, null);
+    assert.equal("identity" in stored, false);
+  });
 });
 
 test("withLock protects critical sections", () => {
