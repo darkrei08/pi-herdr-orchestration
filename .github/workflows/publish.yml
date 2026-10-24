@@ -45,15 +45,21 @@ jobs:
 
       - name: Resolve Release Tag & Version
         id: resolve-tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           PACKAGE=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")
-          if [ -n "${{ inputs.tag }}" ]; then
-            TAG="${{ inputs.tag }}"
-          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
             TAG="v$VERSION"
+          fi
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release tag $TAG is not a strict semantic release tag" >&2
+            exit 1
           fi
           test "$TAG" = "v$VERSION" || {
             echo "release tag $TAG does not match $PACKAGE version $VERSION" >&2
@@ -104,9 +110,10 @@ jobs:
           fi
 
       - name: Publish to npm with trusted publishing (OIDC)
+        env:
+          PACKAGE: ${{ steps.resolve-tag.outputs.package }}
+          VERSION: ${{ steps.resolve-tag.outputs.version }}
         run: |
-          PACKAGE="${{ steps.resolve-tag.outputs.package }}"
-          VERSION="${{ steps.resolve-tag.outputs.version }}"
           if npm view "$PACKAGE@$VERSION" version >/dev/null 2>&1; then
             echo "$PACKAGE@$VERSION is already published to npm; skipping."
           else
