@@ -75,6 +75,8 @@ Required fields are `v`, `kind`, `id`, `parent`, `sender`, `task`, `state`, `sum
 
 `BLOCKED` and `FAILED` reports carry `failure: {kind, code, message, retryable}`. `kind` and `code` are stable lowercase identifiers; `retryable` is a boolean. A blocked question uses the same typed failure shape. A result or handoff is persisted with `delivery.status: "delivered"`; only the parent `mailbox.mjs ack` transition writes `parent_receipt.status: "acknowledged"` and its decision. Herdr liveness, agent status, and tab labels are presentation or wake-up signals only, never completion or receipt authority.
 
+The read-only `mailbox.mjs supervise` decision compares the O4 identity anchors (`session`, `tab`, `workspace`, `worktree`, `branch`, `parent`) in a mailbox report with the live Herdr `agent list` and `agent get` records. It emits a compact directive with `task`, `prior_owner`, `reason_code`, `required_parent_action`, `reassignment_permitted`, and `completion_permitted`. Identity drift, a missing agent, stale or silent work, a blocked human prompt, and legacy reports without identity all fail closed for completion. A terminal report becomes completion-permitted only when all anchors match and the O4 parent receipt is acknowledged by the matching parent. The command never prompts, stops, reassigns, or mutates state.
+
 ## Message directions
 
 | Message | From → to | Purpose |

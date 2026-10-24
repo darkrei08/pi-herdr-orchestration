@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { acknowledge, classify, report, storeEvidence, readEvidence, validateIdentity, fileFor } from "./mailbox.mjs";
+import { acknowledge, classify, decideSupervision, report, storeEvidence, readEvidence, validateIdentity, fileFor } from "./mailbox.mjs";
 import { withLock } from "./lock.mjs";
 
 const now = Date.parse("2026-10-09T12:00:00Z");
@@ -13,7 +14,7 @@ const entry = (state, agoMin = 0, extra = {}) => ({
   updated_at: new Date(now - agoMin * min).toISOString(),
   ...extra
 });
-const live = (agent_status) => ({ agent_status });
+const live = (agent_status, overrides = {}) => ({ agent_status, ...overrides });
 
 const identity = (overrides = {}) => ({
   session: "pi-session-o4",
@@ -33,6 +34,44 @@ const identity = (overrides = {}) => ({
   ...overrides
 });
 
+const supervisionIdentity = (overrides = {}) => ({
+  session: "/sessions/o5.jsonl",
+  tab: "tab-o5",
+  workspace: "workspace-wQ",
+  worktree: "/repo/.worktrees/o5",
+  branch: "feat/o5-supervision-drift",
+  task: "O5",
+  parent: "master-orchestration",
+  phase: "RESULT",
+  lifecycle: {
+    directive: "directive-o5-1",
+    execution: "execution-o5-1",
+    result: "result-o5-1",
+    receipt: "receipt-o5-1"
+  },
+  ...overrides
+});
+
+const supervisionReport = (overrides = {}) => ({
+  task: "O5",
+  agent: "o5-supervision",
+  state: "WORKING",
+  updated_at: new Date(now).toISOString(),
+  identity: supervisionIdentity(),
+  parent_receipt: null,
+  ...overrides
+});
+
+const liveIdentity = (status = "working", overrides = {}) => live(status, {
+  session: "/sessions/o5.jsonl",
+  tab: "tab-o5",
+  workspace: "workspace-wQ",
+  worktree: "/repo/.worktrees/o5",
+  branch: "feat/o5-supervision-drift",
+  parent: "master-orchestration",
+  ...overrides
+});
+
 const withMailboxDir = (fn) => {
   const dir = mkdtempSync(join(tmpdir(), "orch-mailbox-"));
   const previous = process.env.ORCH_DIR;
@@ -45,6 +84,114 @@ const withMailboxDir = (fn) => {
     rmSync(dir, { recursive: true, force: true });
   }
 };
+
+test("supervision returns an exact-match directive for a live identified worker", () => {
+  const decision = decideSupervision(supervisionReport(), liveIdentity(), now, 10 * min);
+  assert.deepEqual(decision, {
+    outcome: "EXACT_MATCH",
+    task: "O5",
+    prior_owner: "o5-supervision",
+    reason_code: "IDENTITY_MATCH",
+    required_parent_action: "NONE",
+    reassignment_permitted: false,
+    completion_permitted: false
+  });
+});
+
+test("supervision matches Herdr list/get identity aliases", () => {
+  const herdrAgent = {
+    agent_status: "working",
+    agent_session: { value: "/sessions/o5.jsonl" },
+    tab_id: "tab-o5",
+    workspace_id: "workspace-wQ",
+    cwd: "/repo/.worktrees/o5",
+    branch: "feat/o5-supervision-drift",
+    parent: "master-orchestration",
+  };
+  assert.equal(decideSupervision(supervisionReport(), herdrAgent, now, 10 * min).outcome, "EXACT_MATCH");
+});
+
+test("public supervise command emits only the deterministic decision", () => {
+  const result = spawnSync(process.execPath, [
+    "skills/pi-herdr-orchestrator/scripts/mailbox.mjs",
+    "supervise",
+    "--report", JSON.stringify(supervisionReport()),
+    "--live", JSON.stringify(liveIdentity()),
+    "--now", "2026-10-09T12:00:00Z",
+  ], { encoding: "utf8" });
+  assert.equal(result.status, 0);
+  assert.deepEqual(JSON.parse(result.stdout), decideSupervision(supervisionReport(), liveIdentity(), now, 10 * min));
+  assert.equal(result.stderr, "");
+});
+
+test("supervision emits identity drift and forbids false completion", () => {
+  const decision = decideSupervision(supervisionReport({ state: "READY" }), liveIdentity("working", { branch: "wrong-branch" }), now, 10 * min);
+  assert.equal(decision.outcome, "IDENTITY_DRIFT");
+  assert.equal(decision.reason_code, "IDENTITY_DRIFT");
+  assert.equal(decision.required_parent_action, "ESCALATE_IDENTITY");
+  assert.equal(decision.reassignment_permitted, true);
+  assert.equal(decision.completion_permitted, false);
+});
+
+test("supervision treats a missing live agent as reassignment-only", () => {
+  const decision = decideSupervision(supervisionReport({ state: "CLOSED" }), undefined, now, 10 * min);
+  assert.equal(decision.outcome, "MISSING_AGENT");
+  assert.equal(decision.reason_code, "AGENT_MISSING");
+  assert.equal(decision.required_parent_action, "INSPECT_WORKTREE_AND_REASSIGN");
+  assert.equal(decision.reassignment_permitted, true);
+  assert.equal(decision.completion_permitted, false);
+});
+
+test("supervision distinguishes stale and silent reports", () => {
+  const stale = decideSupervision(supervisionReport({ updated_at: new Date(now - 11 * min).toISOString() }), liveIdentity(), now, 10 * min);
+  const silent = decideSupervision(supervisionReport(), liveIdentity("idle"), now, 10 * min);
+  assert.equal(stale.outcome, "STALE_REPORT");
+  assert.equal(stale.reason_code, "REPORT_STALE");
+  assert.equal(stale.reassignment_permitted, true);
+  assert.equal(silent.outcome, "SILENT_REPORT");
+  assert.equal(silent.reason_code, "REPORT_SILENT");
+  assert.equal(silent.reassignment_permitted, true);
+});
+
+test("supervision surfaces a blocked human prompt without answering it", () => {
+  const decision = decideSupervision(supervisionReport({ pending_ask: { question: "Approve?" } }), liveIdentity("blocked"), now, 10 * min);
+  assert.equal(decision.outcome, "BLOCKED_HUMAN_PROMPT");
+  assert.equal(decision.reason_code, "HUMAN_PROMPT_BLOCKED");
+  assert.equal(decision.required_parent_action, "SURFACE_PROMPT_TO_HUMAN");
+  assert.equal(decision.reassignment_permitted, false);
+  assert.equal(decision.completion_permitted, false);
+});
+
+test("supervision preserves parent acknowledgement semantics for terminal reports", () => {
+  const pending = decideSupervision(supervisionReport({ state: "READY" }), liveIdentity("idle"), now, 10 * min);
+  const acknowledged = decideSupervision(supervisionReport({ state: "READY", parent_receipt: { status: "acknowledged", parent: "master-orchestration" } }), liveIdentity("idle"), now, 10 * min);
+  assert.equal(pending.outcome, "TERMINAL_REPORT");
+  assert.equal(pending.reason_code, "PARENT_ACK_REQUIRED");
+  assert.equal(pending.required_parent_action, "ACKNOWLEDGE_PARENT");
+  assert.equal(pending.completion_permitted, false);
+  assert.equal(acknowledged.outcome, "TERMINAL_REPORT");
+  assert.equal(acknowledged.reason_code, "TERMINAL_ACKNOWLEDGED");
+  assert.equal(acknowledged.required_parent_action, "RECORD_PARENT_DECISION");
+  assert.equal(acknowledged.completion_permitted, true);
+});
+
+test("supervision never promotes drifted or missing READY/CLOSED reports", () => {
+  for (const state of ["READY", "CLOSED"]) {
+    for (const agent of [undefined, liveIdentity("working", { tab: "other-tab" })]) {
+      const decision = decideSupervision(supervisionReport({ state }), agent, now, 10 * min);
+      assert.equal(decision.completion_permitted, false);
+      assert.notEqual(decision.outcome, "EXACT_MATCH");
+    }
+  }
+});
+
+test("legacy uppercase reports remain observable but cannot be completed by supervision", () => {
+  const decision = decideSupervision({ task: "legacy-task", agent: "legacy-agent", state: "READY", updated_at: new Date(now).toISOString() }, liveIdentity("idle"), now, 10 * min);
+  assert.equal(decision.outcome, "IDENTITY_UNAVAILABLE");
+  assert.equal(decision.reason_code, "REPORT_IDENTITY_MISSING");
+  assert.equal(decision.reassignment_permitted, false);
+  assert.equal(decision.completion_permitted, false);
+});
 
 test("classify flags what needs master action", () => {
   assert.equal(classify(entry("WORKING"), live("working"), now, 10 * min), "OK");

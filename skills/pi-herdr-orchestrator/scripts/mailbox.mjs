@@ -15,6 +15,8 @@ import { withLock } from "./lock.mjs";
 
 export const STATES = ["ASSIGNED", "WORKING", "READY", "DEVELOPMENT", "BLOCKED", "FAILED", "CLOSED"];
 const PENDING = new Set(["ASSIGNED", "WORKING"]);
+const TERMINAL = new Set(["READY", "DEVELOPMENT", "BLOCKED", "FAILED", "CLOSED"]);
+const SUPERVISION_ANCHORS = ["session", "tab", "workspace", "worktree", "branch", "parent"];
 const CHECKS = new Set(["PASS", "FAIL", "BLOCKED", "NOT RUN"]);
 const FAILURE_STATES = new Set(["BLOCKED", "FAILED"]);
 const IDENTITY_FIELDS = ["session", "tab", "workspace", "worktree", "branch", "task", "parent", "phase"];
@@ -104,6 +106,95 @@ export function classify(entry, agent, now, staleMs) {
   if (PENDING.has(entry.state) && live === "working" && now - Date.parse(entry.updated_at) > staleMs) return "STALE";
   if (!PENDING.has(entry.state)) return "DECIDE";
   return "OK";
+}
+
+function supervisionDirective(report, outcome, reasonCode, requiredParentAction, reassignmentPermitted, completionPermitted) {
+  return {
+    outcome,
+    task: report.task ?? "unknown",
+    prior_owner: report.agent ?? "unknown",
+    reason_code: reasonCode,
+    required_parent_action: requiredParentAction,
+    reassignment_permitted: reassignmentPermitted,
+    completion_permitted: completionPermitted,
+  };
+}
+
+function liveAnchor(agent, field) {
+  const aliases = {
+    session: [agent.session, agent.agent_session?.value],
+    tab: [agent.tab, agent.tab_id, agent.terminal_title_stripped],
+    workspace: [agent.workspace, agent.workspace_id],
+    worktree: [agent.worktree, agent.cwd, agent.foreground_cwd],
+    branch: [agent.branch],
+    parent: [agent.parent],
+  };
+  return aliases[field].find((value) => typeof value === "string" && value.trim()) ?? null;
+}
+
+function compareSupervisionIdentity(report, agent) {
+  if (!report.identity) return { available: false, matches: false };
+  if (!agent) return { available: true, matches: false, missing: true };
+  const mismatches = SUPERVISION_ANCHORS.filter((field) => liveAnchor(agent, field) !== report.identity[field]);
+  return {
+    available: true,
+    matches: mismatches.length === 0,
+    incomplete: mismatches.some((field) => liveAnchor(agent, field) === null),
+    mismatches,
+  };
+}
+
+export function decideSupervision(value, liveAgent, now = Date.now(), staleMs = 10 * 60_000) {
+  const report = parseObject(value, "report");
+  const timestamp = typeof now === "number" ? now : Date.parse(now);
+  if (!Number.isFinite(timestamp)) throw new Error("now must be a valid timestamp");
+  if (!Number.isFinite(staleMs) || staleMs < 0) throw new Error("staleMs must be a non-negative number");
+
+  const identity = compareSupervisionIdentity(report, liveAgent);
+  if (!identity.available) {
+    return supervisionDirective(report, "IDENTITY_UNAVAILABLE", "REPORT_IDENTITY_MISSING", "VERIFY_LEGACY_REPORT", false, false);
+  }
+  if (identity.missing) {
+    return supervisionDirective(report, "MISSING_AGENT", "AGENT_MISSING", "INSPECT_WORKTREE_AND_REASSIGN", true, false);
+  }
+  if (!identity.matches) {
+    return supervisionDirective(
+      report,
+      "IDENTITY_DRIFT",
+      identity.incomplete ? "LIVE_IDENTITY_INCOMPLETE" : "IDENTITY_DRIFT",
+      "ESCALATE_IDENTITY",
+      true,
+      false,
+    );
+  }
+
+  if (report.pending_ask || liveAgent.agent_status === "blocked") {
+    return supervisionDirective(report, "BLOCKED_HUMAN_PROMPT", "HUMAN_PROMPT_BLOCKED", "SURFACE_PROMPT_TO_HUMAN", false, false);
+  }
+
+  if (PENDING.has(report.state) && (liveAgent.agent_status === "idle" || liveAgent.agent_status === "done")) {
+    return supervisionDirective(report, "SILENT_REPORT", "REPORT_SILENT", "INSPECT_RECENT_OUTPUT", true, false);
+  }
+
+  const updatedAt = Date.parse(report.updated_at);
+  if (PENDING.has(report.state) && liveAgent.agent_status === "working" && Number.isFinite(updatedAt) && timestamp - updatedAt > staleMs) {
+    return supervisionDirective(report, "STALE_REPORT", "REPORT_STALE", "INSPECT_PROGRESS_OR_ESCALATE", true, false);
+  }
+
+  if (TERMINAL.has(report.state)) {
+    const acknowledged = report.parent_receipt?.status === "acknowledged"
+      && report.parent_receipt.parent === report.identity.parent;
+    return supervisionDirective(
+      report,
+      "TERMINAL_REPORT",
+      acknowledged ? "TERMINAL_ACKNOWLEDGED" : "PARENT_ACK_REQUIRED",
+      acknowledged ? "RECORD_PARENT_DECISION" : "ACKNOWLEDGE_PARENT",
+      false,
+      acknowledged,
+    );
+  }
+
+  return supervisionDirective(report, "EXACT_MATCH", "IDENTITY_MATCH", "NONE", false, false);
 }
 
 export function parse(argv) {
@@ -342,28 +433,70 @@ export function acknowledge(opts) {
 
 export const ack = acknowledge;
 
-export function liveAgents() {
-  const list = spawnSync("herdr", ["agent", "list"], { encoding: "utf8" });
-  if (list.status !== 0) return null;
+function herdrPayload(stdout) {
   try {
-    const byName = new Map();
-    for (const a of JSON.parse(list.stdout).result.agents) if (a.name) byName.set(a.name, a);
-    return byName;
+    const parsed = JSON.parse(stdout);
+    return parsed.result ?? parsed;
   } catch {
     return null;
   }
+}
+
+export function liveAgents() {
+  const list = spawnSync("herdr", ["agent", "list"], { encoding: "utf8" });
+  if (list.status !== 0) return null;
+  const payload = herdrPayload(list.stdout);
+  if (!Array.isArray(payload?.agents)) return null;
+  const byName = new Map();
+  for (const a of payload.agents) if (a.name) byName.set(a.name, a);
+  return byName;
+}
+
+export function liveAgent(name) {
+  if (typeof name !== "string" || !name.trim()) return null;
+  const listed = liveAgents()?.get(name);
+  if (!listed) return null;
+  const detail = spawnSync("herdr", ["agent", "get", name], { encoding: "utf8" });
+  const payload = detail.status === 0 ? herdrPayload(detail.stdout) : null;
+  const agent = { ...listed, ...(payload?.agent ?? {}) };
+  const worktree = liveAnchor(agent, "worktree");
+  if (!agent.branch && worktree) {
+    const branch = spawnSync("git", ["-C", worktree, "branch", "--show-current"], { encoding: "utf8" });
+    if (branch.status === 0 && branch.stdout.trim()) agent.branch = branch.stdout.trim();
+  }
+  if (!agent.parent && process.env.ORCH_MASTER) agent.parent = process.env.ORCH_MASTER;
+  return agent;
+}
+
+export function supervise(opts) {
+  if (!opts.report) throw new Error("--report is required");
+  const reportValue = parseObject(opts.report, "report");
+  const live = opts.live === undefined ? liveAgent(opts.agent ?? reportValue.agent) : parseObject(opts.live, "live");
+  const now = opts.now === undefined ? Date.now() : Date.parse(opts.now);
+  const staleMs = opts["stale-min"] === undefined ? 10 * 60_000 : Number(opts["stale-min"]) * 60_000;
+  const decision = decideSupervision(reportValue, live, now, staleMs);
+  console.log(JSON.stringify(decision));
+  return decision;
+}
+
+function statusFlag(report, decision) {
+  if (decision.outcome === "EXACT_MATCH") return PENDING.has(report.state) ? "OK" : "DECIDE";
+  if (decision.outcome === "TERMINAL_REPORT") return decision.completion_permitted && report.state === "CLOSED" ? "OK" : "DECIDE";
+  return decision.outcome;
 }
 
 export function status(opts) {
   const dir = runDir(opts);
   const staleMs = Number(opts["stale-min"] ?? 10) * 60_000;
   const live = liveAgents();
+  const now = Date.now();
   const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
   const rows = files.map((f) => {
     const e = JSON.parse(readFileSync(join(dir, f), "utf8"));
     const agent = live?.get(e.agent);
-    const flag = live ? classify(e, agent, Date.now(), staleMs) : "NO_HERDR";
-    const age = Math.round((Date.now() - Date.parse(e.updated_at)) / 60_000);
+    const decision = live ? decideSupervision(e, agent, now, staleMs) : null;
+    const flag = live ? statusFlag(e, decision) : "NO_HERDR";
+    const age = Math.round((now - Date.parse(e.updated_at)) / 60_000);
     return {
       task: e.task,
       agent: e.agent,
@@ -372,6 +505,9 @@ export function status(opts) {
       seq: e.seq,
       age_min: age,
       flag,
+      decision: decision?.outcome ?? "-",
+      required_action: decision?.required_parent_action ?? "-",
+      completion_permitted: decision?.completion_permitted ?? false,
       summary: e.summary.slice(0, 60),
       evidence: e.evidence_ref ?? "-"
     };
@@ -387,10 +523,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     if (cmd === "report") report(parse(rest));
     else if (cmd === "status") status(parse(rest));
+    else if (cmd === "supervise") supervise(parse(rest));
     else if (cmd === "ask") ask(parse(rest));
     else if (cmd === "reply") reply(parse(rest));
     else if (cmd === "ack" || cmd === "acknowledge") acknowledge(parse(rest));
-    else throw new Error("usage: mailbox.mjs report|status|ask|reply|ack --run R [...]");
+    else throw new Error("usage: mailbox.mjs report|status|supervise|ask|reply|ack --run R [...]");
   } catch (err) {
     console.error(err.message);
     process.exit(2);

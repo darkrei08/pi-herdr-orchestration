@@ -15,6 +15,31 @@ A dispatched session that nobody watches and that never reports is not delegatio
 
 Pane state says whether an agent is busy. Only a mailbox report plus Git evidence says what it achieved.
 
+## Deterministic identity decision
+
+The master can request a read-only decision without prompting or stopping an agent:
+
+```bash
+node skills/pi-herdr-orchestrator/scripts/mailbox.mjs supervise \
+  --report '<mailbox JSON>' --agent <herdr-agent-name> --stale-min 10
+```
+
+`supervise` obtains the named agent from both `herdr agent list` and `herdr agent get`, then compares the report's O4 anchors (`session`, `tab`, `workspace`, `worktree`, `branch`, `parent`). For deterministic tests or an already captured observation, pass `--live '<agent list/get JSON>'` instead of `--agent`. The command only emits JSON; it never prompts, stops, nudges, reassigns, or mutates mailbox state.
+
+Every directive contains `task`, `prior_owner`, `reason_code`, `required_parent_action`, `reassignment_permitted`, and `completion_permitted`. The decision outcomes are:
+
+| Outcome | Meaning | Completion |
+| --- | --- | --- |
+| `EXACT_MATCH` | All O4 anchors match and the report is still in progress | Never by this decision |
+| `IDENTITY_DRIFT` | A live anchor differs or cannot be proven | Forbidden; escalate identity first |
+| `MISSING_AGENT` | No live agent with the report owner exists | Forbidden; inspect worktree before reassignment |
+| `STALE_REPORT` / `SILENT_REPORT` | A matching worker is working without a fresh report, or is idle/done with pending work | Forbidden; inspect before reassignment |
+| `BLOCKED_HUMAN_PROMPT` | Herdr or the mailbox exposes a human prompt | Forbidden; surface the prompt to a human |
+| `TERMINAL_REPORT` | A matching `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED`, or `CLOSED` report exists | Allowed only after a matching acknowledged parent receipt |
+| `IDENTITY_UNAVAILABLE` | A legacy report has no identity anchors | Forbidden; verify the legacy report |
+
+`completion_permitted` is always false for drift, missing, stale, silent, blocked, and legacy outcomes. A terminal report is not closed merely because its agent is idle or done; the O4 `parent_receipt.status=acknowledged` and matching parent are still required.
+
 ## Dispatch
 
 1. Pick a run id (`ORCH_RUN`, for example `repo-20261009`) and a unique agent name per task matching `[a-z][a-z0-9_-]{0,31}` (`issue84`, `pr127`).
@@ -43,7 +68,7 @@ Name the master agent once with `herdr agent rename "$HERDR_PANE_ID" master` (un
 
 The master does not end its turn after dispatch. Repeat until every task is `CLOSED` or explicitly escalated to the user:
 
-1. `node mailbox.mjs status --run R` (adds `--stale-min N`, default 10, and `--json true` for scripts). It joins mailbox reports with live `herdr agent list`.
+1. `node mailbox.mjs status --run R` (adds `--stale-min N`, default 10, and `--json true` for scripts). It joins mailbox reports with live `herdr agent list` and includes the deterministic decision, required action, and completion permission. Use `supervise` when the master needs the list/get identity proof for one task.
 2. Act on each flag:
 
 | Flag | Meaning | Action |
