@@ -43,6 +43,16 @@ export function deriveLifecycle(state) {
 
 const PENDING = new Set(["ASSIGNED", "WORKING"]);
 const CHECKS = new Set(["PASS", "FAIL", "BLOCKED", "NOT RUN"]);
+const HERDR_AGENT_NAME = /^[a-z][a-z0-9_-]{0,31}$/;
+const PI_SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function currentAgentName() {
+  return String(process.env.ORCH_AGENT || process.env.ORCH_MASTER || "").trim();
+}
+
+function isHerdrAgentName(value) {
+  return HERDR_AGENT_NAME.test(value) && !PI_SESSION_ID.test(value);
+}
 
 export function classify(entry, agent, now, staleMs) {
   const live = agent?.agent_status;
@@ -114,11 +124,13 @@ export function readEvidence(dir, ref) {
   throw new Error(`evidence not found for reference: ${ref}`);
 }
 
-export function notifyAgent(agent, message, { nonBlocking = true } = {}) {
-  if (!agent) return false;
+export function notifyAgent(agent, message, { nonBlocking = true, sender = currentAgentName() } = {}) {
+  const recipient = String(agent ?? "").trim();
+  const current = String(sender ?? "").trim();
+  if (!isHerdrAgentName(recipient) || (current && recipient === current)) return false;
   try {
     if (nonBlocking) {
-      const child = spawn("herdr", ["agent", "prompt", agent, message], {
+      const child = spawn("herdr", ["agent", "prompt", recipient, message], {
         stdio: "ignore",
         detached: true,
       });
@@ -128,7 +140,7 @@ export function notifyAgent(agent, message, { nonBlocking = true } = {}) {
       child.unref?.();
       return true;
     }
-    const sent = spawnSync("herdr", ["agent", "prompt", agent, message], { encoding: "utf8" });
+    const sent = spawnSync("herdr", ["agent", "prompt", recipient, message], { encoding: "utf8" });
     if (sent.error || (sent.status !== null && sent.status !== 0)) {
       console.error(`notify to '${agent}' failed; report is still in the mailbox`);
       return false;
@@ -196,7 +208,7 @@ export function report(opts) {
   const master = opts.notify ?? process.env.ORCH_MASTER;
   if (master) {
     const msg = `[REPORT ${entry.task} ${entry.state}] ${entry.summary.slice(0, 160)} (run ${entry.run}: mailbox.mjs status --run ${entry.run})`;
-    notifyAgent(master, msg, { nonBlocking: opts.nonBlocking ?? true });
+    notifyAgent(master, msg, { nonBlocking: opts.nonBlocking ?? true, sender: entry.agent || currentAgentName() });
   }
   if (!opts.silent) {
     console.log(`${entry.task} ${entry.state} seq=${entry.seq} -> ${file}`);
@@ -237,7 +249,7 @@ export function ask(opts) {
   const master = opts.notify ?? process.env.ORCH_MASTER;
   if (master) {
     const msg = `[ASK ${opts.task}] ${opts.question.slice(0, 160)} (run ${entry.run ?? opts.run}: mailbox.mjs reply --task ${opts.task} --answer <msg>)`;
-    notifyAgent(master, msg, { nonBlocking: opts.nonBlocking ?? true });
+    notifyAgent(master, msg, { nonBlocking: opts.nonBlocking ?? true, sender: entry.agent || currentAgentName() });
   }
   if (!opts.silent) {
     console.log(`Question recorded for ${opts.task}`);
@@ -275,7 +287,7 @@ export function reply(opts) {
 
   if (workerAgent) {
     const msg = `[ANSWER from Master] ${opts.answer}`;
-    notifyAgent(workerAgent, msg, { nonBlocking: opts.nonBlocking ?? true });
+    notifyAgent(workerAgent, msg, { nonBlocking: opts.nonBlocking ?? true, sender: currentAgentName() });
   }
   if (!opts.silent) {
     console.log(`Reply sent to ${opts.task}`);

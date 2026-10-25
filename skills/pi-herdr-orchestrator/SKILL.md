@@ -63,6 +63,7 @@ return results;
 - The `parallel` object order is the dispatch order. In fully inspectable Herdr mode PiWorkflow assigns the corresponding `#1`, `#2`, ... index and `@piewf/herdr` creates labeled tabs inside the workflow workspace. These numbers are presentation order, not authority; assignment and mailbox evidence remain authoritative.
 - The trusted project settings written by repository initialization enable `extensionSettings.herdr.enableFullyInspectableMode`. This is the supported `pi-extensible-workflows` transport; this repository must not shell out to `pi` or reimplement Herdr pane creation.
 - If Pi is not running inside Herdr, or PiWorkflow/@piewf/herdr is unavailable, use the documented single-session or direct-worktree fallback and report `NOT APPLICABLE`/`BLOCKED`. Never claim panes, tabs, parallel sessions, or skill execution that did not occur.
+- Route worker reports/questions through the mailbox first. Use `ORCH_MASTER` only as a distinct Herdr agent name for a best-effort wake-up; never pass the current Pi session id or the worker's own identity. If peer discovery is empty or ambiguous, skip the wake-up and let the master consume `orch_status`/`orch_reply` state.
 
 ## Control rules
 

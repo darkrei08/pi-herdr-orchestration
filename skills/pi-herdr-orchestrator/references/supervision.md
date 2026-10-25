@@ -11,7 +11,7 @@ A dispatched session that nobody watches and that never reports is not delegatio
 | Ask / Reply protocol (`orch_ask` / `orch_reply`) | worker <-> master | Worker flags `BLOCKED` with a question; master replies without worker hanging or spinning |
 | `herdr agent list/get/wait/read` | master observes worker | Liveness only: `working`, `idle`, `done`, `blocked`, `unknown`. Never proof of completion |
 | `herdr agent prompt` | master -> worker | Directives, nudges, decisions |
-| `herdr agent prompt <master>` | worker -> master | Best-effort wake-up after a report (`ORCH_MASTER`). Dispatched non-blockingly (`spawn` unref) so delivery or notification failure cannot block mailbox persistence or turn a completed report into a failure |
+| `herdr agent prompt <master>` | worker -> master | Best-effort wake-up after a report (`ORCH_MASTER`). The target must be a distinct Herdr agent name, never the worker's own Pi/session id. Dispatched non-blockingly (`spawn` unref) so delivery or notification failure cannot block mailbox persistence or turn a completed report into a failure |
 
 Pane state says whether an agent is busy. Only a mailbox report plus Git evidence says what it achieved.
 
@@ -35,7 +35,11 @@ Report with either native Pi tools (orch_report, orch_ask) or CLI:
 - Never end your turn silently. Do not close your own tab. The master decides what happens next.
 ```
 
-Name the master agent once with `herdr agent rename "$HERDR_PANE_ID" master` (unless it already has a name) and pass that name in `ORCH_MASTER`.
+Name the master agent once with `herdr agent rename "$HERDR_PANE_ID" master` (unless it already has a name) and pass that **Herdr agent name** in `ORCH_MASTER`. Before dispatch, verify `ORCH_MASTER` and `ORCH_AGENT` identify different agents. Never pass a Pi session id to `herdr agent prompt` or a direct session-message API; if no distinct target is available, persist the mailbox report and let the master consume it through `orch_status`.
+
+## Message routing invariant
+
+The mailbox is the durable receive path; Herdr prompts are only best-effort wake-ups. A worker sends reports and questions to the master named by `ORCH_MASTER`, and the master sends replies to the worker identity stored in that task's report. The notifier accepts only a Herdr agent name, rejects Pi session UUIDs and session paths, and skips an empty or self target, so a misconfigured `ORCH_MASTER` cannot send a message back into the same Pi session. A failed or skipped wake-up never invalidates a persisted report or question.
 
 ## Supervision loop (master)
 

@@ -83,7 +83,7 @@ The chief may summarize several child results, but must preserve child IDs and e
 
 ## Transport
 
-The envelope needs a concrete channel or it is only a description. Between Herdr panes the canonical channel is the mailbox written by `scripts/mailbox.mjs report` or native tool `orch_report` (a subset of the envelope with `seq`, atomic directory locks, and timestamps), read by `mailbox.mjs status` / `orch_status`; `herdr agent prompt` carries only directives and wake-up nudges.
+The envelope needs a concrete channel or it is only a description. Between Herdr panes the canonical channel is the mailbox written by `scripts/mailbox.mjs report` or native tool `orch_report` (a subset of the envelope with `seq`, atomic directory locks, and timestamps), read by `mailbox.mjs status` / `orch_status`; `herdr agent prompt` carries only directives and wake-up nudges. A direct session-message API is not the mailbox transport: discover a distinct peer first, never address the current sender session, and fall back to the mailbox when no peer is available.
 
 Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 hashed files under `<git-common-dir>/orchestrator/<run>/evidence/` via `storeEvidence` (`orch_evidence`) and referenced as full SHA-256 content-addressed records `ref:sha256:<hash>`. The envelope passes the semantic reference only, ensuring prompt contexts remain completely unpolluted; content remains readable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into prompts. Mailbox report notifications to the master are dispatched non-blockingly, guaranteeing that notification failures never prevent report persistence. See [supervision.md](supervision.md).
 
@@ -94,6 +94,7 @@ Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 h
 - Never copy a child transcript into the master prompt.
 - Validate the envelope before accepting it; malformed or missing evidence is `BLOCKED`, not `READY`.
 - Make messages idempotent using `id` and `run`; duplicate delivery must not create a second merge or close a task twice.
+- Keep sender and recipient distinct: `ORCH_MASTER` is a Herdr agent name, not a Pi session id. Accept only bounded Herdr agent-name syntax, reject UUID/session-path targets, skip empty/self targets, and treat the mailbox as the authoritative receive path when wake-up delivery fails.
 - Treat Git, CI and verified files as authoritative when a message conflicts with current state.
 - Use controlled redundancy, not blind duplication: repeat only the identity anchors (`run`, `task.id`, `sender.session`, `branch`, `worktree`, `state`, `next`) in every hop. Keep the full payload in one canonical record and pass references plus a digest (`sha256`) instead of duplicating logs or prose. A short human summary may be emitted beside the JSON, but both representations must be generated from the same record.
 - Deduplicate schemas with `$ref` and cache content by digest. Invalidate a cached result when source content, instructions, schema version or relevant tool configuration changes.

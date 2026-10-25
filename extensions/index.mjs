@@ -48,7 +48,7 @@ export default function (pi) {
         evidence: { type: "string", description: "Large log, test output, or diff to save to disk as a semantic ref" },
         run: { type: "string", description: "Run identifier (defaults to ORCH_RUN env)" },
         agent: { type: "string", description: "Herdr agent name" },
-        notify: { type: "string", description: "Master agent name to nudge via Herdr" }
+        notify: { type: "string", description: "Distinct Herdr agent name to nudge; never the current Pi session or sender" }
       },
       required: ["task", "state"]
     },
@@ -126,7 +126,7 @@ export default function (pi) {
         task: { type: "string", description: "Task identifier" },
         question: { type: "string", description: "The specific question or decision needed" },
         run: { type: "string", description: "Run identifier" },
-        notify: { type: "string", description: "Master agent name" }
+        notify: { type: "string", description: "Distinct Herdr master agent name; never the current Pi session or sender" }
       },
       required: ["task", "question"]
     },
@@ -186,10 +186,9 @@ export default function (pi) {
 
   // 6. Interactive Command: /orch
   if (typeof pi.registerCommand === "function") {
-    pi.registerCommand({
-      name: "orch",
+    pi.registerCommand("orch", {
       description: "Display current multi-agent orchestration status",
-      async execute(_args, ctx) {
+      async handler(_args, ctx) {
         const run = process.env.ORCH_RUN ?? "default";
         try {
           const dir = runDir({ run });
