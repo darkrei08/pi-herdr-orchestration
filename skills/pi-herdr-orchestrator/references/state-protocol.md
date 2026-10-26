@@ -43,6 +43,7 @@ When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In bo
   "sender": {"role": "implementer", "session": "pi-i42", "tab": "[I#42] Config loading", "worktree": ".worktrees/issue-42-config-loading"},
   "task": {"id": "I#42", "type": "issue", "goal": "Fix config loading"},
   "state": "READY",
+  "lifecycle": "ready",
   "branch": "fix/42-config-loading",
   "summary": "Config precedence now follows repository rules.",
   "checks": [{"name": "unit", "status": "PASS", "ref": "test-run-884"}],
@@ -54,7 +55,18 @@ When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In bo
 }
 ```
 
-Required fields are `v`, `kind`, `id`, `parent`, `sender`, `task`, `state`, `summary`, `checks`, `memory` and `next`. Add fields only when they carry decision value. Use stable IDs and references instead of embedding logs, diffs or transcript text. Allowed states include `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED` and `CLOSED`; checks use `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`.
+Required fields are `v`, `kind`, `id`, `parent`, `sender`, `task`, `state`, `summary`, `checks`, `memory` and `next`. Add fields only when they carry decision value. Use stable IDs and references instead of embedding logs, diffs or transcript text. Allowed canonical states include `ASSIGNED`, `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED` and `CLOSED`; checks use `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`.
+
+For upstream Herdsman (`boadij/pi-herdsman`) compatibility, the envelope includes an optional derived `lifecycle` field:
+- `ASSIGNED` $\rightarrow$ `pending`
+- `WORKING` $\rightarrow$ `running`
+- `READY` $\rightarrow$ `ready`
+- `DEVELOPMENT` $\rightarrow$ `running`
+- `BLOCKED` $\rightarrow$ `blocked`
+- `FAILED` $\rightarrow$ `failed`
+- `CLOSED` $\rightarrow$ `closed`
+
+Legacy consumers continue to consume uppercase `state` safely without a wire migration. Generic workflow evidence remains durable and authoritative over terminal coordination; an `unknown` or lost terminal liveness state fails closed into `DECIDE` to mandate master reconciliation before proceeding.
 
 ## Message directions
 
@@ -71,9 +83,9 @@ The chief may summarize several child results, but must preserve child IDs and e
 
 ## Transport
 
-The envelope needs a concrete channel or it is only a description. Between Herdr panes the canonical channel is the mailbox written by `scripts/mailbox.mjs report` or native tool `orch_report` (a subset of the envelope with `seq`, atomic directory locks, and timestamps), read by `mailbox.mjs status` / `orch_status`; `herdr agent prompt` carries only directives and wake-up nudges.
+The envelope needs a concrete channel or it is only a description. Between Herdr panes the canonical channel is the mailbox written by `scripts/mailbox.mjs report` or native tool `orch_report` (a subset of the envelope with `seq`, atomic directory locks, and timestamps), read by `mailbox.mjs status` / `orch_status`; `herdr agent prompt` carries only directives and wake-up nudges. A direct session-message API is not the mailbox transport: discover a distinct peer first, never address the current sender session, and fall back to the mailbox when no peer is available.
 
-Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 hashed files under `<git-common-dir>/orchestrator/<run>/evidence/` via `storeEvidence` (`orch_evidence`) and referenced as `ref:sha256:<hash>`. The envelope passes the semantic reference only, ensuring prompt contexts remain completely unpolluted. See [supervision.md](supervision.md).
+Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 hashed files under `<git-common-dir>/orchestrator/<run>/evidence/` via `storeEvidence` (`orch_evidence`) and referenced as full SHA-256 content-addressed records `ref:sha256:<hash>`. The envelope passes the semantic reference only, ensuring prompt contexts remain completely unpolluted; content remains readable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into prompts. Mailbox report notifications to the master are dispatched non-blockingly, guaranteeing that notification failures never prevent report persistence. See [supervision.md](supervision.md).
 
 ## Token and reliability rules
 
@@ -82,6 +94,7 @@ Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 h
 - Never copy a child transcript into the master prompt.
 - Validate the envelope before accepting it; malformed or missing evidence is `BLOCKED`, not `READY`.
 - Make messages idempotent using `id` and `run`; duplicate delivery must not create a second merge or close a task twice.
+- Keep sender and recipient distinct: `ORCH_MASTER` is a Herdr agent name, not a Pi session id. Accept only bounded Herdr agent-name syntax, reject UUID/session-path targets, skip empty/self targets, and treat the mailbox as the authoritative receive path when wake-up delivery fails.
 - Treat Git, CI and verified files as authoritative when a message conflicts with current state.
 - Use controlled redundancy, not blind duplication: repeat only the identity anchors (`run`, `task.id`, `sender.session`, `branch`, `worktree`, `state`, `next`) in every hop. Keep the full payload in one canonical record and pass references plus a digest (`sha256`) instead of duplicating logs or prose. A short human summary may be emitted beside the JSON, but both representations must be generated from the same record.
 - Deduplicate schemas with `$ref` and cache content by digest. Invalidate a cached result when source content, instructions, schema version or relevant tool configuration changes.
@@ -105,7 +118,7 @@ await tools.orch_ask({ task: "I#42", question: "Should we deprecate the legacy a
 await tools.orch_reply({ task: "I#42", answer: "Yes, deprecate with a warning" });
 ```
 
-Feed only compact envelopes or semantic evidence references (`ref:sha256:...`) to the next step. Use `parallel` for independent chiefs or review tasks, `pipeline` for ordered phases, `withWorktree` for isolated implementation, and a persistent agent handle when a chief must continue across turns. In Herdr, use one workspace per repository, one master pane, chief panes grouped by department and child panes named after their task. Multiple panes may observe or coordinate inside a worktree; only one writer may modify a given worktree at a time. Give every implementation a dedicated linked worktree.
+Feed only compact envelopes or semantic evidence references (`ref:sha256:...`) to the next step. Use `parallel` for independent chiefs or review tasks, `pipeline` for ordered phases, `withWorktree` for isolated implementation, and a persistent agent handle when a chief must continue across turns. Each direct `agent` call must carry the selected `label`, `skills`, `extensions`, and `worktree` options; this is the executable bridge from routing decisions to child sessions. In Herdr, use one workspace per repository, one master pane, chief panes grouped by department and child panes named after their task. Multiple panes may observe or coordinate inside a worktree; only one writer may modify a given worktree at a time. Give every implementation a dedicated linked worktree. When fully inspectable mode is enabled, PiWorkflow owns numbered tab order; the envelope records the semantic label and worktree, not a fabricated pane ID.
 
 Run Guardian Angel after implementation checks and before a result becomes `READY`. Record the GGA review status, version, configuration digest and reviewed file hashes in `checks`; a stale cached pass is `BLOCKED` until invalidated and rerun.
 

@@ -6,12 +6,12 @@ A dispatched session that nobody watches and that never reports is not delegatio
 
 | Channel | Direction | Role |
 | --- | --- | --- |
-| Mailbox `scripts/mailbox.mjs` / `orch_report` | worker -> master | Source of truth. One JSON file per task in `<git-common-dir>/orchestrator/<run>/`, shared by all worktrees, untracked. Atomic directory lock (`lock.mjs`), monotonic `seq`, append-only `events.jsonl` |
-| Semantic evidence store | worker -> master | Large logs/diffs saved to `<git-common-dir>/orchestrator/<run>/evidence/<sha256>.txt`. Passed as compact `ref:sha256:...` so context windows stay pristine |
+| Mailbox `scripts/mailbox.mjs` / `orch_report` | worker -> master | Source of truth. One JSON file per task in `<git-common-dir>/orchestrator/<run>/`, shared by all worktrees, untracked. Atomic directory lock (`lock.mjs`), monotonic `seq`, append-only `events.jsonl`, preserves uppercase states and provides derived lifecycle field |
+| Semantic evidence store | worker -> master | Large logs/diffs saved to `<git-common-dir>/orchestrator/<run>/evidence/<sha256>.txt`. Passed as compact `ref:sha256:<hash>` so context windows stay pristine; inspectable on demand via `readEvidence` / `orch_evidence` without copying large payloads into prompts |
 | Ask / Reply protocol (`orch_ask` / `orch_reply`) | worker <-> master | Worker flags `BLOCKED` with a question; master replies without worker hanging or spinning |
 | `herdr agent list/get/wait/read` | master observes worker | Liveness only: `working`, `idle`, `done`, `blocked`, `unknown`. Never proof of completion |
 | `herdr agent prompt` | master -> worker | Directives, nudges, decisions |
-| `herdr agent prompt <master>` | worker -> master | Best-effort wake-up after a report (`ORCH_MASTER`). Loss is harmless because the mailbox holds the report |
+| `herdr agent prompt <master>` | worker -> master | Best-effort wake-up after a report (`ORCH_MASTER`). The target must be a distinct Herdr agent name, never the worker's own Pi/session id. Dispatched non-blockingly (`spawn` unref) so delivery or notification failure cannot block mailbox persistence or turn a completed report into a failure |
 
 Pane state says whether an agent is busy. Only a mailbox report plus Git evidence says what it achieved.
 
@@ -35,7 +35,11 @@ Report with either native Pi tools (orch_report, orch_ask) or CLI:
 - Never end your turn silently. Do not close your own tab. The master decides what happens next.
 ```
 
-Name the master agent once with `herdr agent rename "$HERDR_PANE_ID" master` (unless it already has a name) and pass that name in `ORCH_MASTER`.
+Name the master agent once with `herdr agent rename "$HERDR_PANE_ID" master` (unless it already has a name) and pass that **Herdr agent name** in `ORCH_MASTER`. Before dispatch, verify `ORCH_MASTER` and `ORCH_AGENT` identify different agents. Never pass a Pi session id to `herdr agent prompt` or a direct session-message API; if no distinct target is available, persist the mailbox report and let the master consume it through `orch_status`.
+
+## Message routing invariant
+
+The mailbox is the durable receive path; Herdr prompts are only best-effort wake-ups. A worker sends reports and questions to the master named by `ORCH_MASTER`, and the master sends replies to the worker identity stored in that task's report. The notifier accepts only a Herdr agent name, rejects Pi session UUIDs and session paths, and skips an empty or self target, so a misconfigured `ORCH_MASTER` cannot send a message back into the same Pi session. A failed or skipped wake-up never invalidates a persisted report or question.
 
 ## Supervision loop (master)
 
@@ -48,7 +52,7 @@ The master does not end its turn after dispatch. Repeat until every task is `CLO
 | --- | --- | --- |
 | `OK` | Reporting on time, or closed | Nothing |
 | `ASK` | Worker submitted a blocking question (`orch_ask`) | Read question, respond with `node mailbox.mjs reply --task <id> --answer "<decision>"` or `orch_reply` |
-| `DECIDE` | Worker reported `READY`/`DEVELOPMENT`/`BLOCKED`/`FAILED` | Verify with Git and CI, then issue a `decision` (integrate, continue, retry, escalate) |
+| `DECIDE` | Worker reported `READY`/`DEVELOPMENT`/`BLOCKED`/`FAILED`, or agent liveness is `unknown` (fail-closed) | Verify with Git and CI, then issue a `decision` (integrate, continue, retry, escalate) |
 | `SILENT` | Agent is idle or done but last report is still `ASSIGNED`/`WORKING` | `herdr agent read <name> --source recent-unwrapped --lines 120`, then one nudge: "Report your state with mailbox.mjs now." |
 | `STALE` | Agent is working but no report within the stale window | Read the pane; if progressing, ask for a report at the next phase boundary; if looping, steer or stop it |
 | `NEEDS_HUMAN` | Herdr sees an approval or question dialog | `agent get` and `agent read`; surface to the user. Never answer approval dialogs on the user's behalf |
@@ -67,7 +71,8 @@ The master does not end its turn after dispatch. Repeat until every task is `CLO
 - Single accountable owner per task; the mailbox file for a task is written only by its worker and by the master's decision.
 - Escalate by exception: the master reads only flagged tasks, not every transcript. Read panes only for `SILENT`, `STALE`, `NEEDS_HUMAN` or `GONE`.
 - Bounded retries: at most 2 nudges per silence and 2 restarts per task, then mark `BLOCKED` and escalate with evidence.
-- `unknown` pane state is not completion and not failure: classify it from the mailbox and the pane read.
+- `unknown` pane state is not completion and not failure: classify it fail-closed as `DECIDE` to require master verification against the mailbox and Git before proceeding.
+- Upstream Herdsman alignment: follows `boadij/pi-herdsman` supervision semantics, exact-session supervision, presentation-only tab labels, and non-blocking notifications.
 - Idempotence: reports carry `seq`; ignore a report with a lower `seq` than one already processed.
 - Closure order: report persisted, master decision recorded, memory saved, then close the pane. Closing a pane never discards unreported work.
 - If Herdr or the mailbox script is unavailable, say so and supervise from Git and pane reads; never claim a session reported when it did not.

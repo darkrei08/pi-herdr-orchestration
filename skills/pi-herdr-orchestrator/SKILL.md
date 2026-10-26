@@ -10,6 +10,7 @@ Act as the control session for the current repository. Respect the user's actual
 ## Principles
 
 - Correctness before speed; small, reviewable, reversible changes; explicit ownership of every task; no completion claim without evidence.
+- Treat review as a layered operating path: verify before PR, run required checks, separate bug/security review, classify risk, apply the required human approval, then integrate and preserve rollback evidence. See [review-operating-model.md](references/review-operating-model.md).
 - Repository-agnostic: discover purpose, structure, commands and conventions from the repository. Repository-local instructions override these generic preferences unless they create a demonstrable safety or correctness problem.
 - Parallelism is a tool, not a goal: maximize independent, validated progress at minimum coordination cost. Every merge is backed by evidence; every temporary resource is reconciled or removed.
 
@@ -38,6 +39,33 @@ Act as the control session for the current repository. Respect the user's actual
 13. Decide destination from evidence: stable integration, preserved development branch, follow-up or blocked. Persist durable knowledge, close child sessions and tabs in order, report to the master, then rescan and audit. See [integration.md](references/integration.md) and [audit.md](references/audit.md).
 14. Close the cycle with the dashboard, evidence and final report. See [reporting.md](references/reporting.md).
 
+## Runtime dispatch contract
+
+When PiWorkflow is available, make the runtime behavior explicit instead of relying on prose:
+
+```javascript
+const results = await parallel("dispatch", {
+  scout: () => agent("Map the repository and return evidence.", {
+    label: "[CHIEF/SCOUT] Discovery",
+    skills: ["pi-herdr-orchestrator", "engineering-excellence"],
+    worktree: "scout",
+  }),
+  build: () => agent("Implement the bounded task and verify it.", {
+    label: "[CHIEF/BUILD] Implementation",
+    skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
+    worktree: "build",
+  }),
+});
+return results;
+```
+
+- Use a named `workflow` and `parallel("<operation>", { ... })` for independent work. Use `pipeline("<operation>", items, stages)` when every item must pass the same ordered stages. Never replace these with `Promise.all`/`map` agent fan-out or aliases: PiWorkflow needs direct call sites to preserve deterministic replay and admission order.
+- Give every agent a stable `label`, explicit `skills` selectors, only the required `extensions`, and a named isolated `worktree` for writes. Verify each requested skill and extension in the live capability report first; an unavailable required capability is `BLOCKED`, not silently omitted.
+- The `parallel` object order is the dispatch order. In fully inspectable Herdr mode PiWorkflow assigns the corresponding `#1`, `#2`, ... index and `@piewf/herdr` creates labeled tabs inside the workflow workspace. These numbers are presentation order, not authority; assignment and mailbox evidence remain authoritative.
+- The trusted project settings written by repository initialization enable `extensionSettings.herdr.enableFullyInspectableMode`. This is the supported `pi-extensible-workflows` transport; this repository must not shell out to `pi` or reimplement Herdr pane creation.
+- If Pi is not running inside Herdr, or PiWorkflow/@piewf/herdr is unavailable, use the documented single-session or direct-worktree fallback and report `NOT APPLICABLE`/`BLOCKED`. Never claim panes, tabs, parallel sessions, or skill execution that did not occur.
+- Route worker reports/questions through the mailbox first. Use `ORCH_MASTER` only as a distinct Herdr agent name for a best-effort wake-up; never pass the current Pi session id or the worker's own identity. If peer discovery is empty or ambiguous, skip the wake-up and let the master consume `orch_status`/`orch_reply` state.
+
 ## Control rules
 
 - Do not open sessions or panes indiscriminately: one session per independent, actionable unit, with reserved file ownership, one responsibility and one verifiable completion condition. The master coordinates and decides; workers implement.
@@ -51,6 +79,8 @@ Act as the control session for the current repository. Respect the user's actual
 - Delegate or parallelize only when permitted by the host, user and project instructions and when task dependencies allow it. A separate reviewer is desirable when available, never mandatory theater.
 - Do not automatically merge, push, close PRs/issues, delete branches, or broaden the user's scope without applicable authorization. Preserve unrelated work and uncommitted changes.
 - Report `PASS`, `FAIL`, `BLOCKED` or `NOT RUN` accurately for relevant checks. State exact remaining blockers and next action.
+- Cap repeated review/fix rounds at three; after that, pause for an approach decision and re-review only the new diff. Approval is bound to the exact reviewed commit and must be renewed after unverified commits.
+- Use incidents, reverts, and confirmed harmful false positives as evaluator cases for reviewer changes. Record human-attention and regression guardrail metrics when available; never fabricate unavailable telemetry.
 - Skill distribution is host-specific: verify Codex, Claude Code, Antigravity and Antigravity CLI roots after installation; never claim support merely because a `SKILL.md` exists in one agent's directory.
 - Treat Herdr tab labels as presentation only. A role-derived label such as `Lead`, `Managed Lead`, `Manager`, or `Chief` does not grant authority, replace assignment checks, or prove ownership; preserve custom names unless the runtime owns the canonical label.
 - Treat model execution failure as a nonterminal fact. Do not automatically retry the model, replay tools, stop child Agents, integrate partial work, or emit a successful handoff. Inspect exact assignment and external effects before an authorized continuation.
@@ -74,6 +104,7 @@ Act as the control session for the current repository. Respect the user's actual
 | Stable/dev decisions and cleanup | [integration.md](references/integration.md) |
 | Rescan, recovery and final audit | [audit.md](references/audit.md) |
 | Report-back mailbox, supervision loop, escalation rules | [supervision.md](references/supervision.md) |
+| Layered review, risk, rollback and evaluator loop | [review-operating-model.md](references/review-operating-model.md) |
 | Dashboard, evidence, completion criteria, final report | [reporting.md](references/reporting.md) |
 
 Read only the references relevant to the current phase. Avoid dumping every file into the context window.

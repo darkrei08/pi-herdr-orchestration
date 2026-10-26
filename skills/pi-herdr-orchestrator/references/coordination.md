@@ -28,6 +28,14 @@ worker question (orch_ask) ↔ master answer (orch_reply)
 
 Every report must identify the task, session/tab, branch, worktree, checks, result, risks, memory state and next action. A child cannot promote its own work, close a related Issue or discard a worktree merely because its local task is finished.
 
+## Authority semantics and presentation boundaries
+
+Aligned with upstream Herdsman (`boadij/pi-herdsman`) supervision semantics:
+
+- **Presentation-only tab labels:** Role-derived Herdr tab labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) are presentation only. They never grant authority, supersede assignment checks, or prove task ownership.
+- **Manager/Chief boundaries on destructive operations:** Chiefs coordinate and normalize reports within their bounded department; they never perform destructive worktree operations (such as branch deletion, worktree pruning, or force resets) without explicit confirmation from the Master control plane.
+- **Workflow evidence vs. terminal coordination:** Generic workflow evidence is stored durably as content-addressed records in the mailbox (`repo-orchestrator/v1` envelope and `ref:sha256:...` evidence files). Terminal coordination (Herdr panes, prompts, and tabs) is ephemeral presentation and execution transport only. Pane liveness does not prove work completion.
+
 A chief supervises its children with the loop in [supervision.md](supervision.md) and forwards only flagged or closed tasks. Use the compact envelope in [state-protocol.md](state-protocol.md) for these reports. The chief forwards a `chief_report`; the master returns a `decision`. This keeps communication machine-readable and avoids injecting transcripts into every parent session. In PiWorkflow environments, `orch_ask` and `orch_reply` seamlessly bridge asynchronous Herdr workers with workflow script checkpoints.
 
 ## Tab registry
@@ -41,6 +49,8 @@ Keep a small registry in the master context or an authorized workflow artifact:
 | `[I#42]` | implementation | Config loading | `fix/42-config-loading` | `.worktrees/issue-42-config-loading` | working |
 
 Rename each tab immediately after creation. Keep the ordering stable and understandable; close a child tab only after its session memory, report and master decision have been recorded.
+
+PiWorkflow and `@piewf/herdr` provide the runtime implementation for workflow-owned tabs. With fully inspectable mode enabled, the scheduler's admission index is rendered as `#1`, `#2`, ... and the agent's `label` supplies the semantic name. Keep the `parallel` object keys and labels stable so replay and visual ordering agree; never treat the numeric index or a role label as authority. The trusted project setting is created by `init-repository.mjs`; a manual global setting is not required for initialized repositories.
 
 ## Capability fallback
 

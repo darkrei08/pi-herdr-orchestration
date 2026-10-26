@@ -107,8 +107,9 @@ The orchestrator guarantees clean workspace boundaries:
 - **Single-Writer Rule:** Exactly one writer modifies a given worktree at any time.
 - **Herdr Terminal Multiplexing:**
   - One Herdr workspace per repository.
-  - Panes and tabs are created with semantic labels immediately upon startup (`repo:issue-42-auth`, `repo:pr-87-review`, `repo:compose-validation`).
-  - Terminal state and processes remain persistent and inspectable even during agent context switches.
+  - PiWorkflow agents are launched with explicit `label`, `skills`, `extensions`, and isolated `worktree` options.
+  - With trusted fully inspectable mode, the scheduler's stable admission order becomes numbered tabs (`#1`, `#2`, ...) with semantic labels (`repo:issue-42-auth`, `repo:pr-87-review`, `repo:compose-validation`).
+  - Terminal state and processes remain persistent and inspectable even during agent context switches; pane liveness never replaces mailbox or Git evidence.
 
 ---
 
@@ -222,13 +223,16 @@ Dispatched sessions that operate without supervision or feedback loops lead to s
 
 #### Current Herdsman alignment
 
-The orchestration contract follows the latest upstream Herdsman behavior:
+The orchestration contract follows the latest upstream Herdsman (`boadij/pi-herdsman`) supervision semantics:
 
-- Select Agents by effective runtime capabilities, not filenames or configured child names. If no suitable child is available, investigate locally and record the capability gap instead of simulating delegation.
-- Keep runtime capability discovery separate from layered definition configuration. Disabled definitions or definitions with unavailable required children are not selectable runtime capabilities.
-- Treat role-derived Herdr tab labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) as presentation only. They never grant authority or prove assignment ownership.
-- Prefer deterministic simulated smoke for covered Pi/Herdr boundary scenarios; use live-model smoke when model/provider behavior or instruction adherence is under test.
-- Treat model execution failure as nonterminal evidence: do not retry automatically, replay tools, stop children, integrate partial work, or publish a successful handoff.
+- **State compatibility & derived lifecycle:** Preserves existing canonical uppercase states (`ASSIGNED`, `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED`, `CLOSED`) while adding an optional derived lowercase lifecycle field (`pending`, `running`, `ready`, `blocked`, `failed`, `closed`) for full backward and upstream interoperability without wire migration.
+- **Deduplicated full SHA-256 evidence store:** Large logs and diffs are hashed to full 64-char SHA-256 content-addressed files under `evidence/<sha256>.txt` and referenced as `ref:sha256:<hash>`. Evidence is inspectable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into model prompts.
+- **Non-blocking notifications:** Notifications to master sessions (`herdr agent prompt`) run non-blockingly (`spawn` unref) so delivery issues or unavailable Herdr runtimes cannot block mailbox report persistence or turn a completed task into a false failure.
+- **Fail-closed supervision:** Terminal agent states that report `unknown` liveness fail closed to `DECIDE`, mandating that the master reconcile with Git and CI before proceeding rather than assuming tasks are healthy.
+- **Operational boundaries:** Role-derived Herdr tab labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) are presentation only. Chiefs coordinate and normalize reports within their bounded department; they never perform destructive worktree operations without explicit confirmation from the Master control plane.
+- **Capability-aware dispatch:** Select Agents by effective runtime capabilities, not filenames or configured child names. If no suitable child is available, investigate locally and record the capability gap instead of simulating delegation.
+- **Simulation before live smoke:** Prefer deterministic simulated smoke for covered Pi/Herdr boundary scenarios; use live-model smoke when model/provider behavior or instruction adherence is under test.
+- **Nonterminal execution failure:** Treat model execution failure as nonterminal evidence: do not retry automatically, replay tools, stop children, integrate partial work, or publish a successful handoff.
 
 These points are aligned with `boadij/pi-herdsman` commits `0dc62d39`, `a422c804`, `c72acadf`, `44698e40`, `56bd0258`, and `321114de` (October 2026).
 
@@ -246,14 +250,36 @@ Before merging individual green branches into `main`, the master executes an **I
 
 Pi Herdr Orchestration dynamically bridges and routes between major AI coding agent skill ecosystems:
 
-### PiWorkflow (`pi-extensible-workflows` v6.2.0)
+### PiWorkflow (`pi-extensible-workflows` v6.2.2)
 - **Role:** Execution engine substrate.
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
+  - **Explicit child loadouts:** Every routed child receives a stable `label`, verified `skills` selectors, required `extensions`, and an isolated `worktree` when it writes.
+  - **Ordered Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents are created in a dedicated workspace and rendered as numbered labeled tabs in scheduler admission order.
   - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
   - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
   - **Reliable Linux Process Liveness:** Uses `/proc/<pid>/stat` starttime instead of `ctime` to eliminate false positives from kernel PID recycling.
   - **Workflow Recovery:** Replaying completed operations through `workflow_status`, `workflow_retry`, and `workflow_resume`.
+
+Example dispatch:
+
+```javascript
+const reports = await parallel("repository-audit", {
+  scout: () => agent("Map the repository.", {
+    label: "[CHIEF/SCOUT] Discovery",
+    skills: ["pi-herdr-orchestrator", "engineering-excellence"],
+    worktree: "scout",
+  }),
+  tests: () => agent("Define and run focused checks.", {
+    label: "[CHIEF/QUALITY] Tests",
+    skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
+    worktree: "tests",
+  }),
+});
+return reports;
+```
+
+Use `pipeline(...)` for ordered stages. Do not use `Promise.all`/`map` agent fan-out, omit required skills, or claim Herdr tabs when the runtime capability report says Herdr is unavailable.
 
 ### Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)
 - **Role:** Independent role authoring, configuration, and runtime preparation.
@@ -384,6 +410,7 @@ node scripts/init-repo.mjs --dir /path/to/my-repo --apply
 This command automatically configures:
 - **Git Baseline:** Ensures repository initialization on `main` and creates `.worktrees/`.
 - **Gitignore Rules:** Appends `.worktrees/`, `.codegraph/`, and `.atl/` to `.gitignore`.
+- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`, preserving existing workflow settings.
 - **Engram Memory Identity:** Generates `.git/engram-project-identity.json` for isolated, persistent repository memory.
 - **Guardian Angel (GGA):** Creates `.gga` quality-gate configuration and baseline `AGENTS.md` guidelines.
 - **Semantic Code Navigation:** Deploys Serena project configuration for LSP symbol analysis.
