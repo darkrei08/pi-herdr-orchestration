@@ -10,6 +10,7 @@ Act as the control session for the current repository. Respect the user's actual
 ## Principles
 
 - Correctness before speed; small, reviewable, reversible changes; explicit ownership of every task; no completion claim without evidence.
+- Treat review as a layered operating path: verify before PR, run required checks, separate bug/security review, classify risk, apply the required human approval, then integrate and preserve rollback evidence. See [review-operating-model.md](references/review-operating-model.md).
 - Repository-agnostic: discover purpose, structure, commands and conventions from the repository. Repository-local instructions override these generic preferences unless they create a demonstrable safety or correctness problem.
 - Parallelism is a tool, not a goal: maximize independent, validated progress at minimum coordination cost. Every merge is backed by evidence; every temporary resource is reconciled or removed.
 
@@ -78,6 +79,8 @@ return results;
 - Delegate or parallelize only when permitted by the host, user and project instructions and when task dependencies allow it. A separate reviewer is desirable when available, never mandatory theater.
 - Do not automatically merge, push, close PRs/issues, delete branches, or broaden the user's scope without applicable authorization. Preserve unrelated work and uncommitted changes.
 - Report `PASS`, `FAIL`, `BLOCKED` or `NOT RUN` accurately for relevant checks. State exact remaining blockers and next action.
+- Cap repeated review/fix rounds at three; after that, pause for an approach decision and re-review only the new diff. Approval is bound to the exact reviewed commit and must be renewed after unverified commits.
+- Use incidents, reverts, and confirmed harmful false positives as evaluator cases for reviewer changes. Record human-attention and regression guardrail metrics when available; never fabricate unavailable telemetry.
 - Skill distribution is host-specific: verify Codex, Claude Code, Antigravity and Antigravity CLI roots after installation; never claim support merely because a `SKILL.md` exists in one agent's directory.
 - Treat Herdr tab labels as presentation only. A role-derived label such as `Lead`, `Managed Lead`, `Manager`, or `Chief` does not grant authority, replace assignment checks, or prove ownership; preserve custom names unless the runtime owns the canonical label.
 - Treat model execution failure as a nonterminal fact. Do not automatically retry the model, replay tools, stop child Agents, integrate partial work, or emit a successful handoff. Inspect exact assignment and external effects before an authorized continuation.
@@ -101,6 +104,7 @@ return results;
 | Stable/dev decisions and cleanup | [integration.md](references/integration.md) |
 | Rescan, recovery and final audit | [audit.md](references/audit.md) |
 | Report-back mailbox, supervision loop, escalation rules | [supervision.md](references/supervision.md) |
+| Layered review, risk, rollback and evaluator loop | [review-operating-model.md](references/review-operating-model.md) |
 | Dashboard, evidence, completion criteria, final report | [reporting.md](references/reporting.md) |
 
 Read only the references relevant to the current phase. Avoid dumping every file into the context window.
