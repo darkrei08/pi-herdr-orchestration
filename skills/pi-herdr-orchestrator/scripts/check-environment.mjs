@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveCompactionOwner } from "./compaction-owner.mjs";
 
 const skillRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const home = homedir();
@@ -200,18 +201,11 @@ const configuredPackages = Array.isArray(piSettings?.packages)
 const codexContextPackage = findPackage("pi-codex-context");
 const vccPackage = findPackage("@sting8k/pi-vcc") || findPackage("@adamjen/pi-vcc");
 const configuredCodexContext = configuredPackages.some((source) => source.includes("pi-codex-context"));
-const configuredVcc = configuredPackages.some((source) => source.includes("pi-vcc"));
+const configuredVcc = configuredPackages.some((source) => ["@sting8k/pi-vcc", "@adamjen/pi-vcc"].some((name) => source.includes(name)));
 const vccConfig = readJson(join(home, ".pi", "agent", "pi-vcc-config.json"));
-let compactionOwner = "pi-core";
-let compactionStatus = "installed";
-if (configuredVcc) {
-  compactionOwner = "conflict";
-  compactionStatus = "incompatible";
-} else if (configuredCodexContext || codexContextPackage) {
-  compactionOwner = "pi-codex-context";
-}
-checks.push(record("pi-compaction-owner", compactionStatus, {
-  owner: compactionOwner,
+const compaction = resolveCompactionOwner({ configuredVcc, configuredCodexContext });
+checks.push(record("pi-compaction-owner", compaction.status, {
+  owner: compaction.owner,
   settings_path: existsSync(settingsPath) ? settingsPath : null,
   configured_pi_codex_context: configuredCodexContext,
   detected_pi_codex_context: Boolean(codexContextPackage),
@@ -273,7 +267,7 @@ const result = {
 if (json) console.log(JSON.stringify(result, null, 2));
 else {
   for (const check of checks) console.log(`${check.status.toUpperCase().padEnd(13)} ${check.id}${check.version ? ` (${check.version})` : ""}`);
-  console.log(`\nCompaction owner: ${compactionOwner}`);
+  console.log(`\nCompaction owner: ${compaction.owner}`);
   console.log(`Required failures: ${requiredFailures.length}`);
 }
 
