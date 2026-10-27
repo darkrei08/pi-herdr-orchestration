@@ -14,6 +14,7 @@ import {
   ask,
   reply,
 } from "../skills/pi-herdr-orchestrator/scripts/mailbox.mjs";
+import { buildExecutionReport } from "../skills/pi-herdr-orchestrator/scripts/execution-graph.mjs";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -156,7 +157,29 @@ export default function (pi) {
     }
   });
 
-  // 5. Tool: orch_evidence
+  // 5. Tool: orch_execution_graph
+  pi.registerTool({
+    name: "orch_execution_graph",
+    label: "Execution Graph Report",
+    description: "Project supplied PiWorkflow trajectory data and orchestrator mailbox evidence into a bounded, versioned, read-only execution report.",
+    parameters: {
+      type: "object",
+      properties: {
+        trajectory: { type: "object", description: "PiWorkflow trajectory publisher or run snapshot" },
+        mailbox: { type: "array", items: { type: "object" }, description: "Orchestrator mailbox report entries" },
+        master: { type: "object", description: "Explicit master identity metadata" },
+        chiefs: { type: "array", items: { type: "object" }, description: "Explicit chief identity metadata" },
+        now: { type: "string", description: "Optional report timestamp" },
+        maxEvents: { type: "number", description: "Maximum events retained in the report" }
+      }
+    },
+    async execute(_id, params) {
+      const result = buildExecutionReport(params);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+  });
+
+  // 6. Tool: orch_evidence
   pi.registerTool({
     name: "orch_evidence",
     label: "Orchestrator Store or Read Evidence",
