@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { classify, storeEvidence, readEvidence, deriveLifecycle, fileFor, report, ask, reply, STATES, LIFECYCLE_STATES } from "./mailbox.mjs";
+import { classify, storeEvidence, readEvidence, deriveLifecycle, fileFor, report, ask, reply, runDir, STATES, LIFECYCLE_STATES } from "./mailbox.mjs";
 import { withLock } from "./lock.mjs";
 
 const now = Date.parse("2026-10-09T12:00:00Z");
@@ -73,6 +73,66 @@ test("deriveLifecycle maps legacy uppercase states and respects overrides", () =
   assert.equal(deriveLifecycle("CLOSED"), "closed");
   assert.equal(deriveLifecycle("running"), "running");
   assert.equal(deriveLifecycle("unknown-state"), "unknown");
+});
+
+test("runDir rejects path traversal in run identifiers", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-run-"));
+  const original = process.env.ORCH_DIR;
+  process.env.ORCH_DIR = dir;
+  try {
+    assert.throws(() => runDir({ dir: "../outside" }), /invalid orchestration directory/);
+    assert.throws(() => runDir({ dir: `${dir}/../outside` }), /invalid orchestration directory/);
+    assert.throws(() => runDir({ run: "../outside" }), /invalid run identifier/);
+    assert.throws(() => runDir({ run: "nested/run" }), /invalid run identifier/);
+    assert.equal(runDir({ dir }), dir);
+    assert.equal(runDir({ run: "repo-20261009" }), join(dir, "repo-20261009"));
+  } finally {
+    if (original === undefined) delete process.env.ORCH_DIR;
+    else process.env.ORCH_DIR = original;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("readEvidence rejects path traversal references", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-ev-safe-"));
+  try {
+    assert.throws(() => readEvidence(dir, "ref:sha256:../../outside"), /invalid evidence reference/);
+    assert.throws(() => readEvidence(dir, "ref:sha256:short"), /invalid evidence reference/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("withLock reclaims stale locks only when the recorded owner is gone", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-lock-stale-"));
+  const testFile = join(dir, "data.json");
+  const lockDir = join(dir, ".data.json.lock");
+  try {
+    mkdirSync(lockDir);
+    writeFileSync(join(lockDir, "owner.json"), JSON.stringify({ pid: Number.MAX_SAFE_INTEGER }));
+    const stale = new Date(Date.now() - 60_000);
+    utimesSync(lockDir, stale, stale);
+    let executed = false;
+    withLock(testFile, () => { executed = true; });
+    assert.equal(executed, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("withLock does not reclaim stale locks owned by a live process", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-lock-live-"));
+  const testFile = join(dir, "data.json");
+  const lockDir = join(dir, ".data.json.lock");
+  try {
+    mkdirSync(lockDir);
+    writeFileSync(join(lockDir, "owner.json"), JSON.stringify({ pid: process.pid }));
+    const stale = new Date(Date.now() - 60_000);
+    utimesSync(lockDir, stale, stale);
+    assert.throws(() => withLock(testFile, () => {}, 100), /Timed out waiting for lock/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("storeEvidence creates full SHA-256 reference and readEvidence retrieves content", () => {

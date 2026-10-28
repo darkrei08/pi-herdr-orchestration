@@ -1,4 +1,5 @@
 # Local Pi runtime state
+.engram/
 .atl/
 .codegraph/
 CLAUDE.md
@@ -8,6 +9,8 @@ CLAUDE.md
 .serena/
 
 # Local agent hooks & settings
+.gga.local
+agents/gga-pi.local/
 .claude/settings.local.json
 .cursor/
 .windsurf/

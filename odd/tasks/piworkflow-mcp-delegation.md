@@ -18,10 +18,10 @@ S6. "E quindi seguendo Excel Engine Engineering e le rispettive sottoskill proce
 
 ## Tasks
 
-- T1 | S1-S2 | Make PiWorkflow direct workflow calls with pi-ext-roles the only orchestrated delegation path; document and test the prohibition on native subagents_run | commit: pending
-- T2 | S2-S3 | Ensure role-based workflow children receive MCP-capable tools and validate the configured MCP server set | commit: pending
-- T3 | S4-S5 | Add bounded timeout and MCP smoke checks, then run focused verification without changing provider credentials | commit: pending
-- T4 | S1-S3 | Reconcile global runtime configuration and preserve unrelated dirty repository state | commit: pending
+- T1 | S1-S2 | Make PiWorkflow direct workflow calls with pi-ext-roles the only orchestrated delegation path; document and test the prohibition on native subagents_run | commit: 5fd71c6
+- T2 | S2-S3 | Ensure role-based workflow children receive MCP-capable tools and validate the configured MCP server set | commit: 5fd71c6
+- T3 | S4-S5 | Add bounded timeout and MCP smoke checks, then run focused verification without changing provider credentials | commit: 5fd71c6
+- T4 | S1-S3 | Reconcile global runtime configuration and preserve unrelated dirty repository state | commit: 5fd71c6
 - T5 | S6 | Correct the audit findings with regression tests, commit coherent work units, and deliver only the authorized branch | commit: pending
 
 ## Log
@@ -42,3 +42,5 @@ L4. Verified current state: native foreground subagent attempts failed with AGEN
 L5. Final evidence: PiWorkflow default researcher role completed a read-only Context7 MCP workflow smoke. CLIProxyAPI preflight and inventory show all role aliases currently resolve to Pi-listed cliproxyapi routes; all 16 role diagnostics include codemode. The MCP registry checker reports 5/5 configured servers reachable at URL or executable level. npm test, strict capability check, syntax checks, and git diff check pass. BrowserOS/Firecrawl action calls were not executed because they may be authenticated or side-effecting; discovery and transport reachability passed.
 
 L6. Audit correction evidence: added failing-first regression tests for run and evidence path traversal, explicit directory traversal, stale lock ownership, MCP HTTP health/protocol initialization, and secret redaction. Hardened mailbox inputs, lock ownership recovery, MCP initialize probing, local config ignores, and documentation. Final verification reports 19/19 tests pass, 5/5 MCP endpoints reachable, 2 HTTP MCP endpoints initialized, 3 stdio servers transport-only/unverified, strict checks pass, syntax checks pass, and diff checks pass. Native Gentle review could not start because the candidate view was rejected before lineage creation; the final source review and regression suite found no remaining confirmed security defect in the changed code.
+
+L7. Delivery strategy: auto-chain. Slice 1 boundary is commit 5fd71c6 and contains the PiWorkflow, role, MCP checker, documentation, and task specification. Slice 2 contains the high-risk mailbox path and lock hardening plus regression tests and hygiene updates.

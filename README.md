@@ -250,7 +250,7 @@ Before merging individual green branches into `main`, the master executes an **I
 
 Pi Herdr Orchestration dynamically bridges and routes between major AI coding agent skill ecosystems:
 
-### PiWorkflow (`pi-extensible-workflows` v6.2.2)
+### PiWorkflow (`pi-extensible-workflows` v6.3.0)
 - **Role:** Execution engine substrate.
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.

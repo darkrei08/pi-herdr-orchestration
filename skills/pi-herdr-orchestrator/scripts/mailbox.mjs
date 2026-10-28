@@ -11,7 +11,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withLock } from "./lock.mjs";
 
@@ -44,6 +44,8 @@ export function deriveLifecycle(state) {
 const PENDING = new Set(["ASSIGNED", "WORKING"]);
 const CHECKS = new Set(["PASS", "FAIL", "BLOCKED", "NOT RUN"]);
 const HERDR_AGENT_NAME = /^[a-z][a-z0-9_-]{0,31}$/;
+const RUN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const EVIDENCE_HASH = /^[0-9a-f]{16,64}$/;
 const PI_SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function currentAgentName() {
@@ -81,9 +83,14 @@ export function parse(argv) {
 }
 
 export function runDir(opts) {
-  if (opts?.dir) return resolve(opts.dir);
+  if (opts?.dir) {
+    const dir = String(opts.dir);
+    if (!isAbsolute(dir) || dir.split(/[\\/]+/).includes("..")) throw new Error(`invalid orchestration directory: ${opts.dir}`);
+    return resolve(dir);
+  }
   const run = opts?.run ?? process.env.ORCH_RUN;
   if (!run) throw new Error("--run (or ORCH_RUN) is required");
+  if (typeof run !== "string" || !RUN_ID.test(run)) throw new Error(`invalid run identifier: ${run}`);
   if (process.env.ORCH_DIR) return resolve(process.env.ORCH_DIR, run);
   const git = spawnSync("git", ["rev-parse", "--git-common-dir"], { encoding: "utf8" });
   if (git.status !== 0) throw new Error("not inside a git repository; set ORCH_DIR");
@@ -109,6 +116,7 @@ export function readEvidence(dir, ref) {
     throw new Error(`invalid evidence reference: ${ref}`);
   }
   const hash = ref.replace(/^ref:sha256:/, "").trim();
+  if (!EVIDENCE_HASH.test(hash)) throw new Error(`invalid evidence reference: ${ref}`);
   const evidenceDir = join(dir, "evidence");
   const exactFile = join(evidenceDir, `${hash}.txt`);
   if (existsSync(exactFile)) {
