@@ -9,6 +9,7 @@
     "check:strict": "node scripts/check.mjs --strict",
     "check:json": "node scripts/check.mjs --json",
     "check:mcp": "node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json",
+    "check:anthropic-small-business": "node skills/pi-herdr-orchestrator/scripts/check-anthropic-small-business.mjs --json",
     "bootstrap": "node scripts/bootstrap.mjs",
     "bootstrap:apply": "node scripts/bootstrap.mjs --apply",
     "init-repo": "node scripts/init-repo.mjs",
@@ -16,7 +17,8 @@
     "mailbox": "node scripts/mailbox.mjs",
     "mailbox:status": "node scripts/mailbox.mjs status",
     "test:dispatch": "node --test skills/pi-herdr-orchestrator/scripts/dispatch.test.mjs",
-    "test": "node --test skills/pi-herdr-orchestrator/scripts/mailbox.test.mjs skills/pi-herdr-orchestrator/scripts/dispatch.test.mjs"
+    "test:anthropic-small-business": "node --test skills/pi-herdr-orchestrator/scripts/check-anthropic-small-business.test.mjs",
+    "test": "node --test skills/pi-herdr-orchestrator/scripts/mailbox.test.mjs skills/pi-herdr-orchestrator/scripts/dispatch.test.mjs skills/pi-herdr-orchestrator/scripts/check-anthropic-small-business.test.mjs"
   },
   "keywords": [
     "pi",
@@ -32,7 +34,8 @@
       "./extensions/index.mjs"
     ],
     "skills": [
-      "./skills/pi-herdr-orchestrator"
+      "./skills/pi-herdr-orchestrator",
+      "./skills/anthropic-small-business-pi"
     ]
   },
   "author": "darkrei08",

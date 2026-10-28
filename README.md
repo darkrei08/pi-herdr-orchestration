@@ -382,6 +382,19 @@ npx skills add . \
   --global
 ```
 
+### Anthropic Small Business on Pi
+
+The official Anthropic Small Business plugin remains owned by Claude. Pi consumes its 44 upstream `SKILL.md` files from the canonical shared skill root and adds the `anthropic-small-business-pi` adapter for PiWorkflow routing, approvals, memory, artifacts, and connector policy. Do not auto-import the plugin's 35 remote MCP definitions.
+
+After installing or updating the Claude plugin, verify the Pi copy and adapter:
+
+```bash
+npm run check:anthropic-small-business
+npm run test:anthropic-small-business
+```
+
+Select the adapter together with the exact upstream skill in PiWorkflow. The checker must report 44/44 skills, matching canonical copies, valid frontmatter, and zero Pi-configured Anthropic connectors unless each connector was separately authorized and configured.
+
 ### Dependency Bootstrap (System Runtimes & Skill Suites)
 
 The Vercel Skills CLI installs skill definition files only; it deliberately does not run third-party installers or post-install scripts. Run the dependency bootstrap script to inspect missing dependencies and install required runtimes as well as all 4 required skill suites (**Engineering Excellence**, **Matt Pocock skills**, **Gentle AI skills**, and **Pi Herdr Orchestration**):

@@ -1,0 +1,10 @@
+# Feature tasks mirror: anthropic-small-business-pi-support
+
+- T1: Install/update the official Anthropic Small Business source and expose one canonical 44-skill copy to Pi.
+- T2: Add the PiWorkflow compatibility contract for routing, roles, approvals, memory, artifacts, and connector fallbacks.
+- T3: Add deterministic compatibility checks for inventory, frontmatter, MCP policy, and PiWorkflow routing.
+- T4: Run checks, review the diff, persist evidence, and report unavailable proof. Status: host and five Linux family rows pass; Windows/macOS unavailable; native review assessment unassessable because untracked scope was not declared.
+
+Source specification: `odd/tasks/anthropic-small-business-pi-support.md`.
+
+Evidence: 44/44 canonical skills, 35 upstream MCP definitions, 0 Pi-configured Anthropic connectors, 21 repository tests passed.

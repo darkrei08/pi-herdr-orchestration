@@ -53,6 +53,7 @@ agent(taskPrompt, {
 | Candidate review | Independent context: Matt `code-review` (Standards and Spec vs a fixed point) or a reviewer role; Gentle `judgment-day` only when dual or adversarial review is requested; GGA before `READY` |
 | Commits and PR | Gentle `work-unit-commits`, `chained-pr` for oversized diffs, `branch-pr` (issue-first, each remote action separately authorized); Matt `pr` for the body; EE pull-request template |
 | Cross-repository feature | `multi-repo-product-workflow` when installed; provider-first order in [dispatch.md](dispatch.md) |
+| Anthropic Small Business skill | `anthropic-small-business-pi` plus the exact upstream skill; route chains through PiWorkflow `pipeline(...)`, preserve approval gates, and use only the active Pi MCP registry |
 | Context pressure, new harness | Engram handoff and [state-protocol.md](state-protocol.md); Matt `handoff` (narrow: new harness, directory or colleague); EE `context-budget` |
 | Session lessons | Matt `retro` |
 | Large codebase context | Serena/graphify for targeted evidence, then RTK/sqz/LEA/TOON as discovered |
