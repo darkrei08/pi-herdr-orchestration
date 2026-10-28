@@ -9,4 +9,4 @@ Tasks:
 - T4 | S1-S3 | Reconcile global runtime configuration without touching unrelated dirty state | commit: pending
 
 Log:
-- L1-L7 are recorded verbatim and with verified runtime evidence in odd/tasks/piworkflow-mcp-delegation.md.
+- L1-L8 are recorded verbatim and with verified runtime evidence in odd/tasks/piworkflow-mcp-delegation.md.
