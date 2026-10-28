@@ -22,10 +22,10 @@ S8. Actions that send, publish, pay, write to customer systems, or modify extern
 
 ## Tasks
 
-- T1 | S1-S5 | Install/update the official Anthropic Small Business source and make one canonical copy of its 44 skills visible to Pi while preserving Claude plugin ownership | commit: 
-- T2 | S2-S8 | Add the Pi compatibility contract for router/workflow skills, role loadouts, approvals, memory, artifacts, and connector fallbacks | commit: 
-- T3 | S5-S7 | Add a deterministic compatibility checker and focused tests for skill inventory, frontmatter, MCP policy, and PiWorkflow routing invariants | commit: 
-- T4 | S1-S8 | Run focused repository/runtime checks, review the diff, persist evidence, and report unavailable connector/platform proof | commit: 
+- T1 | S1-S5 | Install/update the official Anthropic Small Business source and make one canonical copy of its 44 skills visible to Pi while preserving Claude plugin ownership | commit: 588534d
+- T2 | S2-S8 | Add the Pi compatibility contract for router/workflow skills, role loadouts, approvals, memory, artifacts, and connector fallbacks | commit: 588534d
+- T3 | S5-S7 | Add a deterministic compatibility checker and focused tests for skill inventory, frontmatter, MCP policy, and PiWorkflow routing invariants | commit: 588534d
+- T4 | S1-S8 | Run focused repository/runtime checks, review the diff, persist evidence, and report unavailable connector/platform proof | commit: 588534d
 
 ## Log
 
@@ -50,3 +50,5 @@ L9. Implemented `skills/anthropic-small-business-pi/SKILL.md`, registered it in 
 L10. Added `check:anthropic-small-business`, `test:anthropic-small-business`, the deterministic compatibility checker, and focused tests. The checker verifies 44/44 canonical skills, matching hashes, valid frontmatter, required Pi bridge markers, and metadata-only handling of 35 upstream MCP definitions.
 
 L11. Verification evidence: host `npm test` passed 21 tests; `check:anthropic-small-business`, `check:mcp`, `check:strict`, syntax checks, and `npm pack --dry-run` passed. Debian Node 22, Alpine Node 22, Fedora Node 20, Arch Node 26, and openSUSE Node 24 passed the test/pack/syntax matrix. Windows and macOS were unavailable on this Linux host. Native Gentle review assessment was unassessable because untracked scope was not explicitly declared; no native review verdict was claimed.
+
+L12. Local commit `588534d` contains the requested implementation and verification artifacts. The repository's GGA hook reviewed the staged slice and returned `PASSED`; cumulative branch history is above the approximate 400-line review slice threshold, so no unrelated files were added to this commit.
