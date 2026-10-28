@@ -41,26 +41,34 @@ Act as the control session for the current repository. Respect the user's actual
 
 ## Runtime dispatch contract
 
-When PiWorkflow is available, make the runtime behavior explicit instead of relying on prose:
+When PiWorkflow is available, invoke a named workflow (`name` plus `script`) and keep delegation in direct `agent(...)` or `agent.create(...)` calls. Every call must select a `pi-ext-roles` role, the MCP-capable extensions, a bounded `timeoutMs`, and a report-back contract:
 
 ```javascript
+const mcpExtensions = ["builtin:codemode", "builtin:tool-search", "builtin:mcp"];
 const results = await parallel("dispatch", {
   scout: () => agent("Map the repository and return evidence.", {
+    role: "scout",
     label: "[CHIEF/SCOUT] Discovery",
     skills: ["pi-herdr-orchestrator", "engineering-excellence"],
+    extensions: mcpExtensions,
+    timeoutMs: 600_000,
     worktree: "scout",
   }),
   build: () => agent("Implement the bounded task and verify it.", {
+    role: "developer",
     label: "[CHIEF/BUILD] Implementation",
     skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
+    extensions: mcpExtensions,
+    timeoutMs: 600_000,
     worktree: "build",
   }),
 });
 return results;
 ```
 
-- Use a named `workflow` and `parallel("<operation>", { ... })` for independent work. Use `pipeline("<operation>", items, stages)` when every item must pass the same ordered stages. Never replace these with `Promise.all`/`map` agent fan-out or aliases: PiWorkflow needs direct call sites to preserve deterministic replay and admission order.
-- Give every agent a stable `label`, explicit `skills` selectors, only the required `extensions`, and a named isolated `worktree` for writes. Verify each requested skill and extension in the live capability report first; an unavailable required capability is `BLOCKED`, not silently omitted.
+- Use a non-empty workflow `name` and `parallel("<operation>", { ... })` for independent work. Use `pipeline("<operation>", items, stages)` when every item must pass the same ordered stages. Never replace these with `Promise.all`/`map` agent fan-out, aliases, or native `subagents_run`; native subagents are forbidden for orchestrated delegation.
+- Give every direct agent call a `pi-ext-roles` `role`, stable `label`, explicit `skills` selectors, the three required MCP extensions, a bounded `timeoutMs`, and a named isolated `worktree` for writes. `builtin:codemode` is the stable bridge to MCP tools; `builtin:tool-search` and `builtin:mcp` must remain available in every workflow role session.
+- Verify each requested skill, role, and extension in the live capability report first; an unavailable required capability is `BLOCKED`, not silently omitted. Hosts without PiWorkflow use only the documented single-session/direct-worktree fallback and report it as `NOT APPLICABLE`.
 - The `parallel` object order is the dispatch order. In fully inspectable Herdr mode PiWorkflow assigns the corresponding `#1`, `#2`, ... index and `@piewf/herdr` creates labeled tabs inside the workflow workspace. These numbers are presentation order, not authority; assignment and mailbox evidence remain authoritative.
 - The trusted project settings written by repository initialization enable `extensionSettings.herdr.enableFullyInspectableMode`. This is the supported `pi-extensible-workflows` transport; this repository must not shell out to `pi` or reimplement Herdr pane creation.
 - If Pi is not running inside Herdr, or PiWorkflow/@piewf/herdr is unavailable, use the documented single-session or direct-worktree fallback and report `NOT APPLICABLE`/`BLOCKED`. Never claim panes, tabs, parallel sessions, or skill execution that did not occur.

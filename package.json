@@ -8,6 +8,7 @@
     "check": "node scripts/check.mjs",
     "check:strict": "node scripts/check.mjs --strict",
     "check:json": "node scripts/check.mjs --json",
+    "check:mcp": "node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json",
     "bootstrap": "node scripts/bootstrap.mjs",
     "bootstrap:apply": "node scripts/bootstrap.mjs --apply",
     "init-repo": "node scripts/init-repo.mjs",

@@ -254,32 +254,38 @@ Pi Herdr Orchestration dynamically bridges and routes between major AI coding ag
 - **Role:** Execution engine substrate.
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
-  - **Explicit child loadouts:** Every routed child receives a stable `label`, verified `skills` selectors, required `extensions`, and an isolated `worktree` when it writes.
+  - **Explicit child loadouts:** Every routed child receives a named `@piewf/pi-ext-roles` `role`, stable `label`, verified `skills` selectors, `extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, a finite role-appropriate `timeoutMs` (at least 600 seconds for research, build, review, and MCP work), and an isolated `worktree` when it writes. `builtin:codemode` is the stable bridge to MCP tools.
   - **Ordered Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents are created in a dedicated workspace and rendered as numbered labeled tabs in scheduler admission order.
   - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
   - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
-  - **Reliable Linux Process Liveness:** Uses `/proc/<pid>/stat` starttime instead of `ctime` to eliminate false positives from kernel PID recycling.
+  - **Reliable Lock Ownership:** Records the owner PID and reclaims stale locks only when the recorded process is no longer alive, avoiding deletion of active locks.
   - **Workflow Recovery:** Replaying completed operations through `workflow_status`, `workflow_retry`, and `workflow_resume`.
 
-Example dispatch:
+Example dispatch inside a named workflow (`name: "repository-audit"`):
 
 ```javascript
 const reports = await parallel("repository-audit", {
   scout: () => agent("Map the repository.", {
+    role: "scout",
     label: "[CHIEF/SCOUT] Discovery",
     skills: ["pi-herdr-orchestrator", "engineering-excellence"],
+    extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
+    timeoutMs: 600_000,
     worktree: "scout",
   }),
   tests: () => agent("Define and run focused checks.", {
+    role: "tests-expert",
     label: "[CHIEF/QUALITY] Tests",
     skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
+    extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
+    timeoutMs: 600_000,
     worktree: "tests",
   }),
 });
 return reports;
 ```
 
-Use `pipeline(...)` for ordered stages. Do not use `Promise.all`/`map` agent fan-out, omit required skills, or claim Herdr tabs when the runtime capability report says Herdr is unavailable.
+Use `pipeline(...)` for ordered stages. Native `subagents_run` is forbidden for orchestration. Do not use `Promise.all`/`map` agent fan-out, omit required roles or extensions, or claim Herdr tabs when the runtime capability report says Herdr is unavailable. Run the read-only MCP smoke check with `node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000`; it reports redacted transport reachability and HTTP health status without printing credentials, arguments, or environment values. A URL MCP `initialize` probe verifies the HTTP MCP endpoint when it returns a protocol response; stdio executable probes remain `unverified` because they do not start the server.
 
 ### Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)
 - **Role:** Independent role authoring, configuration, and runtime preparation.

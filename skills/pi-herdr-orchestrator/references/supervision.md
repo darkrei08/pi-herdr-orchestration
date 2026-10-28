@@ -15,6 +15,16 @@ A dispatched session that nobody watches and that never reports is not delegatio
 
 Pane state says whether an agent is busy. Only a mailbox report plus Git evidence says what it achieved.
 
+## Workflow timeout and MCP evidence
+
+Every workflow-owned role session uses a finite `timeoutMs` and reports timeout/failure evidence instead of silently retrying or switching delegation mechanisms. A timeout is a failed attempt, not proof that PiWorkflow is unavailable. Before dispatch and during smoke verification, run the read-only registry checker:
+
+```sh
+node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000
+```
+
+The checker reports configured server names, redacted transport reachability, and HTTP health status; it never prints command arguments, environment values, headers, or credentials. URL MCP `initialize` probes verify the HTTP MCP endpoint when a protocol response is returned; stdio executable probes do not start the server and remain `unverified`. Record its JSON output as evidence. `builtin:codemode` remains the stable MCP bridge, with `builtin:tool-search` and `builtin:mcp` required in every workflow role loadout. Native `subagents_run` is not an orchestration fallback.
+
 ## Dispatch
 
 1. Pick a run id (`ORCH_RUN`, for example `repo-20261009`) and a unique agent name per task matching `[a-z][a-z0-9_-]{0,31}` (`issue84`, `pr127`).

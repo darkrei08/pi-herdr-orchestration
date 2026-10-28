@@ -1,0 +1,12 @@
+Feature: piworkflow-mcp-delegation
+
+Specs: S1-S5 in odd/tasks/piworkflow-mcp-delegation.md.
+
+Tasks:
+- T1 | S1-S2 | Make PiWorkflow direct workflow calls with pi-ext-roles the only orchestrated delegation path | commit: pending
+- T2 | S2-S3 | Ensure role-based workflow children receive MCP-capable tools and validate configured MCP servers | commit: pending
+- T3 | S4-S5 | Add bounded timeout and MCP smoke checks | commit: pending
+- T4 | S1-S3 | Reconcile global runtime configuration without touching unrelated dirty state | commit: pending
+
+Log:
+- L1-L6 are recorded verbatim and with verified runtime evidence in odd/tasks/piworkflow-mcp-delegation.md.

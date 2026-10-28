@@ -180,6 +180,7 @@ checks.push(record("pi-codex-context", codexContext ? "installed" : "missing", {
 
 for (const [id, requiredFor] of [
   ["pi-extensible-workflows", ["workflow orchestration"]],
+  ["@piewf/pi-ext-roles", ["role-based workflow dispatch"]],
   ["gentle-pi", ["Gentle AI integration"]],
   ["gentle-engram", ["durable project memory"]],
   ["@sting8k/pi-vcc", ["optional Pi compaction"]],
