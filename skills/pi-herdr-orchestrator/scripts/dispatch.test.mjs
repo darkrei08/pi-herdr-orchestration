@@ -7,9 +7,9 @@ import { inspectRegistry } from "./check-mcp.mjs";
 const root = join(import.meta.dirname, "../../..");
 const read = (path) => readFileSync(join(root, path), "utf8");
 
-test("trusted project settings enable fully inspectable Herdr workflow agents", () => {
+test("trusted project settings select the pane topology for Herdr workflow agents", () => {
   const settings = JSON.parse(read(".pi/pi-extensible-workflows/settings.json"));
-  assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, true);
+  assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, false);
 });
 
 test("dispatch contract names deterministic workflow fan-out and explicit role loadout", () => {
@@ -21,7 +21,8 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
 
   assert.match(skill, /named workflow/);
   assert.match(skill, /parallel\(/);
-  assert.match(skill, /#1/);
+  assert.match(skill, /herdr pane split/);
+  assert.match(skill, /herdr pane zoom/);
   assert.match(skill, /subagents_run/);
   assert.match(skill, /forbidden/);
   for (const source of [skill, routing, readme]) {
@@ -39,7 +40,7 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
   assert.match(routing, /skills:\s*\[/);
   assert.match(routing, /extensions:\s*\[/);
   assert.match(routing, /label/);
-  assert.match(execution, /numbered/);
+  assert.match(execution, /pane tree/);
   assert.match(execution, /worktree/);
   assert.match(environment, /@piewf\/pi-ext-roles/);
 });

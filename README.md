@@ -11,7 +11,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
 - [Overview & Core Problems Solved](#overview--core-problems-solved)
 - [Architecture & Workflow Lifecycle](#architecture--workflow-lifecycle)
   - [The Command Hierarchy: Master, Chiefs, and Workers](#the-command-hierarchy-master-chiefs-and-workers)
-  - [Workspace Isolation with Herdr & Git Worktrees](#workspace-isolation-with-herdr--git-worktrees)
+  - [Pane-tree Isolation with Herdr & Git Worktrees](#pane-tree-isolation-with-herdr--git-worktrees)
 - [Cognitive Model & Decision Pipeline](#cognitive-model--decision-pipeline)
   - [1. Independence-First Dispatch & Task Graph](#1-independence-first-dispatch--task-graph)
   - [2. Progressive Disclosure & Bounded Contexts](#2-progressive-disclosure--bounded-contexts)
@@ -99,16 +99,16 @@ When the host supports multiple sessions or subagents, the master delegates oper
   $$\text{DISCOVER} \longrightarrow \text{UNDERSTAND} \longrightarrow \text{PLAN} \longrightarrow \text{IMPLEMENT} \longrightarrow \text{VERIFY} \longrightarrow \text{SELF-REVIEW} \longrightarrow \text{HANDOFF} \longrightarrow \text{READY}$$
 - Workers never declare themselves `READY` until all validation commands pass and evidence is logged.
 
-### Workspace Isolation with Herdr & Git Worktrees
+### Pane-tree Isolation with Herdr & Git Worktrees
 
 The orchestrator guarantees clean workspace boundaries:
 
 - **1 Task = 1 Branch = 1 Git Worktree = 1 Dedicated Session/Pane**
 - **Single-Writer Rule:** Exactly one writer modifies a given worktree at any time.
 - **Herdr Terminal Multiplexing:**
-  - One Herdr workspace per repository.
-  - PiWorkflow agents are launched with explicit `label`, `skills`, `extensions`, and isolated `worktree` options.
-  - With trusted fully inspectable mode, the scheduler's stable admission order becomes numbered tabs (`#1`, `#2`, ...) with semantic labels (`repo:issue-42-auth`, `repo:pr-87-review`, `repo:compose-validation`).
+  - A workflow run stays in the caller's current tab: agents are sibling panes in one collapsible pane tree, and nested agents split their parent pane.
+  - The transport runs `herdr pane split <caller-pane> --direction right|down --no-focus`, then `herdr pane run <new-pane>` with a cd-prefixed command. The new pane keeps the caller's tab; use `herdr pane zoom --on|--off` on the focused pane to collapse or expand the tree.
+  - PiWorkflow agents are launched with explicit `label`, `skills`, `extensions`, and isolated `worktree` options. One named workflow run owns the panes it launches; a new workspace, tab, or cwd happens only when the user explicitly requests it.
   - Terminal state and processes remain persistent and inspectable even during agent context switches; pane liveness never replaces mailbox or Git evidence.
 
 ---
@@ -229,7 +229,7 @@ The orchestration contract follows the latest upstream Herdsman (`boadij/pi-herd
 - **Deduplicated full SHA-256 evidence store:** Large logs and diffs are hashed to full 64-char SHA-256 content-addressed files under `evidence/<sha256>.txt` and referenced as `ref:sha256:<hash>`. Evidence is inspectable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into model prompts.
 - **Non-blocking notifications:** Notifications to master sessions (`herdr agent prompt`) run non-blockingly (`spawn` unref) so delivery issues or unavailable Herdr runtimes cannot block mailbox report persistence or turn a completed task into a false failure.
 - **Fail-closed supervision:** Terminal agent states that report `unknown` liveness fail closed to `DECIDE`, mandating that the master reconcile with Git and CI before proceeding rather than assuming tasks are healthy.
-- **Operational boundaries:** Role-derived Herdr tab labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) are presentation only. Chiefs coordinate and normalize reports within their bounded department; they never perform destructive worktree operations without explicit confirmation from the Master control plane.
+- **Operational boundaries:** Role-derived Herdr pane and agent labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) are presentation only. Chiefs coordinate and normalize reports within their bounded department; they never perform destructive worktree operations without explicit confirmation from the Master control plane.
 - **Capability-aware dispatch:** Select Agents by effective runtime capabilities, not filenames or configured child names. If no suitable child is available, investigate locally and record the capability gap instead of simulating delegation.
 - **Simulation before live smoke:** Prefer deterministic simulated smoke for covered Pi/Herdr boundary scenarios; use live-model smoke when model/provider behavior or instruction adherence is under test.
 - **Nonterminal execution failure:** Treat model execution failure as nonterminal evidence: do not retry automatically, replay tools, stop children, integrate partial work, or publish a successful handoff.
@@ -255,7 +255,7 @@ Pi Herdr Orchestration dynamically bridges and routes between major AI coding ag
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
   - **Explicit child loadouts:** Every routed child receives a named `@piewf/pi-ext-roles` `role`, stable `label`, verified `skills` selectors, `extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, a finite role-appropriate `timeoutMs` (at least 600 seconds for research, build, review, and MCP work), and an isolated `worktree` when it writes. `builtin:codemode` is the stable bridge to MCP tools.
-  - **Ordered Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents are created in a dedicated workspace and rendered as numbered labeled tabs in scheduler admission order.
+  - **Pane-tree Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents split sibling panes in the caller's current tab; nested agents split their parent pane. A new workspace, tab, or cwd is created only on explicit request, while each write-capable agent keeps its isolated worktree.
   - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
   - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
   - **Reliable Lock Ownership:** Records the owner PID and reclaims stale locks only when the recorded process is no longer alive, avoiding deletion of active locks.
@@ -285,7 +285,7 @@ const reports = await parallel("repository-audit", {
 return reports;
 ```
 
-Use `pipeline(...)` for ordered stages. Native `subagents_run` is forbidden for orchestration. Do not use `Promise.all`/`map` agent fan-out, omit required roles or extensions, or claim Herdr tabs when the runtime capability report says Herdr is unavailable. Run the read-only MCP smoke check with `node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000`; it reports redacted transport reachability and HTTP health status without printing credentials, arguments, or environment values. A URL MCP `initialize` probe verifies the HTTP MCP endpoint when it returns a protocol response; stdio executable probes remain `unverified` because they do not start the server.
+Use `pipeline(...)` for ordered stages. Native `subagents_run` is forbidden for orchestration. Do not use `Promise.all`/`map` agent fan-out, omit required roles or extensions, or claim Herdr panes when the runtime capability report says Herdr is unavailable. Run the read-only MCP smoke check with `node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000`; it reports redacted transport reachability and HTTP health status without printing credentials, arguments, or environment values. A URL MCP `initialize` probe verifies the HTTP MCP endpoint when it returns a protocol response; stdio executable probes remain `unverified` because they do not start the server.
 
 ### Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)
 - **Role:** Independent role authoring, configuration, and runtime preparation.
@@ -429,12 +429,12 @@ node scripts/init-repo.mjs --dir /path/to/my-repo --apply
 This command automatically configures:
 - **Git Baseline:** Ensures repository initialization on `main` and creates `.worktrees/`.
 - **Gitignore Rules:** Appends `.worktrees/`, `.codegraph/`, and `.atl/` to `.gitignore`.
-- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`, preserving existing workflow settings.
+- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`, preserving existing workflow settings so default runs use sibling panes in the caller's current tab.
 - **Engram Memory Identity:** Generates `.git/engram-project-identity.json` for isolated, persistent repository memory.
 - **Guardian Angel (GGA):** Creates `.gga` quality-gate configuration and baseline `AGENTS.md` guidelines.
 - **Semantic Code Navigation:** Deploys Serena project configuration for LSP symbol analysis.
 - **Token Compression:** Injects `sqz` and `rtk` local hooks for terminal and tool reduction.
-- **Herdr Workspace:** Creates a dedicated Herdr workspace named after the repository.
+- **Herdr Workspace:** Registers a named Herdr workspace for explicit workspace workflows; default workflow runs remain in the caller's current tab.
 - **Skill Registry:** Catalogs all available skills into `.atl/skill-registry.md`.
 
 ### Environment Verification

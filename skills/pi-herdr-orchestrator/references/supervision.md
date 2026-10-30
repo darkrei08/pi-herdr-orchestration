@@ -28,7 +28,7 @@ The checker reports configured server names, redacted transport reachability, an
 ## Dispatch
 
 1. Pick a run id (`ORCH_RUN`, for example `repo-20261009`) and a unique agent name per task matching `[a-z][a-z0-9_-]{0,31}` (`issue84`, `pr127`).
-2. Create the pane and worktree, then `herdr agent start <name> --kind pi --pane <pane>`. Rename the tab per [coordination.md](coordination.md).
+2. For the default topology, split a sibling pane in the caller's current tab with `herdr pane split <caller-pane> --direction right|down --no-focus`, then run `herdr pane run <new-pane>` with a cd-prefixed command. The split result's `.result.pane.pane_id` is the new pane, which keeps the caller's `tab_id`; nested agents split their own parent pane. Use a separate workspace, tab, or cwd only when the user explicitly requests it. The named workflow run owns the panes it launches; use the agent and pane label from [coordination.md](coordination.md).
 3. Register the task (task id, agent name, pane, worktree, branch) and write the first report: `node mailbox.mjs report --run R --task I#84 --agent issue84 --state ASSIGNED`.
 4. Send the brief with `herdr agent prompt <name> "<brief>"` without `--wait` for parallel work. Every brief ends with the report-back clause below.
 
@@ -42,7 +42,7 @@ Report with either native Pi tools (orch_report, orch_ask) or CLI:
 - If blocked, ask immediately with `orch_ask` (or `node mailbox.mjs ask --task <id> --question "<exact question>"`).
 - Large test logs or diffs should be passed via --evidence or `orch_evidence` to avoid context window pollution.
 - Report READY or DEVELOPMENT or FAILED as your last action, with every check you ran.
-- Never end your turn silently. Do not close your own tab. The master decides what happens next.
+- Never end your turn silently. Do not close your own pane. The master decides what happens next.
 ```
 
 Name the master agent once with `herdr agent rename "$HERDR_PANE_ID" master` (unless it already has a name) and pass that **Herdr agent name** in `ORCH_MASTER`. Before dispatch, verify `ORCH_MASTER` and `ORCH_AGENT` identify different agents. Never pass a Pi session id to `herdr agent prompt` or a direct session-message API; if no distinct target is available, persist the mailbox report and let the master consume it through `orch_status`.
@@ -71,7 +71,7 @@ The master does not end its turn after dispatch. Repeat until every task is `CLO
 
 3. To block efficiently between checks use `herdr agent wait <name> --timeout 300000`, or wait on whichever agent finishes first, then rerun `status`. Do not poll in a tight loop and do not sleep blindly.
 4. After a report, reconcile with Git (commits, diff, CI) before accepting it. A report that conflicts with Git is `BLOCKED`, not `READY`.
-5. Record the `decision` as a mailbox report on the task (`--state CLOSED` once the decision is executed and the tab may be closed) and refresh the dashboard in [reporting.md](reporting.md).
+5. Record the `decision` as a mailbox report on the task (`--state CLOSED` once the decision is executed and the pane may be closed) and refresh the dashboard in [reporting.md](reporting.md).
 
 ## Management rules
 
@@ -82,7 +82,7 @@ The master does not end its turn after dispatch. Repeat until every task is `CLO
 - Escalate by exception: the master reads only flagged tasks, not every transcript. Read panes only for `SILENT`, `STALE`, `NEEDS_HUMAN` or `GONE`.
 - Bounded retries: at most 2 nudges per silence and 2 restarts per task, then mark `BLOCKED` and escalate with evidence.
 - `unknown` pane state is not completion and not failure: classify it fail-closed as `DECIDE` to require master verification against the mailbox and Git before proceeding.
-- Upstream Herdsman alignment: follows `boadij/pi-herdsman` supervision semantics, exact-session supervision, presentation-only tab labels, and non-blocking notifications.
+- Upstream Herdsman alignment: follows `boadij/pi-herdsman` supervision semantics, exact-session supervision, presentation-only pane and agent labels, and non-blocking notifications.
 - Idempotence: reports carry `seq`; ignore a report with a lower `seq` than one already processed.
 - Closure order: report persisted, master decision recorded, memory saved, then close the pane. Closing a pane never discards unreported work.
 - If Herdr or the mailbox script is unavailable, say so and supervise from Git and pane reads; never claim a session reported when it did not.

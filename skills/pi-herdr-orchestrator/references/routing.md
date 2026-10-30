@@ -17,12 +17,12 @@ agent(taskPrompt, {
 });
 ```
 
-- `role` selects a named `@piewf/pi-ext-roles` role; `skills` selects skill names; `extensions` selects Pi extensions; `label` becomes the human-facing Herdr tab label; `worktree` gives a writing agent an isolated Git worktree. Use only selectors confirmed by the live capability report and the current Pi settings.
+- `role` selects a named `@piewf/pi-ext-roles` role; `skills` selects skill names; `extensions` selects Pi extensions; `label` becomes the human-facing Herdr agent and pane label; `worktree` gives a writing agent an isolated Git worktree. Use only selectors confirmed by the live capability report and the current Pi settings.
 - `builtin:codemode` is the stable bridge to MCP tools. `builtin:tool-search` and `builtin:mcp` are required alongside it for every workflow-owned role session, even when the role file's own selectors are narrower. Do not use a 120-second child timeout for research, build, review, or MCP work; use at least `timeoutMs: 600_000`.
-- Use `parallel("<operation>", { ... })` for independent agents and `pipeline("<operation>", items, stages)` for repeated ordered stages. The object insertion order is the intended launch order; PiWorkflow assigns the display indices and `@piewf/herdr` renders them as numbered tabs when fully inspectable mode is enabled.
+- Use `parallel("<operation>", { ... })` for independent agents and `pipeline("<operation>", items, stages)` for repeated ordered stages. The object insertion order is the intended launch order; default Herdr transport creates sibling panes in the caller's current tab, with nested agents splitting their parent pane. Labels remain semantic presentation only, and a new workspace, tab, or cwd requires an explicit user request.
 - Native `subagents_run` is forbidden for orchestration. A host without PiWorkflow uses the documented direct fallback only when PiWorkflow is genuinely unavailable; do not silently downgrade an available workflow runtime.
 - The common Engineering Excellence loadout is `skills: ["engineering-excellence"]`; add `tdd`, `code-review`, `testing`, `security`, `ci`, or `platform-testing` only when the capability report confirms those skill files exist and the task needs them. Add `gentle-ai`, `work-unit-commits`, or `judgment-day` only for their applicable lifecycle responsibilities.
-- A missing requested skill or extension is a routing failure. Record `BLOCKED` with the missing selector and do not silently launch a child with a weaker contract. A host without PiWorkflow or Herdr uses the documented direct-session fallback and reports `NOT APPLICABLE` for tab transport.
+- A missing requested skill or extension is a routing failure. Record `BLOCKED` with the missing selector and do not silently launch a child with a weaker contract. A host without PiWorkflow or Herdr uses the documented direct-session fallback and reports `NOT APPLICABLE` for pane transport.
 
 ## Ecosystems
 
