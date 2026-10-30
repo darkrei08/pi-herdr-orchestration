@@ -21,7 +21,7 @@ Recommended sequence:
 2. Run `gga run` on the staged or PR diff.
 3. Record the review result, GGA version, configuration hash and reviewed file hashes in `checks`.
 4. Let the chief normalize the evidence and let the master decide stable integration or development branch.
-5. Persist the decision and review references before closing the Pi session and tab.
+5. Persist the decision and review references before closing the Pi session and pane.
 
 Do not put provider credentials, OAuth tokens or full review transcripts in the state envelope or durable memory. Store long output as a CI/file artifact and pass its path and digest.
 

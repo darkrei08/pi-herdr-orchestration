@@ -26,7 +26,7 @@ Act as the control session for the current repository. Respect the user's actual
    - Guardian Angel (`.gga`) configuration and repository `AGENTS.md` rules.
    - Semantic code navigation indexing via Serena (`serena project create`).
    - Context and output reduction hooks via `sqz` and `rtk`.
-   - Dedicated Herdr workspace registration (`herdr workspace create`).
+   - Herdr workspace registration (`herdr workspace create`) for explicit workspace workflows; default workflow runs stay in the caller's current tab.
    - Skill registry indexing (`.atl/skill-registry.md`).
 5. If Wizard-AI is installed or the repository exposes it, discover its context stack and compatibility layer. See [wizard-ai.md](references/wizard-ai.md).
 6. If installed, use Guardian Angel (GGA) as a provider-agnostic commit/PR quality gate after tests and before `READY`. See [guardian-angel.md](references/guardian-angel.md).
@@ -35,8 +35,8 @@ Act as the control session for the current repository. Respect the user's actual
 9. Select the smallest useful set of available skills, methods and roles; one owner per concern. See [routing.md](references/routing.md).
 10. Operate the session hierarchy: `[MASTER] Pi Herdr Orchestrator` coordinates department chiefs; chiefs coordinate issue, PR, feature, review and audit sessions. See [coordination.md](references/coordination.md).
 11. Pass compact structured state between workflow layers and sessions. Use JSON as the machine contract and Markdown as the human report generated from it. See [state-protocol.md](references/state-protocol.md).
-12. Execute in an isolated branch/worktree with an ordered, immediately renamed Pi tab when the task merits it. Verify and review the result. See [execution.md](references/execution.md) and [quality.md](references/quality.md).
-13. Decide destination from evidence: stable integration, preserved development branch, follow-up or blocked. Persist durable knowledge, close child sessions and tabs in order, report to the master, then rescan and audit. See [integration.md](references/integration.md) and [audit.md](references/audit.md).
+12. Execute in an isolated branch/worktree with sibling panes in the caller's current tab when the task merits it. Nested agents split their parent pane, so one workflow run remains one collapsible pane tree. Verify and review the result. See [execution.md](references/execution.md) and [quality.md](references/quality.md).
+13. Decide destination from evidence: stable integration, preserved development branch, follow-up or blocked. Persist durable knowledge, close child sessions and panes in order, report to the master, then rescan and audit. See [integration.md](references/integration.md) and [audit.md](references/audit.md).
 14. Close the cycle with the dashboard, evidence and final report. See [reporting.md](references/reporting.md).
 
 ## Runtime dispatch contract
@@ -61,8 +61,8 @@ return results;
 
 - Use a named `workflow` and `parallel("<operation>", { ... })` for independent work. Use `pipeline("<operation>", items, stages)` when every item must pass the same ordered stages. Never replace these with `Promise.all`/`map` agent fan-out or aliases: PiWorkflow needs direct call sites to preserve deterministic replay and admission order.
 - Give every agent a stable `label`, explicit `skills` selectors, only the required `extensions`, and a named isolated `worktree` for writes. Verify each requested skill and extension in the live capability report first; an unavailable required capability is `BLOCKED`, not silently omitted.
-- The `parallel` object order is the dispatch order. In fully inspectable Herdr mode PiWorkflow assigns the corresponding `#1`, `#2`, ... index and `@piewf/herdr` creates labeled tabs inside the workflow workspace. These numbers are presentation order, not authority; assignment and mailbox evidence remain authoritative.
-- The trusted project settings written by repository initialization enable `extensionSettings.herdr.enableFullyInspectableMode`. This is the supported `pi-extensible-workflows` transport; this repository must not shell out to `pi` or reimplement Herdr pane creation.
+- The `parallel` object order is the dispatch order. The default Herdr transport splits sibling panes in the caller's current tab; nested agents split their parent pane. Pane labels are presentation only; assignment and mailbox evidence remain authoritative.
+- The trusted project settings written by repository initialization set `extensionSettings.herdr.enableFullyInspectableMode` to `false`. This is the supported `pi-extensible-workflows` transport; a new workspace or tab is created only on explicit request. This repository must not shell out to `pi` or reimplement Herdr pane creation.
 - If Pi is not running inside Herdr, or PiWorkflow/@piewf/herdr is unavailable, use the documented single-session or direct-worktree fallback and report `NOT APPLICABLE`/`BLOCKED`. Never claim panes, tabs, parallel sessions, or skill execution that did not occur.
 - Route worker reports/questions through the mailbox first. Use `ORCH_MASTER` only as a distinct Herdr agent name for a best-effort wake-up; never pass the current Pi session id or the worker's own identity. If peer discovery is empty or ambiguous, skip the wake-up and let the master consume `orch_status`/`orch_reply` state.
 
@@ -82,7 +82,7 @@ return results;
 - Cap repeated review/fix rounds at three; after that, pause for an approach decision and re-review only the new diff. Approval is bound to the exact reviewed commit and must be renewed after unverified commits.
 - Use incidents, reverts, and confirmed harmful false positives as evaluator cases for reviewer changes. Record human-attention and regression guardrail metrics when available; never fabricate unavailable telemetry.
 - Skill distribution is host-specific: verify Codex, Claude Code, Antigravity and Antigravity CLI roots after installation; never claim support merely because a `SKILL.md` exists in one agent's directory.
-- Treat Herdr tab labels as presentation only. A role-derived label such as `Lead`, `Managed Lead`, `Manager`, or `Chief` does not grant authority, replace assignment checks, or prove ownership; preserve custom names unless the runtime owns the canonical label.
+- Treat Herdr pane and agent labels as presentation only. A role-derived label such as `Lead`, `Managed Lead`, `Manager`, or `Chief` does not grant authority, replace assignment checks, or prove ownership; preserve custom names unless the runtime owns the canonical label.
 - Treat model execution failure as a nonterminal fact. Do not automatically retry the model, replay tools, stop child Agents, integrate partial work, or emit a successful handoff. Inspect exact assignment and external effects before an authorized continuation.
 
 ## Reference map
@@ -97,7 +97,7 @@ return results;
 | Independence analysis, ownership, registry, merge queue | [dispatch.md](references/dispatch.md) |
 | Gentle/Engram hydration and handoff | [memory.md](references/memory.md) |
 | Dynamic skill and role selection | [routing.md](references/routing.md) |
-| Master, chiefs and ordered Pi tabs | [coordination.md](references/coordination.md) |
+| Master, chiefs and the pane tree | [coordination.md](references/coordination.md) |
 | Compact JSON state and Markdown reports | [state-protocol.md](references/state-protocol.md) |
 | Worktrees, sessions and task contract | [execution.md](references/execution.md) |
 | Tests, auto-grill and review | [quality.md](references/quality.md) |

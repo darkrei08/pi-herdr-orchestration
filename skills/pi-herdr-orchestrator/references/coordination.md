@@ -26,32 +26,32 @@ task evidence (orch_report / orch_evidence) → chief report → master decision
 worker question (orch_ask) ↔ master answer (orch_reply)
 ```
 
-Every report must identify the task, session/tab, branch, worktree, checks, result, risks, memory state and next action. A child cannot promote its own work, close a related Issue or discard a worktree merely because its local task is finished.
+Every report must identify the task, session/pane, branch, worktree, checks, result, risks, memory state and next action. A child cannot promote its own work, close a related Issue or discard a worktree merely because its local task is finished.
 
 ## Authority semantics and presentation boundaries
 
 Aligned with upstream Herdsman (`boadij/pi-herdsman`) supervision semantics:
 
-- **Presentation-only tab labels:** Role-derived Herdr tab labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) are presentation only. They never grant authority, supersede assignment checks, or prove task ownership.
+- **Presentation-only pane and agent labels:** Role-derived Herdr pane and agent labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) are presentation only. They never grant authority, supersede assignment checks, or prove task ownership.
 - **Manager/Chief boundaries on destructive operations:** Chiefs coordinate and normalize reports within their bounded department; they never perform destructive worktree operations (such as branch deletion, worktree pruning, or force resets) without explicit confirmation from the Master control plane.
-- **Workflow evidence vs. terminal coordination:** Generic workflow evidence is stored durably as content-addressed records in the mailbox (`repo-orchestrator/v1` envelope and `ref:sha256:...` evidence files). Terminal coordination (Herdr panes, prompts, and tabs) is ephemeral presentation and execution transport only. Pane liveness does not prove work completion.
+- **Workflow evidence vs. terminal coordination:** Generic workflow evidence is stored durably as content-addressed records in the mailbox (`repo-orchestrator/v1` envelope and `ref:sha256:...` evidence files). Terminal coordination (Herdr panes, prompts, and the current tab) is ephemeral presentation and execution transport only. Pane liveness does not prove work completion.
 
 A chief supervises its children with the loop in [supervision.md](supervision.md) and forwards only flagged or closed tasks. Use the compact envelope in [state-protocol.md](state-protocol.md) for these reports. The chief forwards a `chief_report`; the master returns a `decision`. This keeps communication machine-readable and avoids injecting transcripts into every parent session. In PiWorkflow environments, `orch_ask` and `orch_reply` seamlessly bridge asynchronous Herdr workers with workflow script checkpoints.
 
-## Tab registry
+## Pane registry
 
 Keep a small registry in the master context or an authorized workflow artifact:
 
-| Tab | Role | Task | Branch | Worktree | Status |
+| Pane | Role | Task | Branch | Worktree | Status |
 | --- | --- | --- | --- | --- | --- |
 | `[MASTER]` | control plane | repository | default/control | root or control worktree | active |
 | `[CHIEF/BUILD]` | department chief | implementation queue | control | chief worktree | active |
 | `[I#42]` | implementation | Config loading | `fix/42-config-loading` | `.worktrees/issue-42-config-loading` | working |
 
-Rename each tab immediately after creation. Keep the ordering stable and understandable; close a child tab only after its session memory, report and master decision have been recorded.
+Keep pane and agent labels stable and understandable; close a child pane only after its session memory, report and master decision have been recorded. One named workflow run keeps one tab and forms a sibling-pane tree: nested agents split their parent pane. Use `herdr pane zoom --on|--off` on the focused pane to collapse or expand it, and create a new workspace, tab, or cwd only on explicit user request.
 
-PiWorkflow and `@piewf/herdr` provide the runtime implementation for workflow-owned tabs. With fully inspectable mode enabled, the scheduler's admission index is rendered as `#1`, `#2`, ... and the agent's `label` supplies the semantic name. Keep the `parallel` object keys and labels stable so replay and visual ordering agree; never treat the numeric index or a role label as authority. The trusted project setting is created by `init-repository.mjs`; a manual global setting is not required for initialized repositories.
+PiWorkflow and `@piewf/herdr` provide the runtime implementation for workflow-owned panes. The default transport splits a sibling pane in the caller's current tab; the new pane keeps the caller's `tab_id`, and the split result exposes `.result.pane.pane_id`. Keep the `parallel` object keys and labels stable for deterministic launch order, but never treat a label or pane position as authority. The trusted project setting is created by `init-repository.mjs`; a manual global setting is not required for initialized repositories.
 
 ## Capability fallback
 
-If PiWorkflow or Pi cannot create a real child session, preserve the hierarchy in one session with clearly labeled role sections and reports. When the host forbids nested subagents (for example the Gentle AI harness), the master dispatches task sessions directly and chiefs stay report roles. Do not simulate concurrent execution, pretend that tabs were closed, or report a chief handoff that did not occur. The protocol describes coordination; the available tools determine which parts can be executed.
+If PiWorkflow or Pi cannot create a real child session, preserve the hierarchy in one session with clearly labeled role sections and reports. When the host forbids nested subagents (for example the Gentle AI harness), the master dispatches task sessions directly and chiefs stay report roles. Do not simulate concurrent execution, pretend that panes were closed, or report a chief handoff that did not occur. The protocol describes coordination; the available tools determine which parts can be executed.

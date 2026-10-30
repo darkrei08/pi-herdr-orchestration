@@ -11,7 +11,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
 - [Overview & Core Problems Solved](#overview--core-problems-solved)
 - [Architecture & Workflow Lifecycle](#architecture--workflow-lifecycle)
   - [The Command Hierarchy: Master, Chiefs, and Workers](#the-command-hierarchy-master-chiefs-and-workers)
-  - [Workspace Isolation with Herdr & Git Worktrees](#workspace-isolation-with-herdr--git-worktrees)
+  - [Pane-tree Isolation with Herdr & Git Worktrees](#pane-tree-isolation-with-herdr--git-worktrees)
 - [Cognitive Model & Decision Pipeline](#cognitive-model--decision-pipeline)
   - [1. Independence-First Dispatch & Task Graph](#1-independence-first-dispatch--task-graph)
   - [2. Progressive Disclosure & Bounded Contexts](#2-progressive-disclosure--bounded-contexts)
@@ -99,7 +99,7 @@ When the host supports multiple sessions or subagents, the master delegates oper
   $$\text{DISCOVER} \longrightarrow \text{UNDERSTAND} \longrightarrow \text{PLAN} \longrightarrow \text{IMPLEMENT} \longrightarrow \text{VERIFY} \longrightarrow \text{SELF-REVIEW} \longrightarrow \text{HANDOFF} \longrightarrow \text{READY}$$
 - Workers never declare themselves `READY` until all validation commands pass and evidence is logged.
 
-### Workspace Isolation with Herdr & Git Worktrees
+### Pane-tree Isolation with Herdr & Git Worktrees
 
 The orchestrator guarantees clean workspace boundaries:
 
@@ -108,7 +108,7 @@ The orchestrator guarantees clean workspace boundaries:
 - **Herdr Terminal Multiplexing:**
   - One Herdr workspace per repository.
   - PiWorkflow agents are launched with explicit `label`, `skills`, `extensions`, and isolated `worktree` options.
-  - With trusted fully inspectable mode, the scheduler's stable admission order becomes numbered tabs (`#1`, `#2`, ...) with semantic labels (`repo:issue-42-auth`, `repo:pr-87-review`, `repo:compose-validation`).
+  - The default transport splits sibling panes in the caller's current tab; nested agents split their parent pane. Pane zoom is the collapse mechanism, and a new workspace or tab is created only on explicit request.
   - Terminal state and processes remain persistent and inspectable even during agent context switches; pane liveness never replaces mailbox or Git evidence.
 
 ---
@@ -255,7 +255,7 @@ Pi Herdr Orchestration dynamically bridges and routes between major AI coding ag
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
   - **Explicit child loadouts:** Every routed child receives a stable `label`, verified `skills` selectors, required `extensions`, and an isolated `worktree` when it writes.
-  - **Ordered Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents are created in a dedicated workspace and rendered as numbered labeled tabs in scheduler admission order.
+  - **Pane-tree Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents split sibling panes in the caller's current tab; nested agents split their parent pane. A new workspace, tab, or cwd is created only on explicit request.
   - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
   - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
   - **Reliable Linux Process Liveness:** Uses `/proc/<pid>/stat` starttime instead of `ctime` to eliminate false positives from kernel PID recycling.
@@ -279,7 +279,7 @@ const reports = await parallel("repository-audit", {
 return reports;
 ```
 
-Use `pipeline(...)` for ordered stages. Do not use `Promise.all`/`map` agent fan-out, omit required skills, or claim Herdr tabs when the runtime capability report says Herdr is unavailable.
+Use `pipeline(...)` for ordered stages. Do not use `Promise.all`/`map` agent fan-out, omit required skills, or claim Herdr panes when the runtime capability report says Herdr is unavailable.
 
 ### Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)
 - **Role:** Independent role authoring, configuration, and runtime preparation.
@@ -410,12 +410,12 @@ node scripts/init-repo.mjs --dir /path/to/my-repo --apply
 This command automatically configures:
 - **Git Baseline:** Ensures repository initialization on `main` and creates `.worktrees/`.
 - **Gitignore Rules:** Appends `.worktrees/`, `.codegraph/`, and `.atl/` to `.gitignore`.
-- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`, preserving existing workflow settings.
+- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`, preserving existing workflow settings so default runs use sibling panes in the caller's current tab.
 - **Engram Memory Identity:** Generates `.git/engram-project-identity.json` for isolated, persistent repository memory.
 - **Guardian Angel (GGA):** Creates `.gga` quality-gate configuration and baseline `AGENTS.md` guidelines.
 - **Semantic Code Navigation:** Deploys Serena project configuration for LSP symbol analysis.
 - **Token Compression:** Injects `sqz` and `rtk` local hooks for terminal and tool reduction.
-- **Herdr Workspace:** Creates a dedicated Herdr workspace named after the repository.
+- **Herdr Workspace:** Registers a named Herdr workspace for explicit workspace workflows; default workflow runs remain in the caller's current tab.
 - **Skill Registry:** Catalogs all available skills into `.atl/skill-registry.md`.
 
 ### Environment Verification
