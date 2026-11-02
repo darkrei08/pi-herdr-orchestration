@@ -6,9 +6,9 @@ import { join } from "node:path";
 const root = join(import.meta.dirname, "../../..");
 const read = (path) => readFileSync(join(root, path), "utf8");
 
-test("trusted project settings enable fully inspectable Herdr workflow agents", () => {
+test("trusted project settings select the pane topology for Herdr workflow agents", () => {
   const settings = JSON.parse(read(".pi/pi-extensible-workflows/settings.json"));
-  assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, true);
+  assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, false);
 });
 
 test("dispatch contract names deterministic workflow fan-out and explicit loadout", () => {
@@ -17,12 +17,13 @@ test("dispatch contract names deterministic workflow fan-out and explicit loadou
   const execution = read("skills/pi-herdr-orchestrator/references/execution.md");
 
   assert.match(skill, /parallel\(/);
-  assert.match(skill, /#1/);
+  assert.match(skill, /herdr pane/i);
+  assert.match(skill, /sibling panes/);
   assert.match(routing, /skills:\s*\[/);
   assert.match(routing, /extensions:\s*\[/);
   assert.match(routing, /label/);
-  assert.match(execution, /numbered/);
-  assert.match(execution, /label/);
+  assert.match(execution, /pane tree/i);
+  assert.match(execution, /caller's current tab/);
   assert.match(execution, /worktree/);
 });
 
