@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { classify, storeEvidence, readEvidence, deriveLifecycle, fileFor, report, ask, reply, runDir, STATES, LIFECYCLE_STATES } from "./mailbox.mjs";
+import { classify, classifyLiveness, storeEvidence, readEvidence, deriveLifecycle, fileFor, report, ask, reply, runDir, STATES, LIFECYCLE_STATES } from "./mailbox.mjs";
 import { withLock } from "./lock.mjs";
 
 const now = Date.parse("2026-10-09T12:00:00Z");
@@ -27,6 +27,99 @@ test("classify flags what needs master action", () => {
   assert.equal(classify(entry("CLOSED"), undefined, now, 10 * min), "OK");
   assert.equal(classify(entry("WORKING"), live("unknown"), now, 10 * min), "DECIDE");
   assert.equal(classify(entry("BLOCKED", 0, { pending_ask: { question: "Q?" } }), live("idle"), now, 10 * min), "ASK");
+});
+
+const sessionPath = "/root/.pi/agent/sessions/x--/2026-10-31T15-47-02-621Z_01a192a4-975c-7524-b395-6fc6e737f235.jsonl";
+const recorded = { pane: "w7D:p1", session: "01a192a4-975c-7524-b395-6fc6e737f235" };
+const liveAgent = (agent_status, pane_id, session) => ({ agent_status, pane_id, agent_session: { value: session } });
+
+test("identity correlation decides on a reused pane or session", () => {
+  const trace = entry("WORKING", 0, { identity: recorded });
+
+  const match = classifyLiveness(trace, liveAgent("working", "w7D:p1", sessionPath), now, 10 * min);
+  assert.equal(match.flag, "OK");
+  assert.equal(match.state, "live");
+
+  const reusedPane = classifyLiveness(trace, liveAgent("working", "w7D:p9", sessionPath), now, 10 * min);
+  assert.equal(reusedPane.flag, "DECIDE");
+  assert.equal(reusedPane.state, "decide");
+  assert.match(reusedPane.reason, /w7D:p1/);
+  assert.match(reusedPane.reason, /w7D:p9/);
+
+  const reusedSession = classifyLiveness(trace, liveAgent("working", "w7D:p1", "/tmp/2026-10-31T15-47-02-621Z_01a19999-975c-7524-b395-6fc6e737f235.jsonl"), now, 10 * min);
+  assert.equal(reusedSession.flag, "DECIDE");
+
+  const silentLive = classifyLiveness(trace, liveAgent("working", "w7D:p1", undefined), now, 10 * min);
+  assert.equal(silentLive.flag, "OK");
+  assert.equal(silentLive.state, "unverified");
+});
+
+test("legacy record without identity keeps its previous flag", () => {
+  const legacy = classifyLiveness(entry("WORKING"), liveAgent("working", "w7D:p1", sessionPath), now, 10 * min);
+  assert.equal(legacy.flag, "OK");
+  assert.equal(legacy.state, "unverified");
+  assert.match(legacy.reason, /no identity/);
+
+  const closed = classifyLiveness(entry("CLOSED"), undefined, now, 10 * min);
+  assert.equal(closed.flag, "OK");
+  assert.equal(closed.state, "closed");
+});
+
+test("report records pane and session identity and preserves it across reports", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-identity-"));
+  try {
+    const first = report({
+      dir,
+      run: "run-test",
+      task: "I#103",
+      state: "ASSIGNED",
+      summary: "Assigned",
+      pane: "w7D:p1",
+      session: sessionPath,
+      silent: true,
+      nonBlocking: true
+    });
+    assert.deepEqual(first.identity, recorded);
+
+    const second = report({ dir, run: "run-test", task: "I#103", state: "WORKING", summary: "Working", silent: true, nonBlocking: true });
+    assert.deepEqual(second.identity, recorded);
+
+    const saved = JSON.parse(readFileSync(join(dir, "I-103.json"), "utf8"));
+    assert.deepEqual(saved.identity, recorded);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a partial identity report preserves the field it does not supply", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-identity-merge-"));
+  try {
+    report({ dir, run: "run-test", task: "I#105", state: "ASSIGNED", summary: "a", pane: "w7D:p1", session: sessionPath, silent: true, nonBlocking: true });
+    const second = report({ dir, run: "run-test", task: "I#105", state: "WORKING", summary: "b", pane: "w7D:p2", silent: true, nonBlocking: true });
+    assert.deepEqual(second.identity, { pane: "w7D:p2", session: recorded.session });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a lifecycle that contradicts the state is not treated as closed", () => {
+  const contradictory = entry("WORKING", 0, { lifecycle: "closed" });
+  const result = classifyLiveness(contradictory, liveAgent("working", "w7D:p1", sessionPath), now, 10 * min);
+  assert.equal(result.flag, "DECIDE");
+  assert.equal(result.state, "decide");
+  assert.match(result.reason, /state is WORKING/);
+});
+
+test("a corrupt record is refused instead of silently overwritten", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-corrupt-"));
+  try {
+    const file = join(dir, "I-104.json");
+    writeFileSync(file, "{ not json");
+    assert.throws(() => report({ dir, run: "run-test", task: "I#104", state: "WORKING", summary: "x", silent: true, nonBlocking: true }));
+    assert.equal(readFileSync(file, "utf8"), "{ not json");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("storeEvidence hashes and stores files deduplicated", () => {

@@ -15,6 +15,16 @@ A dispatched session that nobody watches and that never reports is not delegatio
 
 Pane state says whether an agent is busy. Only a mailbox report plus Git evidence says what it achieved.
 
+### Identity contract
+
+The dispatch record may include `identity.pane` and `identity.session`; unknown values are omitted.
+A matching recorded and live identity is `live`, subject to the existing liveness proof requirements.
+A conflicting identity is `decide` with both identities in the reason; it is never `live` or `lost`.
+A missing live identity or a legacy record without identity is `unverified`, never `live` or `lost`.
+Name matching only selects a liveness candidate; it is a hint, not proof of ownership.
+If Herdr is unavailable, status is `unverified` and mailbox/Git evidence decides; Herdr is not a hard requirement.
+No matching live agent keeps the existing absent/`GONE` handling.
+
 ## Workflow timeout and MCP evidence
 
 Every workflow-owned role session uses a finite `timeoutMs` and reports timeout/failure evidence instead of silently retrying or switching delegation mechanisms. A timeout is a failed attempt, not proof that PiWorkflow is unavailable. Before dispatch and during smoke verification, run the read-only registry checker:
@@ -29,7 +39,7 @@ The checker reports configured server names, redacted transport reachability, an
 
 1. Pick a run id (`ORCH_RUN`, for example `repo-20261009`) and a unique agent name per task matching `[a-z][a-z0-9_-]{0,31}` (`issue84`, `pr127`).
 2. For the default topology, split a sibling pane in the caller's current tab with `herdr pane split <caller-pane> --direction right|down --no-focus`, then run `herdr pane run <new-pane>` with a cd-prefixed command. The split result's `.result.pane.pane_id` is the new pane, which keeps the caller's `tab_id`; nested agents split their own parent pane. Use a separate workspace, tab, or cwd only when the user explicitly requests it. The named workflow run owns the panes it launches; use the agent and pane label from [coordination.md](coordination.md).
-3. Register the task (task id, agent name, pane, worktree, branch) and write the first report: `node mailbox.mjs report --run R --task I#84 --agent issue84 --state ASSIGNED`.
+3. Register the task (task id, agent name, pane, worktree, branch) and write the first report: `node mailbox.mjs report --run R --task I#84 --agent issue84 --state ASSIGNED [--pane <pane>] [--session <session>]`.
 4. Send the brief with `herdr agent prompt <name> "<brief>"` without `--wait` for parallel work. Every brief ends with the report-back clause below.
 
 ### Report-back clause (mandatory in every brief)
@@ -37,7 +47,7 @@ The checker reports configured server names, redacted transport reachability, an
 ```text
 REPORTING: ORCH_RUN=<run>, ORCH_AGENT=<name>, ORCH_MASTER=<master agent name>.
 Report with either native Pi tools (orch_report, orch_ask) or CLI:
-  node <skill>/scripts/mailbox.mjs report --task <id> --state <STATE> --summary "<one line>" [--phase P] [--branch B] [--check name=PASS|FAIL|BLOCKED|NOT RUN] [--evidence "<large output>"] [--risk R] [--next N]
+  node <skill>/scripts/mailbox.mjs report --task <id> --state <STATE> --summary "<one line>" [--phase P] [--branch B] [--pane PANE] [--session SESSION] [--check name=PASS|FAIL|BLOCKED|NOT RUN] [--evidence "<large output>"] [--risk R] [--next N]
 - Report WORKING at each lifecycle phase change and at least every 10 minutes while working.
 - If blocked, ask immediately with `orch_ask` (or `node mailbox.mjs ask --task <id> --question "<exact question>"`).
 - Large test logs or diffs should be passed via --evidence or `orch_evidence` to avoid context window pollution.

@@ -47,6 +47,34 @@ const HERDR_AGENT_NAME = /^[a-z][a-z0-9_-]{0,31}$/;
 const RUN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const EVIDENCE_HASH = /^[0-9a-f]{16,64}$/;
 const PI_SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SESSION_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+const IDENTITY_FIELDS = ["pane", "session"];
+
+function isPresent(value) {
+  return value !== undefined && value !== null && value !== "";
+}
+
+function normalizeIdentifier(value) {
+  return typeof value === "string" ? (value.match(SESSION_UUID)?.[0] ?? value) : value;
+}
+
+function normalizeIdentity(source) {
+  if (!source || typeof source !== "object") return undefined;
+  const identity = {};
+  for (const field of IDENTITY_FIELDS) {
+    if (isPresent(source[field])) identity[field] = normalizeIdentifier(source[field]);
+  }
+  return Object.keys(identity).length ? identity : undefined;
+}
+
+function liveIdentity(agent) {
+  return normalizeIdentity({
+    pane: agent?.pane_id ?? agent?.pane,
+    session: agent?.agent_session?.value ?? agent?.session,
+  });
+}
+
+const identityText = (identity) => JSON.stringify(identity ?? {});
 
 function currentAgentName() {
   return String(process.env.ORCH_AGENT || process.env.ORCH_MASTER || "").trim();
@@ -56,9 +84,12 @@ function isHerdrAgentName(value) {
   return HERDR_AGENT_NAME.test(value) && !PI_SESSION_ID.test(value);
 }
 
-export function classify(entry, agent, now, staleMs) {
+// Name-only joining credits a pending task to an unrelated live agent when a
+// pane or agent name is reused. Correlate only when the record carries
+// identity; legacy records and agents that report none keep the name-based
+// flag and say why.
+function nameBasedFlag(entry, agent, now, staleMs) {
   const live = agent?.agent_status;
-  if (entry.state === "CLOSED" || entry.lifecycle === "closed") return "OK";
   if (entry.pending_ask) return "ASK";
   if (!agent) return "GONE";
   if (live === "blocked") return "NEEDS_HUMAN";
@@ -67,6 +98,34 @@ export function classify(entry, agent, now, staleMs) {
   if (PENDING.has(entry.state) && live === "working" && now - Date.parse(entry.updated_at) > staleMs) return "STALE";
   if (!PENDING.has(entry.state)) return "DECIDE";
   return "OK";
+}
+
+export function classifyLiveness(entry, agent, now, staleMs) {
+  if (entry.state === "CLOSED") return { flag: "OK", state: "closed", reason: "closed task" };
+  // A lifecycle that contradicts the state must not silently close a task.
+  if (entry.lifecycle === "closed") return { flag: "DECIDE", state: "decide", reason: `lifecycle says closed but state is ${entry.state}` };
+  const flag = nameBasedFlag(entry, agent, now, staleMs);
+  if (!agent) return { flag, state: "absent", reason: "no live agent" };
+
+  const record = normalizeIdentity(entry.identity);
+  if (!record) return { flag, state: "unverified", reason: "legacy record has no identity" };
+
+  const live = liveIdentity(agent);
+  if (!live) return { flag, state: "unverified", reason: `record identity ${identityText(record)}; live agent reports no identity` };
+
+  const mismatched = IDENTITY_FIELDS.filter((f) => isPresent(record[f]) && isPresent(live[f]) && record[f] !== live[f]);
+  if (mismatched.length) {
+    return { flag: "DECIDE", state: "decide", reason: `identity mismatch: record=${identityText(record)} live=${identityText(live)}` };
+  }
+  const missing = IDENTITY_FIELDS.filter((f) => isPresent(record[f]) && !isPresent(live[f]));
+  if (missing.length) {
+    return { flag, state: "unverified", reason: `identity incomplete: record=${identityText(record)} live=${identityText(live)}` };
+  }
+  return { flag, state: "live", reason: `identity matches: record=${identityText(record)} live=${identityText(live)}` };
+}
+
+export function classify(entry, agent, now, staleMs) {
+  return classifyLiveness(entry, agent, now, staleMs).flag;
 }
 
 export function parse(argv) {
@@ -98,6 +157,23 @@ export function runDir(opts) {
 }
 
 export const fileFor = (task) => `${task.replace(/[^A-Za-z0-9._-]/g, "-")}.json`;
+
+// A missing record is a first write; a corrupt one must not be overwritten
+// silently, because that discards the only persisted state of a task.
+function readEntry(file) {
+  try {
+    return JSON.parse(readFileSync(file, "utf8"));
+  } catch (err) {
+    if (err.code === "ENOENT") return {};
+    throw err;
+  }
+}
+
+function persistEntry(dir, file, entry, event) {
+  writeFileSync(`${file}.tmp`, `${JSON.stringify(entry, null, 2)}\n`);
+  renameSync(`${file}.tmp`, file);
+  appendFileSync(join(dir, "events.jsonl"), `${JSON.stringify(event)}\n`);
+}
 
 // Store large evidence payloads into deduplicated files to protect context windows
 export function storeEvidence(dir, content) {
@@ -186,8 +262,7 @@ export function report(opts) {
   let entry = null;
 
   withLock(file, () => {
-    let prev = {};
-    try { prev = JSON.parse(readFileSync(file, "utf8")); } catch { /* first report */ }
+    const prev = readEntry(file);
     entry = {
       v: "repo-orchestrator/v1",
       kind: opts.state === "ASSIGNED" || opts.state === "WORKING" ? "progress" : "result",
@@ -208,9 +283,10 @@ export function report(opts) {
       created_at: prev.created_at ?? now,
       updated_at: now,
     };
-    writeFileSync(`${file}.tmp`, `${JSON.stringify(entry, null, 2)}\n`);
-    renameSync(`${file}.tmp`, file);
-    appendFileSync(join(dir, "events.jsonl"), `${JSON.stringify({ ...entry, checks: entry.checks.length })}\n`);
+    const supplied = normalizeIdentity({ pane: opts.pane, session: opts.session });
+    const identity = supplied ? { ...normalizeIdentity(prev.identity), ...supplied } : normalizeIdentity(prev.identity);
+    if (identity) entry.identity = identity;
+    persistEntry(dir, file, entry, { ...entry, checks: entry.checks.length });
   });
 
   const master = opts.notify ?? process.env.ORCH_MASTER;
@@ -234,8 +310,7 @@ export function ask(opts) {
   let entry = null;
 
   withLock(file, () => {
-    let prev = {};
-    try { prev = JSON.parse(readFileSync(file, "utf8")); } catch { /* first write */ }
+    const prev = readEntry(file);
     entry = {
       ...prev,
       v: "repo-orchestrator/v1",
@@ -249,9 +324,7 @@ export function ask(opts) {
       summary: `[QUESTION] ${opts.question}`,
       updated_at: now,
     };
-    writeFileSync(`${file}.tmp`, `${JSON.stringify(entry, null, 2)}\n`);
-    renameSync(`${file}.tmp`, file);
-    appendFileSync(join(dir, "events.jsonl"), `${JSON.stringify({ event: "ask", task: opts.task, question: opts.question, timestamp: now })}\n`);
+    persistEntry(dir, file, entry, { event: "ask", task: opts.task, question: opts.question, timestamp: now });
   });
 
   const master = opts.notify ?? process.env.ORCH_MASTER;
@@ -276,7 +349,7 @@ export function reply(opts) {
   let entry = null;
 
   withLock(file, () => {
-    const prev = JSON.parse(readFileSync(file, "utf8"));
+    const prev = readEntry(file);
     workerAgent = prev.agent;
     entry = {
       ...prev,
@@ -288,9 +361,7 @@ export function reply(opts) {
       summary: `[ANSWERED] ${opts.answer}`,
       updated_at: now,
     };
-    writeFileSync(`${file}.tmp`, `${JSON.stringify(entry, null, 2)}\n`);
-    renameSync(`${file}.tmp`, file);
-    appendFileSync(join(dir, "events.jsonl"), `${JSON.stringify({ event: "reply", task: opts.task, answer: opts.answer, timestamp: now })}\n`);
+    persistEntry(dir, file, entry, { event: "reply", task: opts.task, answer: opts.answer, timestamp: now });
   });
 
   if (workerAgent) {
@@ -323,7 +394,9 @@ export function status(opts) {
   const rows = files.map((f) => {
     const e = JSON.parse(readFileSync(join(dir, f), "utf8"));
     const agent = live?.get(e.agent);
-    const flag = live ? classify(e, agent, Date.now(), staleMs) : "NO_HERDR";
+    const assessment = live
+      ? classifyLiveness(e, agent, Date.now(), staleMs)
+      : { flag: "NO_HERDR", state: "unverified", reason: "Herdr liveness unavailable; mailbox and Git evidence decide" };
     const age = Math.round((Date.now() - Date.parse(e.updated_at)) / 60_000);
     return {
       task: e.task,
@@ -333,7 +406,9 @@ export function status(opts) {
       lifecycle: e.lifecycle ?? deriveLifecycle(e.state),
       seq: e.seq,
       age_min: age,
-      flag,
+      flag: assessment.flag,
+      liveness: assessment.state,
+      reason: assessment.reason,
       summary: e.summary.slice(0, 60),
       evidence: e.evidence_ref ?? "-"
     };
