@@ -46,7 +46,8 @@
       "failurePrevents": "Starting implementation with an ambiguous goal, incompatible pipelines, or unavailable skills.",
       "practices": [
         "A decision ticket names the decision it closes, never a slice of work to execute."
-      ]
+      ],
+      "conditionalSkills": []
     },
     {
       "id": "spec",
@@ -86,36 +87,24 @@
       "failurePrevents": "Coding against an untestable idea, duplicating an existing seam, or losing the route's ownership boundary.",
       "practices": [
         "The seams are named before any code exists, and the highest existing seam wins."
-      ]
+      ],
+      "conditionalSkills": []
     },
     {
       "id": "implement",
       "title": "Implement",
       "purpose": "Make the smallest change that satisfies the spec while preserving existing behavior.",
       "skills": [
-        "animation-vocabulary",
-        "apple-design",
-        "design",
-        "design-taste-frontend",
-        "email-html-mjml",
-        "emil-design-eng",
         "engineering-excellence",
         "gentle-ai",
         "go-testing",
-        "heroui-react",
-        "impeccable",
         "implement",
         "implement-spec",
-        "migrate-to-shoehorn",
-        "phantom-ui",
         "prototype",
-        "scaffold-exercises",
         "setup-pre-commit",
-        "setup-ts-deep-modules",
         "tdd",
         "teach",
-        "tigerstyle",
-        "typescript-advanced"
+        "tigerstyle"
       ],
       "mandatoryByRoute": {
         "matt-ticket-pipeline": [
@@ -136,6 +125,22 @@
       "failurePrevents": "Spec drift, speculative features, and tests that only mirror implementation details.",
       "practices": [
         "One observed red per rule; an existing behaviour that shares the changed code gets one test proving it still holds."
+      ],
+      "conditionalSkills": [
+        {
+          "when": "only when the change touches a user interface",
+          "skills": [
+            "animation-vocabulary",
+            "apple-design",
+            "design",
+            "design-taste-frontend",
+            "email-html-mjml",
+            "emil-design-eng",
+            "heroui-react",
+            "impeccable",
+            "phantom-ui"
+          ]
+        }
       ]
     },
     {
@@ -167,7 +172,8 @@
       "failurePrevents": "Calling a change verified because a local suite is green when the real target or boundary was not exercised.",
       "practices": [
         "The evidence is a recorded command and its output, not a green suite alone; a platform claim is run on that platform."
-      ]
+      ],
+      "conditionalSkills": []
     },
     {
       "id": "review",
@@ -200,7 +206,8 @@
       "failurePrevents": "Missing a regression, confusing style preference with a defect, or blocking the candidate on unrelated debt.",
       "practices": [
         "A finding carries its file and line, and a pre-existing issue is a follow-up, never a blocker dressed as the candidate's fault."
-      ]
+      ],
+      "conditionalSkills": []
     },
     {
       "id": "deliver",
@@ -230,7 +237,8 @@
       "failurePrevents": "Shipping an unreviewable slice, separating the docs from the behavior, or losing the verification record.",
       "practices": [
         "One work unit per commit, tests and docs with the behaviour."
-      ]
+      ],
+      "conditionalSkills": []
     },
     {
       "id": "close",
@@ -259,7 +267,8 @@
       "failurePrevents": "A false claim of completeness caused by silently omitted or unverified work.",
       "practices": [
         "Every skipped or unverified item is stated, because an unmentioned gap is a false claim of completeness."
-      ]
+      ],
+      "conditionalSkills": []
     }
   ],
   "outOfDevelopment": [
@@ -502,6 +511,22 @@
     {
       "skill": "writing-shape",
       "reason": "Creative writing workflow, not software development."
+    },
+    {
+      "skill": "typescript-advanced",
+      "reason": "TypeScript-only: the skill itself excludes JavaScript, and this product has zero TypeScript files."
+    },
+    {
+      "skill": "migrate-to-shoehorn",
+      "reason": "TypeScript-only: assert helpers for TypeScript tests."
+    },
+    {
+      "skill": "scaffold-exercises",
+      "reason": "Course scaffolding: builds teaching exercise trees, not product code."
+    },
+    {
+      "skill": "setup-ts-deep-modules",
+      "reason": "TypeScript-only: wires dependency-cruiser into a TypeScript monorepo."
     }
   ],
   "machine": {

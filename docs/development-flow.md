@@ -56,6 +56,16 @@ Use `retro` and `project-memory` when the work produced a decision, fix, convent
 
 Practice: every skipped or unverified item is stated, because an unmentioned gap is a false claim of completeness.
 
+## Universal, conditional, and out of scope
+
+A phase carries three different things and they must not be read as one list.
+
+- **Universal skills** apply whenever the phase runs, whatever the change touches.
+- **Conditional skills** apply only when their condition holds. The Implement phase names nine user-interface skills under `only when the change touches a user interface`: loading them for a database migration is noise, and noise is what makes a session ignore the list.
+- **Out of development** lists skills that are installed but have no place in a development phase, each with its reason. Four skills sit there for toolchain reasons: three are TypeScript-only and this product contains zero TypeScript files, so a JavaScript repository loading one of them follows an instruction written for another language, and the fourth, `scaffold-exercises`, builds teaching exercise trees rather than product code.
+
+The generator reports which of the three a skill falls into, so a session can tell "not in the flow" from "in the flow but not for this change".
+
 ## Combinations that work
 
 - One route plus shared `tdd`, `code-review`, and `work-unit-commits`.
