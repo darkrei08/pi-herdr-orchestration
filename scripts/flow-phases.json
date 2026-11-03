@@ -1,0 +1,1547 @@
+{
+  "schema": "pi-herdr-orchestration/development-flow/v1",
+  "routes": {
+    "matt-ticket-pipeline": "Use Matt's ticket pipeline when the work starts as an issue, needs a spec, or needs ticket decomposition.",
+    "engineering-excellence-sdd": "Use Engineering Excellence SDD for a repository that adopts its software design and delivery cycle.",
+    "gentle-sdd": "Use Gentle SDD when the Gentle review and delivery authority owns the SDD cycle."
+  },
+  "skillRoots": [
+    "~/.agents/skills",
+    "~/.pi/agent/skills",
+    "~/.pi/agent/npm/node_modules/gentle-pi/skills"
+  ],
+  "phases": [
+    {
+      "id": "chart",
+      "title": "Chart",
+      "purpose": "Turn the request into a bounded decision and choose exactly one development route.",
+      "skills": [
+        "ask-matt",
+        "chief-of-staff",
+        "find-skills",
+        "gentle-ai",
+        "grill-me",
+        "grill-with-docs",
+        "grilling",
+        "loop-me",
+        "multi-repo-product-workflow",
+        "pi-herdr-orchestrator",
+        "to-questionnaire",
+        "triage",
+        "wayfinder"
+      ],
+      "mandatoryByRoute": {
+        "matt-ticket-pipeline": [
+          "triage"
+        ],
+        "engineering-excellence-sdd": [
+          "engineering-excellence"
+        ],
+        "gentle-sdd": [
+          "gentle-ai"
+        ]
+      },
+      "consumes": "The user's request, repository instructions, current Git state, and the capability report.",
+      "handsOn": "One decision ticket or bounded implementation brief, one selected route, and the smallest sufficient skill set.",
+      "failurePrevents": "Starting implementation with an ambiguous goal, incompatible pipelines, or unavailable skills.",
+      "practices": [
+        "A decision ticket names the decision it closes, never a slice of work to execute."
+      ]
+    },
+    {
+      "id": "spec",
+      "title": "Spec",
+      "purpose": "Describe the observable behavior, seams, constraints, and acceptance evidence before code exists.",
+      "skills": [
+        "cognitive-doc-design",
+        "codebase-design",
+        "domain-modeling",
+        "engineering-excellence",
+        "gentle-ai",
+        "issue-creation",
+        "issue-ops",
+        "orient",
+        "project-memory",
+        "research",
+        "reusable-data-search",
+        "setup-matt-pocock-skills",
+        "to-spec",
+        "to-tickets",
+        "writing-for-agents"
+      ],
+      "mandatoryByRoute": {
+        "matt-ticket-pipeline": [
+          "to-spec",
+          "to-tickets"
+        ],
+        "engineering-excellence-sdd": [
+          "engineering-excellence"
+        ],
+        "gentle-sdd": [
+          "gentle-ai"
+        ]
+      },
+      "consumes": "The chart, repository evidence, existing interfaces, and the selected route's method.",
+      "handsOn": "A spec or ticket graph with named seams, acceptance criteria, and blocking edges.",
+      "failurePrevents": "Coding against an untestable idea, duplicating an existing seam, or losing the route's ownership boundary.",
+      "practices": [
+        "The seams are named before any code exists, and the highest existing seam wins."
+      ]
+    },
+    {
+      "id": "implement",
+      "title": "Implement",
+      "purpose": "Make the smallest change that satisfies the spec while preserving existing behavior.",
+      "skills": [
+        "animation-vocabulary",
+        "apple-design",
+        "design",
+        "design-taste-frontend",
+        "email-html-mjml",
+        "emil-design-eng",
+        "engineering-excellence",
+        "gentle-ai",
+        "go-testing",
+        "heroui-react",
+        "impeccable",
+        "implement",
+        "implement-spec",
+        "migrate-to-shoehorn",
+        "phantom-ui",
+        "prototype",
+        "scaffold-exercises",
+        "setup-pre-commit",
+        "setup-ts-deep-modules",
+        "tdd",
+        "teach",
+        "tigerstyle",
+        "typescript-advanced"
+      ],
+      "mandatoryByRoute": {
+        "matt-ticket-pipeline": [
+          "implement",
+          "tdd"
+        ],
+        "engineering-excellence-sdd": [
+          "engineering-excellence",
+          "tdd"
+        ],
+        "gentle-sdd": [
+          "gentle-ai",
+          "tdd"
+        ]
+      },
+      "consumes": "The approved spec or ticket graph, the existing seam, and the chosen route's handoff.",
+      "handsOn": "A minimal implementation, an observed red for each new rule, and updated tests or fixtures.",
+      "failurePrevents": "Spec drift, speculative features, and tests that only mirror implementation details.",
+      "practices": [
+        "One observed red per rule; an existing behaviour that shares the changed code gets one test proving it still holds."
+      ]
+    },
+    {
+      "id": "verify",
+      "title": "Verify",
+      "purpose": "Run the focused checks and the claimed platform or runtime checks, then record their evidence.",
+      "skills": [
+        "browseros-neo",
+        "container-test-matrix",
+        "crowdsec",
+        "crowdsec-service-api",
+        "firecrawl-agent",
+        "git-guardrails-claude-code",
+        "herdr",
+        "lightpanda",
+        "pi-model-fit",
+        "security-audit",
+        "skill-creator",
+        "skillopt-sleep",
+        "wizard"
+      ],
+      "mandatoryByRoute": {
+        "matt-ticket-pipeline": [],
+        "engineering-excellence-sdd": [],
+        "gentle-sdd": []
+      },
+      "consumes": "The implementation, its tests, the claimed environments, and any route-specific verification obligations.",
+      "handsOn": "Recorded commands and outputs, including platform evidence where the change makes a platform claim.",
+      "failurePrevents": "Calling a change verified because a local suite is green when the real target or boundary was not exercised.",
+      "practices": [
+        "The evidence is a recorded command and its output, not a green suite alone; a platform claim is run on that platform."
+      ]
+    },
+    {
+      "id": "review",
+      "title": "Review",
+      "purpose": "Check the candidate against the spec and repository standards without laundering pre-existing debt into the finding.",
+      "skills": [
+        "code-review",
+        "comment-writer",
+        "diagnosing-bugs",
+        "improve-codebase-architecture",
+        "judgment-day",
+        "learning-opportunities",
+        "rdd-defect-workflow",
+        "skill-improver",
+        "skill-registry"
+      ],
+      "mandatoryByRoute": {
+        "matt-ticket-pipeline": [
+          "code-review"
+        ],
+        "engineering-excellence-sdd": [
+          "code-review"
+        ],
+        "gentle-sdd": [
+          "code-review"
+        ]
+      },
+      "consumes": "The diff, verification evidence, the originating spec, and the fixed review point.",
+      "handsOn": "Findings with file and line evidence, a disposition for pre-existing issues, and an approved candidate or bounded fixes.",
+      "failurePrevents": "Missing a regression, confusing style preference with a defect, or blocking the candidate on unrelated debt.",
+      "practices": [
+        "A finding carries its file and line, and a pre-existing issue is a follow-up, never a blocker dressed as the candidate's fault."
+      ]
+    },
+    {
+      "id": "deliver",
+      "title": "Deliver",
+      "purpose": "Package the reviewed behavior as a coherent work unit with the required handoff or review artifact.",
+      "skills": [
+        "branch-pr",
+        "chained-pr",
+        "claude-handoff",
+        "handoff",
+        "pr",
+        "work-unit-commits"
+      ],
+      "mandatoryByRoute": {
+        "matt-ticket-pipeline": [
+          "work-unit-commits"
+        ],
+        "engineering-excellence-sdd": [
+          "work-unit-commits"
+        ],
+        "gentle-sdd": [
+          "work-unit-commits"
+        ]
+      },
+      "consumes": "The reviewed candidate, its evidence, and any required issue or PR metadata.",
+      "handsOn": "One reviewable work unit, with tests and docs beside the behavior and a precise handoff.",
+      "failurePrevents": "Shipping an unreviewable slice, separating the docs from the behavior, or losing the verification record.",
+      "practices": [
+        "One work unit per commit, tests and docs with the behaviour."
+      ]
+    },
+    {
+      "id": "close",
+      "title": "Close",
+      "purpose": "State what was completed, what was skipped, and what remains before ending the work.",
+      "skills": [
+        "project-memory",
+        "retro",
+        "show-me",
+        "wait-what",
+        "writing-for-agents"
+      ],
+      "mandatoryByRoute": {
+        "matt-ticket-pipeline": [
+          "retro"
+        ],
+        "engineering-excellence-sdd": [
+          "retro"
+        ],
+        "gentle-sdd": [
+          "retro"
+        ]
+      },
+      "consumes": "The final diff, commit or handoff, verification output, and review disposition.",
+      "handsOn": "A concise completion report, durable memory where warranted, and explicit gaps or next actions.",
+      "failurePrevents": "A false claim of completeness caused by silently omitted or unverified work.",
+      "practices": [
+        "Every skipped or unverified item is stated, because an unmentioned gap is a false claim of completeness."
+      ]
+    }
+  ],
+  "outOfDevelopment": [
+    {
+      "skill": "ad-manager",
+      "reason": "Advertising operations, not software development."
+    },
+    {
+      "skill": "ap-processor",
+      "reason": "Accounts-payable processing, not software development."
+    },
+    {
+      "skill": "brand-style",
+      "reason": "Brand guidance without a development workflow."
+    },
+    {
+      "skill": "brag",
+      "reason": "Launch-video promotion, not software delivery."
+    },
+    {
+      "skill": "build-agent",
+      "reason": "Business/connector agent role without a development workflow."
+    },
+    {
+      "skill": "build-connector",
+      "reason": "Business connector construction, not the repository development flow."
+    },
+    {
+      "skill": "business-pulse",
+      "reason": "Business reporting, not software development."
+    },
+    {
+      "skill": "call-list",
+      "reason": "Sales-call operations, not software development."
+    },
+    {
+      "skill": "canva-creator",
+      "reason": "Marketing-media creation, not software development."
+    },
+    {
+      "skill": "cash-flow-snapshot",
+      "reason": "Finance forecasting, not software development."
+    },
+    {
+      "skill": "close-month",
+      "reason": "Finance close operations, not software development."
+    },
+    {
+      "skill": "content-strategy",
+      "reason": "Marketing content planning, not software development."
+    },
+    {
+      "skill": "contract-review",
+      "reason": "Legal/business review, not software development."
+    },
+    {
+      "skill": "crm-autopilot",
+      "reason": "CRM operations, not software development."
+    },
+    {
+      "skill": "grant-rfp-writer",
+      "reason": "Business proposal writing, not software development."
+    },
+    {
+      "skill": "grow-pipeline",
+      "reason": "Sales-pipeline operations, not software development."
+    },
+    {
+      "skill": "growth-pulse",
+      "reason": "Marketing analytics, not software development."
+    },
+    {
+      "skill": "humanizer",
+      "reason": "General prose polishing, not a development phase."
+    },
+    {
+      "skill": "hyperframes",
+      "reason": "Media/video production, not software development."
+    },
+    {
+      "skill": "hyperframes-animation",
+      "reason": "Media/video production, not software development."
+    },
+    {
+      "skill": "hyperframes-audio",
+      "reason": "Media/video production, not software development."
+    },
+    {
+      "skill": "hyperframes-cli",
+      "reason": "Media/video production, not software development."
+    },
+    {
+      "skill": "hyperframes-core",
+      "reason": "Media/video production, not software development."
+    },
+    {
+      "skill": "hyperframes-creative",
+      "reason": "Media/video production, not software development."
+    },
+    {
+      "skill": "hyperframes-keyframes",
+      "reason": "Media/video production, not software development."
+    },
+    {
+      "skill": "hyperframes-registry",
+      "reason": "Media/video production, not software development."
+    },
+    {
+      "skill": "hyperframes-studio",
+      "reason": "Media/video production, not software development."
+    },
+    {
+      "skill": "hiring-screener",
+      "reason": "Hiring operations, not software development."
+    },
+    {
+      "skill": "inbox-manager",
+      "reason": "Business inbox operations, not software development."
+    },
+    {
+      "skill": "inventory-planner",
+      "reason": "Small-business inventory operations, not software development."
+    },
+    {
+      "skill": "invoice-chase",
+      "reason": "Accounts-receivable operations, not software development."
+    },
+    {
+      "skill": "job-post-builder",
+      "reason": "Hiring content, not software development."
+    },
+    {
+      "skill": "lead-finder",
+      "reason": "Sales prospecting, not software development."
+    },
+    {
+      "skill": "lead-triage",
+      "reason": "Sales qualification, not software development."
+    },
+    {
+      "skill": "marketing-monday",
+      "reason": "Marketing reporting, not software development."
+    },
+    {
+      "skill": "media-use",
+      "reason": "Media sourcing and production, not software development."
+    },
+    {
+      "skill": "monday-brief",
+      "reason": "Business operations briefing, not software development."
+    },
+    {
+      "skill": "month-end-prep",
+      "reason": "Finance close preparation, not software development."
+    },
+    {
+      "skill": "outreach-composer",
+      "reason": "Sales outreach, not software development."
+    },
+    {
+      "skill": "pay-the-bills",
+      "reason": "Accounts-payable operations, not software development."
+    },
+    {
+      "skill": "payroll-prep",
+      "reason": "Payroll operations, not software development."
+    },
+    {
+      "skill": "plan-payroll",
+      "reason": "Payroll and cash planning, not software development."
+    },
+    {
+      "skill": "product-launch-video",
+      "reason": "Marketing video production, not software development."
+    },
+    {
+      "skill": "proposal-builder",
+      "reason": "Business proposal writing, not software development."
+    },
+    {
+      "skill": "reactivate",
+      "reason": "Customer win-back operations, not software development."
+    },
+    {
+      "skill": "report-builder",
+      "reason": "Business reporting, not software development."
+    },
+    {
+      "skill": "report-pack",
+      "reason": "Business reporting, not software development."
+    },
+    {
+      "skill": "restock",
+      "reason": "Small-business inventory and purchasing, not software development."
+    },
+    {
+      "skill": "review-reputation",
+      "reason": "Marketing and customer-reputation operations, not software development."
+    },
+    {
+      "skill": "seo-ai-visibility",
+      "reason": "Marketing and SEO operations, not software development."
+    },
+    {
+      "skill": "smb-onboard",
+      "reason": "Small-business onboarding, not software development."
+    },
+    {
+      "skill": "smb-router",
+      "reason": "Small-business workflow routing, not this development flow."
+    },
+    {
+      "skill": "social-content-engine",
+      "reason": "Social-media production, not software development."
+    },
+    {
+      "skill": "speed-to-lead",
+      "reason": "Sales response operations, not software development."
+    },
+    {
+      "skill": "tax-prep",
+      "reason": "Tax preparation, not software development."
+    },
+    {
+      "skill": "tax-season-organizer",
+      "reason": "Tax preparation, not software development."
+    },
+    {
+      "skill": "ticket-deflector",
+      "reason": "Customer-support operations, not software development."
+    },
+    {
+      "skill": "writing-beats",
+      "reason": "Creative writing workflow, not software development."
+    },
+    {
+      "skill": "writing-fragments",
+      "reason": "Creative writing workflow, not software development."
+    },
+    {
+      "skill": "writing-shape",
+      "reason": "Creative writing workflow, not software development."
+    }
+  ],
+  "machine": {
+    "inventory": [
+      {
+        "name": "ad-manager",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "ad-manager"
+      },
+      {
+        "name": "animation-vocabulary",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "animation-vocabulary"
+      },
+      {
+        "name": "ap-processor",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "ap-processor"
+      },
+      {
+        "name": "apple-design",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "apple-design"
+      },
+      {
+        "name": "ask-matt",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "ask-matt"
+      },
+      {
+        "name": "brag",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "brag"
+      },
+      {
+        "name": "branch-pr",
+        "roots": [
+          "gentle-pi"
+        ],
+        "frontmatterName": "gentle-ai-branch-pr"
+      },
+      {
+        "name": "brand-style",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "brand-style"
+      },
+      {
+        "name": "browseros-neo",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "browseros-neo"
+      },
+      {
+        "name": "build-agent",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "build-agent"
+      },
+      {
+        "name": "build-connector",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "build-connector"
+      },
+      {
+        "name": "business-pulse",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "business-pulse"
+      },
+      {
+        "name": "call-list",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "call-list"
+      },
+      {
+        "name": "canva-creator",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "canva-creator"
+      },
+      {
+        "name": "cash-flow-snapshot",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "cash-flow-snapshot"
+      },
+      {
+        "name": "chained-pr",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ],
+        "frontmatterName": "chained-pr"
+      },
+      {
+        "name": "chief-of-staff",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "chief-of-staff"
+      },
+      {
+        "name": "claude-handoff",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "claude-handoff"
+      },
+      {
+        "name": "close-month",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "close-month"
+      },
+      {
+        "name": "code-review",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "code-review"
+      },
+      {
+        "name": "codebase-design",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "codebase-design"
+      },
+      {
+        "name": "cognitive-doc-design",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ],
+        "frontmatterName": "cognitive-doc-design"
+      },
+      {
+        "name": "comment-writer",
+        "roots": [
+          "gentle-pi"
+        ],
+        "frontmatterName": "gentle-ai-comment-writer"
+      },
+      {
+        "name": "container-test-matrix",
+        "roots": [
+          "pi"
+        ],
+        "frontmatterName": "container-test-matrix"
+      },
+      {
+        "name": "content-strategy",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "content-strategy"
+      },
+      {
+        "name": "contract-review",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "contract-review"
+      },
+      {
+        "name": "crm-autopilot",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "crm-autopilot"
+      },
+      {
+        "name": "crowdsec",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "crowdsec"
+      },
+      {
+        "name": "crowdsec-service-api",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "crowdsec-service-api"
+      },
+      {
+        "name": "design",
+        "roots": [
+          "gentle-pi"
+        ],
+        "frontmatterName": "gentle-design"
+      },
+      {
+        "name": "design-taste-frontend",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "design-taste-frontend"
+      },
+      {
+        "name": "diagnosing-bugs",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "diagnosing-bugs"
+      },
+      {
+        "name": "domain-modeling",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "domain-modeling"
+      },
+      {
+        "name": "email-html-mjml",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "email-html-mjml"
+      },
+      {
+        "name": "emil-design-eng",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "emil-design-eng"
+      },
+      {
+        "name": "engineering-excellence",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "engineering-excellence"
+      },
+      {
+        "name": "find-skills",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "find-skills"
+      },
+      {
+        "name": "firecrawl-agent",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "firecrawl-agent"
+      },
+      {
+        "name": "gentle-ai",
+        "roots": [
+          "gentle-pi"
+        ],
+        "frontmatterName": "gentle-ai"
+      },
+      {
+        "name": "git-guardrails-claude-code",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "git-guardrails-claude-code"
+      },
+      {
+        "name": "go-testing",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "go-testing"
+      },
+      {
+        "name": "grant-rfp-writer",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "grant-rfp-writer"
+      },
+      {
+        "name": "grill-me",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "grill-me"
+      },
+      {
+        "name": "grill-with-docs",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "grill-with-docs"
+      },
+      {
+        "name": "grilling",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "grilling"
+      },
+      {
+        "name": "grow-pipeline",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "grow-pipeline"
+      },
+      {
+        "name": "growth-pulse",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "growth-pulse"
+      },
+      {
+        "name": "handoff",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "handoff"
+      },
+      {
+        "name": "herdr",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "herdr"
+      },
+      {
+        "name": "heroui-react",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "heroui-react"
+      },
+      {
+        "name": "hiring-screener",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "hiring-screener"
+      },
+      {
+        "name": "humanizer",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "humanizer"
+      },
+      {
+        "name": "hyperframes",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "hyperframes"
+      },
+      {
+        "name": "hyperframes-animation",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "hyperframes-animation"
+      },
+      {
+        "name": "hyperframes-audio",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "hyperframes-audio"
+      },
+      {
+        "name": "hyperframes-cli",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "hyperframes-cli"
+      },
+      {
+        "name": "hyperframes-core",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "hyperframes-core"
+      },
+      {
+        "name": "hyperframes-creative",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "hyperframes-creative"
+      },
+      {
+        "name": "hyperframes-keyframes",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "hyperframes-keyframes"
+      },
+      {
+        "name": "hyperframes-registry",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "hyperframes-registry"
+      },
+      {
+        "name": "hyperframes-studio",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "hyperframes-studio"
+      },
+      {
+        "name": "impeccable",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "impeccable"
+      },
+      {
+        "name": "implement",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "implement"
+      },
+      {
+        "name": "implement-spec",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "implement-spec"
+      },
+      {
+        "name": "improve-codebase-architecture",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "improve-codebase-architecture"
+      },
+      {
+        "name": "inbox-manager",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "inbox-manager"
+      },
+      {
+        "name": "inventory-planner",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "inventory-planner"
+      },
+      {
+        "name": "invoice-chase",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "invoice-chase"
+      },
+      {
+        "name": "issue-creation",
+        "roots": [
+          "gentle-pi"
+        ],
+        "frontmatterName": "gentle-ai-issue-creation"
+      },
+      {
+        "name": "issue-ops",
+        "roots": [
+          "pi"
+        ],
+        "frontmatterName": "issue-ops"
+      },
+      {
+        "name": "job-post-builder",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "job-post-builder"
+      },
+      {
+        "name": "judgment-day",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ],
+        "frontmatterName": "judgment-day"
+      },
+      {
+        "name": "lead-finder",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "lead-finder"
+      },
+      {
+        "name": "lead-triage",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "lead-triage"
+      },
+      {
+        "name": "learning-opportunities",
+        "roots": [
+          "pi"
+        ],
+        "frontmatterName": "learning-opportunities"
+      },
+      {
+        "name": "lightpanda",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "lightpanda"
+      },
+      {
+        "name": "loop-me",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "loop-me"
+      },
+      {
+        "name": "marketing-monday",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "marketing-monday"
+      },
+      {
+        "name": "media-use",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "media-use"
+      },
+      {
+        "name": "migrate-to-shoehorn",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "migrate-to-shoehorn"
+      },
+      {
+        "name": "monday-brief",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "monday-brief"
+      },
+      {
+        "name": "month-end-prep",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "month-end-prep"
+      },
+      {
+        "name": "multi-repo-product-workflow",
+        "roots": [
+          "pi"
+        ],
+        "frontmatterName": "multi-repo-product-workflow"
+      },
+      {
+        "name": "orient",
+        "roots": [
+          "pi"
+        ],
+        "frontmatterName": "orient"
+      },
+      {
+        "name": "outreach-composer",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "outreach-composer"
+      },
+      {
+        "name": "pay-the-bills",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "pay-the-bills"
+      },
+      {
+        "name": "payroll-prep",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "payroll-prep"
+      },
+      {
+        "name": "phantom-ui",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "phantom-ui"
+      },
+      {
+        "name": "pi-herdr-orchestrator",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "pi-herdr-orchestrator"
+      },
+      {
+        "name": "pi-model-fit",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "pi-model-fit"
+      },
+      {
+        "name": "plan-payroll",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "plan-payroll"
+      },
+      {
+        "name": "pr",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "pr"
+      },
+      {
+        "name": "product-launch-video",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "product-launch-video"
+      },
+      {
+        "name": "project-memory",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "project-memory"
+      },
+      {
+        "name": "proposal-builder",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "proposal-builder"
+      },
+      {
+        "name": "prototype",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "prototype"
+      },
+      {
+        "name": "rdd-defect-workflow",
+        "roots": [
+          "gentle-pi"
+        ],
+        "frontmatterName": "gentle-ai-rdd-defect-workflow"
+      },
+      {
+        "name": "reactivate",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "reactivate"
+      },
+      {
+        "name": "report-builder",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "report-builder"
+      },
+      {
+        "name": "report-pack",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "report-pack"
+      },
+      {
+        "name": "research",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "research"
+      },
+      {
+        "name": "restock",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "restock"
+      },
+      {
+        "name": "retro",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "retro"
+      },
+      {
+        "name": "reusable-data-search",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "reusable-data-search"
+      },
+      {
+        "name": "review-reputation",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "review-reputation"
+      },
+      {
+        "name": "scaffold-exercises",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "scaffold-exercises"
+      },
+      {
+        "name": "security-audit",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "security-audit"
+      },
+      {
+        "name": "seo-ai-visibility",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "seo-ai-visibility"
+      },
+      {
+        "name": "setup-matt-pocock-skills",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "setup-matt-pocock-skills"
+      },
+      {
+        "name": "setup-pre-commit",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "setup-pre-commit"
+      },
+      {
+        "name": "setup-ts-deep-modules",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "setup-ts-deep-modules"
+      },
+      {
+        "name": "show-me",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "show-me"
+      },
+      {
+        "name": "skill-creator",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ],
+        "frontmatterName": "skill-creator"
+      },
+      {
+        "name": "skill-improver",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ],
+        "frontmatterName": "skill-improver"
+      },
+      {
+        "name": "skill-registry",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ],
+        "frontmatterName": "skill-registry"
+      },
+      {
+        "name": "skillopt-sleep",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "skillopt-sleep"
+      },
+      {
+        "name": "smb-onboard",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "smb-onboard"
+      },
+      {
+        "name": "smb-router",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "smb-router"
+      },
+      {
+        "name": "social-content-engine",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "social-content-engine"
+      },
+      {
+        "name": "speed-to-lead",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "speed-to-lead"
+      },
+      {
+        "name": "tax-prep",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "tax-prep"
+      },
+      {
+        "name": "tax-season-organizer",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "tax-season-organizer"
+      },
+      {
+        "name": "tdd",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "tdd"
+      },
+      {
+        "name": "teach",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "teach"
+      },
+      {
+        "name": "ticket-deflector",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "ticket-deflector"
+      },
+      {
+        "name": "tigerstyle",
+        "roots": [
+          "pi"
+        ],
+        "frontmatterName": "tigerstyle"
+      },
+      {
+        "name": "to-questionnaire",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "to-questionnaire"
+      },
+      {
+        "name": "to-spec",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "to-spec"
+      },
+      {
+        "name": "to-tickets",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "to-tickets"
+      },
+      {
+        "name": "triage",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "triage"
+      },
+      {
+        "name": "typescript-advanced",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "typescript-advanced"
+      },
+      {
+        "name": "wait-what",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "wait-what"
+      },
+      {
+        "name": "wayfinder",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "wayfinder"
+      },
+      {
+        "name": "wizard",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "wizard"
+      },
+      {
+        "name": "work-unit-commits",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ],
+        "frontmatterName": "work-unit-commits"
+      },
+      {
+        "name": "writing-beats",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "writing-beats"
+      },
+      {
+        "name": "writing-for-agents",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "writing-for-agents"
+      },
+      {
+        "name": "writing-fragments",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "writing-fragments"
+      },
+      {
+        "name": "writing-shape",
+        "roots": [
+          "universal"
+        ],
+        "frontmatterName": "writing-shape"
+      }
+    ],
+    "skillDirectoryCount": 146,
+    "uniqueSkillCount": 139,
+    "duplicates": [
+      {
+        "name": "chained-pr",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ]
+      },
+      {
+        "name": "cognitive-doc-design",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ]
+      },
+      {
+        "name": "judgment-day",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ]
+      },
+      {
+        "name": "skill-creator",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ]
+      },
+      {
+        "name": "skill-improver",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ]
+      },
+      {
+        "name": "skill-registry",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ]
+      },
+      {
+        "name": "work-unit-commits",
+        "roots": [
+          "universal",
+          "gentle-pi"
+        ]
+      }
+    ],
+    "vanished": [],
+    "newUnclassified": [],
+    "missingMandatory": []
+  }
+}
