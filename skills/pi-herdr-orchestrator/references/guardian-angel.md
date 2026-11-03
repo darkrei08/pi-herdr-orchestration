@@ -2,6 +2,8 @@
 
 `Gentleman-Programming/gentleman-guardian-angel` (GGA) is an optional review gate, not the master orchestrator. It is provider-agnostic, runs from Git hooks or CI and checks staged/PR changes against the repository's `AGENTS.md` and `.gga` configuration.
 
+The `.gga` profile is machine-local: it is a link to the shared profile in the operator's dotenv checkout, ignored by Git and never committed, so the same rules apply in every repository without duplicating them or pointing a repository at a path outside itself.
+
 ## Responsibility boundary
 
 ```text

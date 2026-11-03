@@ -9,6 +9,7 @@ CLAUDE.md
 .serena/
 
 # Local agent hooks & settings
+.gga
 .gga.local
 agents/gga-pi.local/
 .claude/settings.local.json
