@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const file = process.env.FLOW_SOURCES_FILE ?? join(root, "odd", "skill-sources", "sources.json");
+const file = process.env.FLOW_SOURCES_FILE ?? join(root, "scripts", "flow-sources.json");
 const allowedKinds = new Set(["local", "github", "site", "registry"]);
 const allowedTrust = new Set(["primary", "secondary", "unsure"]);
 const cadenceDays = new Map([

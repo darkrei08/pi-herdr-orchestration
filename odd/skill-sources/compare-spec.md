@@ -23,18 +23,22 @@ Two things, one command and one report.
 
 The dimensions are fixed so reports stay comparable over time. The weights live in a committed file the operator edits (`flow-criteria.json`), so the ordering can be re-tuned without touching code.
 
+Comparison is two-stage. First apply hard elimination gates; only candidates that pass them reach the soft weighted score. The gates are: licence must be one of `MIT`, `Apache-2.0`, `BSD-3-Clause` or `CC0-1.0`; and format must be loadable `SKILL.md`. A quarantined source may remain enabled for observation, but it cannot pass the gates or receive an adoption verdict.
+
 | Dimension | What it measures | How it is evidenced |
 |---|---|---|
 | Relevance | does it cover a phase this harness actually runs | mapped to a phase id from the glossary, or unmapped |
-| Maintenance | is it still alive | latest commit or release date, open-issue ratio, maintainer count |
-| Evidence of use | do people outside its author use it | stars, dependents, independent mentions read from a page, not self-claimed |
-| Compatibility | does it work in this harness | format compatibility: `SKILL.md` frontmatter, plain Markdown rules, or a workflow script |
-| Licence | can it be used and redistributed here | licence file read, with the URL and the date |
+| Maintenance | is it still alive | GitHub API release and commit data, PR closure ratio, and CI presence |
+| Evidence of use | do people outside its author use it | stars and forks read from the GitHub API; no unverifiable dependents claim |
+| Compatibility | does it work in this harness | local schema compatibility for loadable `SKILL.md` files |
+| Licence | can it be used and redistributed here | licence file read, with the URL and the date; also checked by the hard gate |
 | Overlap | what it would replace | the installed skill it competes with, named |
 | Cost | what adopting it takes | files touched, migration, retraining of the operator's habits |
 | Risk | what breaks if it is wrong | the blast radius, and whether a test would catch a regression |
 
 A candidate wins only when its weighted total beats the installed alternative **and** it has no `high` risk finding. A tie keeps what is installed: migration is a cost, not a neutral act.
+
+The evidence substitutions are deliberate: stars, forks and releases are read from the API instead of inferred from pages; PR closure ratio and CI presence replace maintainer-count and open-issue heuristics; local schema compatibility replaces a claimed format match.
 
 ## The report
 
@@ -76,3 +80,9 @@ The CLI output and the written report. A test asserts the verdict, the presence 
 - Scoring people, repositories or projects on anything other than the dimensions above.
 - Automatic pool edits, and any verdict that applies itself.
 - Ranking by popularity alone. Stars are one evidence line among eight, and a repository with many stars that covers no phase of this harness scores zero on relevance.
+
+## Evidence that cannot be obtained honestly
+
+- GitHub has no dependents graph for markdown-only repositories.
+- Independent mentions need a paid search API or scraping that violates terms.
+- The unauthenticated GitHub API allows 60 requests per hour, so a sweep needs a token or a shallow clone.
