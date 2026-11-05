@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { classify, classifyLiveness, storeEvidence, readEvidence, deriveLifecycle, fileFor, report, ask, reply, runDir, STATES, LIFECYCLE_STATES } from "./mailbox.mjs";
@@ -328,6 +328,101 @@ test("ask and reply update state and lifecycle consistently", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+async function runExtensionStatus({ identity, agent, missingHerdr = false }) {
+  const root = mkdtempSync(join(tmpdir(), "orch-status-"));
+  const dir = join(root, "status-run");
+  const bin = join(root, "bin");
+  const fixture = join(root, "herdr.json");
+  const originalDir = process.env.ORCH_DIR;
+  const originalPath = process.env.PATH;
+  const originalFixture = process.env.HERDR_FIXTURE;
+  process.env.ORCH_DIR = root;
+  mkdirSync(bin);
+
+  const reportOptions = {
+    dir,
+    run: "status-run",
+    task: "I#301",
+    state: "WORKING",
+    summary: "Working",
+    agent: "worker",
+    silent: true,
+    nonBlocking: true,
+  };
+  if (identity) {
+    reportOptions.pane = identity.pane;
+    reportOptions.session = identity.session;
+  }
+  report(reportOptions);
+
+  if (!missingHerdr) {
+    writeFileSync(fixture, JSON.stringify({ result: { agents: [{ name: "worker", ...agent }] } }));
+    const herdr = join(bin, "herdr");
+    writeFileSync(herdr, `#!/bin/sh
+/bin/cat "$HERDR_FIXTURE"
+`);
+    chmodSync(herdr, 0o755);
+    process.env.HERDR_FIXTURE = fixture;
+  } else {
+    delete process.env.HERDR_FIXTURE;
+  }
+  process.env.PATH = bin;
+
+  try {
+    const { default: registerExtension } = await import("../../../extensions/index.mjs");
+    const tools = new Map();
+    registerExtension({ registerTool: (tool) => tools.set(tool.name, tool), registerCommand: () => {} });
+    const result = await tools.get("orch_status").execute("status", { run: "status-run", json: true });
+    return JSON.parse(result.content[0].text)[0];
+  } finally {
+    if (originalDir === undefined) delete process.env.ORCH_DIR;
+    else process.env.ORCH_DIR = originalDir;
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
+    if (originalFixture === undefined) delete process.env.HERDR_FIXTURE;
+    else process.env.HERDR_FIXTURE = originalFixture;
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+test("extension orch_status preserves liveness state and reason in JSON", async () => {
+  const matching = await runExtensionStatus({
+    identity: recorded,
+    agent: { agent_status: "working", pane_id: "w7D:p1", agent_session: { value: sessionPath } },
+  });
+  assert.equal(matching.flag, "OK");
+  assert.equal(matching.liveness, "live");
+  assert.match(matching.reason, /identity matches/);
+
+  const reusedPane = await runExtensionStatus({
+    identity: recorded,
+    agent: { agent_status: "working", pane_id: "w7D:p9", agent_session: { value: sessionPath } },
+  });
+  assert.equal(reusedPane.flag, "DECIDE");
+  assert.equal(reusedPane.liveness, "decide");
+  assert.match(reusedPane.reason, /identity mismatch/);
+
+  const reusedSession = await runExtensionStatus({
+    identity: recorded,
+    agent: { agent_status: "working", pane_id: "w7D:p1", agent_session: { value: "/tmp/2026-10-31T15-47-02-621Z_01a19999-975c-7524-b395-6fc6e737f235.jsonl" } },
+  });
+  assert.equal(reusedSession.flag, "DECIDE");
+  assert.equal(reusedSession.liveness, "decide");
+  assert.match(reusedSession.reason, /identity mismatch/);
+
+  const legacy = await runExtensionStatus({
+    agent: { agent_status: "working", pane_id: "w7D:p1", agent_session: { value: sessionPath } },
+  });
+  assert.equal(legacy.flag, "OK");
+  assert.equal(legacy.liveness, "unverified");
+  assert.match(legacy.reason, /legacy record/);
+
+  const missingHerdr = await runExtensionStatus({ missingHerdr: true });
+  assert.equal(missingHerdr.flag, "NO_HERDR");
+  assert.equal(missingHerdr.liveness, "unverified");
+  assert.equal(missingHerdr.reason, "Herdr liveness unavailable; mailbox and Git evidence decide");
 });
 
 test("extension tools integrate with mailbox and support evidence reading", async () => {

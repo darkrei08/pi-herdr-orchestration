@@ -5,7 +5,7 @@ import {
   STATES,
   LIFECYCLE_STATES,
   deriveLifecycle,
-  classify,
+  classifyLiveness,
   liveAgents,
   runDir,
   storeEvidence,
@@ -16,6 +16,16 @@ import {
 } from "../skills/pi-herdr-orchestrator/scripts/mailbox.mjs";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+
+function readOrchestrationEntries(dir) {
+  const live = liveAgents();
+  const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
+  const entries = files.map((f) => {
+    const entry = JSON.parse(readFileSync(join(dir, f), "utf8"));
+    return { entry, agent: live?.get(entry.agent) };
+  });
+  return { live, entries };
+}
 
 export default function (pi) {
   // 1. Tool: orch_report
@@ -76,12 +86,11 @@ export default function (pi) {
       const run = params.run ?? process.env.ORCH_RUN;
       const dir = runDir({ run });
       const staleMs = Number(params.stale_min ?? 10) * 60_000;
-      const live = liveAgents();
-      const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
-      const rows = files.map((f) => {
-        const e = JSON.parse(readFileSync(join(dir, f), "utf8"));
-        const agent = live?.get(e.agent);
-        const flag = live ? classify(e, agent, Date.now(), staleMs) : "NO_HERDR";
+      const { live, entries } = readOrchestrationEntries(dir);
+      const rows = entries.map(({ entry: e, agent }) => {
+        const assessment = live
+          ? classifyLiveness(e, agent, Date.now(), staleMs)
+          : { flag: "NO_HERDR", state: "unverified", reason: "Herdr liveness unavailable; mailbox and Git evidence decide" };
         const age = Math.round((Date.now() - Date.parse(e.updated_at)) / 60_000);
         return {
           task: e.task,
@@ -91,7 +100,9 @@ export default function (pi) {
           lifecycle: e.lifecycle ?? deriveLifecycle(e.state),
           seq: e.seq,
           age_min: age,
-          flag,
+          flag: assessment.flag,
+          liveness: assessment.state,
+          reason: assessment.reason,
           summary: e.summary.slice(0, 60),
           evidence: e.evidence_ref ?? "-"
         };
@@ -192,15 +203,12 @@ export default function (pi) {
         const run = process.env.ORCH_RUN ?? "default";
         try {
           const dir = runDir({ run });
-          const live = liveAgents();
-          const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
-          if (files.length === 0) {
+          const { entries } = readOrchestrationEntries(dir);
+          if (entries.length === 0) {
             ctx.ui?.notify?.("No orchestration tasks in current run", "info");
             return;
           }
-          const rows = files.map((f) => {
-            const e = JSON.parse(readFileSync(join(dir, f), "utf8"));
-            const agent = live?.get(e.agent);
+          const rows = entries.map(({ entry: e, agent }) => {
             const lifecycle = e.lifecycle ?? deriveLifecycle(e.state);
             return `${e.task}: ${e.state} (${lifecycle}) [${agent?.agent_status ?? "-"}] - ${e.summary.slice(0, 40)}`;
           });
