@@ -2,9 +2,11 @@
 
 Define problem, acceptance criteria, root cause if applicable, affected files, risks, dependencies and checks before coding. Reuse an existing valid task worktree. For substantial independent work keep task → branch → worktree → session traceable, following project conventions. Example: `fix/42-config-loading`, `.worktrees/issue-42-config-loading`, `[I#42] Config loading`.
 
+CodeGraph indexes are worktree-local: a worktree without its own `.codegraph` falls back to another checkout, so cross-worktree results are suspect for symbol truth. Index a working worktree once with `codegraph init -i`; do not index an ephemeral test worktree. The initializer never runs CodeGraph or installs sqz project hooks unless the caller explicitly passes `--codegraph` or `--sqz`.
+
 ## Branch, commit and publication
 
-One branch and one worktree per independent task; never edit the default branch directly. Follow repository naming, else `fix/<scope>`, `feat/<scope>`, `refactor/<scope>`, `test/<scope>`, `docs/<scope>`. While work is unstable, commit locally as logical checkpoints and do not push intermediate commits. Publish (push, PR) only when the unit is coherent and verified, and only with authorization. Squash or reorder only when it improves reviewability without destroying useful history.
+One branch and one worktree per independent task; never edit the default branch directly. Follow repository naming, else `fix/<scope>`, `feat/<scope>`, `refactor/<scope>`, `test/<scope>`, `docs/<scope>`. Local logical checkpoint commits happen only after explicit operator authorization; do not make intermediate pushes. Push, PR, and merge remain separate decisions, each requiring its own authorization. Squash or reorder only when it improves reviewability without destroying useful history.
 
 ## Worker rules
 

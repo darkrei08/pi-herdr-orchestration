@@ -424,6 +424,9 @@ node scripts/init-repo.mjs --apply
 
 # Or target a specific repository path:
 node scripts/init-repo.mjs --dir /path/to/my-repo --apply
+
+# Explicitly opt in to project-local CodeGraph indexing and sqz hooks:
+node scripts/init-repo.mjs --dir /path/to/my-repo --apply --codegraph --sqz
 ```
 
 This command automatically configures:
@@ -433,7 +436,8 @@ This command automatically configures:
 - **Engram Memory Identity:** Generates `.git/engram-project-identity.json` for isolated, persistent repository memory.
 - **Guardian Angel (GGA):** Creates `.gga` quality-gate configuration and baseline `AGENTS.md` guidelines.
 - **Semantic Code Navigation:** Deploys Serena project configuration for LSP symbol analysis.
-- **Token Compression:** Injects `sqz` and `rtk` local hooks for terminal and tool reduction.
+- **CodeGraph:** Optionally creates a worktree-local `.codegraph` index when requested with `--codegraph`; ephemeral test worktrees remain unindexed.
+- **Token Compression:** Installs the Claude project-local `sqz` hook only when explicitly requested with `--sqz`, skipping when `.claude/settings.local.json` already exists; detects global `rtk` for terminal and tool reduction.
 - **Herdr Workspace:** Registers a named Herdr workspace for explicit workspace workflows; default workflow runs remain in the caller's current tab.
 - **Skill Registry:** Catalogs all available skills into `.atl/skill-registry.md`.
 

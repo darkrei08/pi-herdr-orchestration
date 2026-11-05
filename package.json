@@ -20,7 +20,7 @@
     "mailbox:status": "node scripts/mailbox.mjs status",
     "test:dispatch": "node --test skills/pi-herdr-orchestrator/scripts/dispatch.test.mjs",
     "test:anthropic-small-business": "node --test skills/pi-herdr-orchestrator/scripts/check-anthropic-small-business.test.mjs",
-    "test": "node --test skills/pi-herdr-orchestrator/scripts/mailbox.test.mjs skills/pi-herdr-orchestrator/scripts/dispatch.test.mjs skills/pi-herdr-orchestrator/scripts/check-anthropic-small-business.test.mjs"
+    "test": "node --test skills/pi-herdr-orchestrator/scripts/mailbox.test.mjs skills/pi-herdr-orchestrator/scripts/dispatch.test.mjs skills/pi-herdr-orchestrator/scripts/check-anthropic-small-business.test.mjs skills/pi-herdr-orchestrator/scripts/init-repository.test.mjs"
   },
   "keywords": [
     "pi",
