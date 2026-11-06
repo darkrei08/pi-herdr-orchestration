@@ -8,6 +8,10 @@
     "check": "node scripts/check.mjs",
     "check:strict": "node scripts/check.mjs --strict",
     "check:json": "node scripts/check.mjs --json",
+    "check:mcp": "node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json",
+    "check:anthropic-small-business": "node skills/pi-herdr-orchestrator/scripts/check-anthropic-small-business.mjs --json",
+    "flow:glossary": "node scripts/flow-glossary.mjs",
+    "flow:sources:check": "node scripts/flow-sources-check.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",
     "bootstrap:apply": "node scripts/bootstrap.mjs --apply",
     "init-repo": "node scripts/init-repo.mjs",
@@ -15,7 +19,8 @@
     "mailbox": "node scripts/mailbox.mjs",
     "mailbox:status": "node scripts/mailbox.mjs status",
     "test:dispatch": "node --test skills/pi-herdr-orchestrator/scripts/dispatch.test.mjs",
-    "test": "node --test skills/pi-herdr-orchestrator/scripts/mailbox.test.mjs skills/pi-herdr-orchestrator/scripts/dispatch.test.mjs"
+    "test:anthropic-small-business": "node --test skills/pi-herdr-orchestrator/scripts/check-anthropic-small-business.test.mjs",
+    "test": "node --test skills/pi-herdr-orchestrator/scripts/mailbox.test.mjs skills/pi-herdr-orchestrator/scripts/dispatch.test.mjs skills/pi-herdr-orchestrator/scripts/capability-preflight.test.mjs skills/pi-herdr-orchestrator/scripts/check-anthropic-small-business.test.mjs skills/pi-herdr-orchestrator/scripts/init-repository.test.mjs"
   },
   "keywords": [
     "pi",
@@ -28,10 +33,13 @@
   ],
   "pi": {
     "extensions": [
-      "./extensions/index.mjs"
+      "./extensions/index.mjs",
+      "./extensions/capability-preflight.mjs"
     ],
     "skills": [
-      "./skills/pi-herdr-orchestrator"
+      "./skills/pi-herdr-orchestrator",
+      "./skills/anthropic-small-business-pi",
+      "./skills/dev-flow"
     ]
   },
   "author": "darkrei08",

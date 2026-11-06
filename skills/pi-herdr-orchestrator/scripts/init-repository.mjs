@@ -8,6 +8,8 @@ import { basename, join, resolve } from "node:path";
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
+const codegraph = args.includes("--codegraph");
+const sqz = args.includes("--sqz");
 const help = args.includes("--help");
 
 let dirIndex = args.indexOf("--dir");
@@ -25,6 +27,8 @@ Initialize all Pi Herdr Orchestration frameworks and dependencies for a reposito
 
 Options:
   --apply          Perform mutations (default is read-only dry run)
+  --codegraph      Initialize a worktree-local CodeGraph index (default: skipped)
+  --sqz            Install sqz project hooks (default: skipped)
   --dir, -d <path> Target repository directory (default: current working directory)
   --name, -n <name> Project/repository name (default: directory basename)
   --help, -h       Show this help message`);
@@ -71,7 +75,7 @@ console.log(`Project name     : ${projectName}`);
 console.log(`Use --apply to execute planned mutations.\n`);
 
 // 1. Git Initialization
-const isGitRepo = existsSync(join(targetDir, ".git"));
+const isGitRepo = Boolean(resolveGitDir(targetDir));
 if (isGitRepo) {
   status("git", "configured", "existing Git repository detected");
 } else {
@@ -140,17 +144,14 @@ if (workflowSettingsValid) {
     ...workflowSettings,
     extensionSettings: {
       ...extensionSettings,
-      herdr: { ...herdrSettings, enableFullyInspectableMode: true },
+      herdr: { ...herdrSettings, enableFullyInspectableMode: false },
     },
   };
   const serializedSettings = `${JSON.stringify(configuredSettings, null, 2)}\n`;
-  const currentSettings = existsSync(workflowSettingsPath)
-    ? readFileSync(workflowSettingsPath, "utf8")
-    : "";
-  if (currentSettings === serializedSettings) {
-    status("pi-workflow-herdr", "configured", "fully inspectable Herdr workflow transport enabled");
+  if (herdrSettings.enableFullyInspectableMode === false) {
+    status("pi-workflow-herdr", "configured", "current-tab sibling-pane Herdr workflow transport enabled");
   } else {
-    status("pi-workflow-herdr", "pending", "enable numbered, labeled Herdr tabs for workflow agents");
+    status("pi-workflow-herdr", "pending", "enable current-tab sibling-pane workflow transport");
     if (apply) {
       mkdirSync(workflowSettingsDir, { recursive: true });
       writeFileSync(workflowSettingsPath, serializedSettings, "utf8");
@@ -243,7 +244,7 @@ if (existsSync(agentsPath)) {
 - Keep changes narrowly scoped to the requested repository behavior.
 - Preserve unrelated user changes, untracked files, hooks, and local configuration.
 - Prefer standard-library APIs and existing dependencies; avoid unnecessary additions.
-- Keep code, comments, tests, and repository documentation in English.
+- Keep code, comments, tests, and repository documentation in English. Exception: odd/tasks/*.md quote the operator's original request and specs verbatim, including non-English text; those quotations are evidence and are never translated.
 - Run the documented checks relevant to each change and report blocked checks honestly.
 - Do not commit, push, merge, or publish without explicit authorization.
 `;
@@ -268,17 +269,30 @@ if (commandAvailable("serena")) {
   status("serena", "skipped", "serena CLI not installed");
 }
 
-// 6. sqz / rtk Output Reduction
-if (commandAvailable("sqz")) {
-  const claudeSettings = join(targetDir, ".claude", "settings.local.json");
-  if (existsSync(claudeSettings)) {
-    status("sqz", "configured", "project hook detected");
-  } else {
-    status("sqz", "pending", "install sqz project hooks");
-    runCmd("sqz", ["init", "-y"]);
-  }
+// 6. CodeGraph Index
+const codegraphDir = join(targetDir, ".codegraph");
+if (!codegraph) {
+  status("codegraph", "skipped", "not requested");
+} else if (existsSync(codegraphDir)) {
+  status("codegraph", "skipped", "worktree-local index exists (.codegraph)");
+} else if (!commandAvailable("codegraph")) {
+  status("codegraph", "skipped", "codegraph CLI not installed");
 } else {
+  status("codegraph", "pending", "initialize worktree-local index");
+  runCmd("codegraph", ["init", "-i", targetDir]);
+}
+
+// 7. sqz / rtk Output Reduction
+const claudeSettings = join(targetDir, ".claude", "settings.local.json");
+if (!sqz) {
+  status("sqz", "skipped", "not requested");
+} else if (existsSync(claudeSettings)) {
+  status("sqz", "configured", "project hook detected");
+} else if (!commandAvailable("sqz")) {
   status("sqz", "skipped", "sqz CLI not installed");
+} else {
+  status("sqz", "pending", "install sqz project hooks");
+  runCmd("sqz", ["init", "-y", "--only", "claude"]);
 }
 
 if (commandAvailable("rtk")) {
@@ -287,7 +301,7 @@ if (commandAvailable("rtk")) {
   status("rtk", "skipped", "rtk CLI not installed");
 }
 
-// 7. Herdr Workspace Integration
+// 8. Herdr Workspace Integration
 if (commandAvailable("herdr")) {
   try {
     const listRes = spawnSync("herdr", ["workspace", "list"], { encoding: "utf8" });
@@ -311,7 +325,7 @@ if (commandAvailable("herdr")) {
   status("herdr", "skipped", "herdr CLI not installed");
 }
 
-// 8. Skill Registry Index
+// 9. Skill Registry Index
 const atlDir = join(targetDir, ".atl");
 const registryFile = join(atlDir, "skill-registry.md");
 if (existsSync(registryFile)) {

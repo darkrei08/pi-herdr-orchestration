@@ -32,7 +32,37 @@ The master inventories, builds the graph, assigns, checks evidence and decides m
 
 ## Worker contract
 
-Each worker receives a bounded brief only: objective, issue/PR context, allowed and forbidden scope, branch/worktree, dependencies, validation to run, completion criteria, and the mandatory report-back clause from [supervision.md](supervision.md). A brief without it is not dispatchable. Progressive disclosure: no whole-project dumps. Skills are chosen per task by [routing.md](routing.md); never load every installed skill into every session.
+Each worker receives a bounded brief only: objective, issue/PR context, allowed and forbidden scope, branch/worktree, dependencies, validation to run, completion criteria, and the mandatory report-back clause from [supervision.md](supervision.md). A brief without it is not dispatchable. Progressive disclosure: no whole-project dumps.
+
+### Directive envelope
+
+Encode the brief as one XML directive: the fields above are exactly its elements, so the child reads boundaries instead of inferring which sentence is scope and which is validation. This is the boundary case [state-protocol.md](state-protocol.md) already prescribes for a long mixed prompt.
+
+```xml
+<task id="I#142">
+  <objective>...</objective>
+  <scope worktree="/abs/path" branch="fix/142-timeout">
+    <allow>src/auth/**</allow>
+    <deny>docs/**,package.json</deny>
+  </scope>
+  <dependencies>none</dependencies>
+  <validation>npm test --workspace=packages/auth</validation>
+  <done>Timeout returns 504; the new test is red before the change and green after.</done>
+  <report channel="mailbox" to="repo:issue-142-auth-timeout"/>
+</task>
+```
+
+Text only inside elements; escape `&`, `<` and `>`. One element per acceptance condition: a requirement with no element is a requirement the child invents. Results are never XML. The worker answers through the JSON envelope in [state-protocol.md](state-protocol.md), which is the validated machine contract, and a second hand-written parser is a defect, not a format.
+
+### Resource ceiling
+
+Skills and extensions are inherited, not free: each visible skill injects its name, description and path into that agent's prompt on every turn, and each inherited extension adds its tools to the same surface. Restrict every call:
+
+```js
+agent(brief, { role: "developer", skills: ["!*", "tdd", "tigerstyle"], extensions: ["!*"] });
+```
+
+`!*` clears the inherited set and later patterns re-enable what the task needs; `!*` alone selects none. A positive-only selector is not an allow-list, it adds to whatever was inherited, and `piewf doctor` reports that as `AGENT_RESOURCE_TOOL_SELECTOR_ALLOWLIST`. Choose the allowlist from [routing.md](routing.md) per task; never load every installed skill into every session.
 
 Worker lifecycle: `DISCOVER -> UNDERSTAND -> PLAN -> IMPLEMENT -> VERIFY -> SELF-REVIEW -> HANDOFF -> READY`. Not `READY` until validation has run. Master lifecycle: `INVENTORY -> DEPENDENCY GRAPH -> DISPATCH -> SUPERVISION -> INTEGRATION -> REVIEW -> MERGE -> CLEANUP`. SUPERVISION is an active loop, not a phase name: see [supervision.md](supervision.md).
 
@@ -42,7 +72,7 @@ Keep one registry (master context or authorized artifact): `task_id`, repo, issu
 
 ## Multiple repositories
 
-One Herdr workspace per repository. Map ownership and API/schema contracts first, decide merge order, and prefer: backward-compatible provider change, then consumer adoption, then removal of the compatibility layer. Avoid simultaneous tightly coupled changes.
+Keep repository workspace registration separate from workflow topology. A default workflow run stays in the caller's current tab as a sibling-pane tree; use a new workspace, tab, or cwd only when the user explicitly requests it. Map ownership and API/schema contracts first, decide merge order, and prefer: backward-compatible provider change, then consumer adoption, then removal of the compatibility layer. Avoid simultaneous tightly coupled changes.
 
 ## Merge queue
 

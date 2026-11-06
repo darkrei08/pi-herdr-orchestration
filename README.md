@@ -11,7 +11,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
 - [Overview & Core Problems Solved](#overview--core-problems-solved)
 - [Architecture & Workflow Lifecycle](#architecture--workflow-lifecycle)
   - [The Command Hierarchy: Master, Chiefs, and Workers](#the-command-hierarchy-master-chiefs-and-workers)
-  - [Workspace Isolation with Herdr & Git Worktrees](#workspace-isolation-with-herdr--git-worktrees)
+  - [Pane-tree Isolation with Herdr & Git Worktrees](#pane-tree-isolation-with-herdr--git-worktrees)
 - [Cognitive Model & Decision Pipeline](#cognitive-model--decision-pipeline)
   - [1. Independence-First Dispatch & Task Graph](#1-independence-first-dispatch--task-graph)
   - [2. Progressive Disclosure & Bounded Contexts](#2-progressive-disclosure--bounded-contexts)
@@ -20,7 +20,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [5. Multi-Agent Supervision & Context-Preserving Architecture](#5-multi-agent-supervision--context-preserving-architecture)
   - [6. Two-Tier Integration & Merge Queue](#6-two-tier-integration--merge-queue)
 - [Skill Ecosystem Integrations](#skill-ecosystem-integrations)
-  - [PiWorkflow (`pi-extensible-workflows` v6.2.0)](#piworkflow-pi-extensible-workflows-v620)
+  - [PiWorkflow (`pi-extensible-workflows` v6.3.0)](#piworkflow-pi-extensible-workflows-v630)
   - [Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)](#pi-extensible-roles-piewfpi-ext-roles-v020)
   - [Gentle AI Suite & Engram](#gentle-ai-suite--engram)
   - [Engineering Excellence](#engineering-excellence)
@@ -99,16 +99,16 @@ When the host supports multiple sessions or subagents, the master delegates oper
   $$\text{DISCOVER} \longrightarrow \text{UNDERSTAND} \longrightarrow \text{PLAN} \longrightarrow \text{IMPLEMENT} \longrightarrow \text{VERIFY} \longrightarrow \text{SELF-REVIEW} \longrightarrow \text{HANDOFF} \longrightarrow \text{READY}$$
 - Workers never declare themselves `READY` until all validation commands pass and evidence is logged.
 
-### Workspace Isolation with Herdr & Git Worktrees
+### Pane-tree Isolation with Herdr & Git Worktrees
 
 The orchestrator guarantees clean workspace boundaries:
 
 - **1 Task = 1 Branch = 1 Git Worktree = 1 Dedicated Session/Pane**
 - **Single-Writer Rule:** Exactly one writer modifies a given worktree at any time.
 - **Herdr Terminal Multiplexing:**
-  - One Herdr workspace per repository.
-  - PiWorkflow agents are launched with explicit `label`, `skills`, `extensions`, and isolated `worktree` options.
-  - With trusted fully inspectable mode, the scheduler's stable admission order becomes numbered tabs (`#1`, `#2`, ...) with semantic labels (`repo:issue-42-auth`, `repo:pr-87-review`, `repo:compose-validation`).
+  - A workflow run stays in the caller's current tab: agents are sibling panes in one collapsible pane tree, and nested agents split their parent pane.
+  - The transport runs `herdr pane split <caller-pane> --direction right|down --no-focus`, then `herdr pane run <new-pane>` with a cd-prefixed command. The new pane keeps the caller's tab; use `herdr pane zoom --on|--off` on the focused pane to collapse or expand the tree.
+  - PiWorkflow agents are launched with explicit `label`, `skills`, `extensions`, and isolated `worktree` options. One named workflow run owns the panes it launches; a new workspace, tab, or cwd happens only when the user explicitly requests it.
   - Terminal state and processes remain persistent and inspectable even during agent context switches; pane liveness never replaces mailbox or Git evidence.
 
 ---
@@ -184,7 +184,7 @@ Parent sessions never ingest worker transcripts. All cross-session communication
   "decisions": ["Preserve backward compatibility for legacy JSON configurations."],
   "risks": [],
   "blockers": [],
-  "memory": { "status": "persisted", "ref": "engram:obs-88219" },
+  "memory": { "task": "I#42", "run": "repo-run-42", "candidate": "<full-commit-id>", "status": "PERSISTED", "ref": "engram:obs-88219", "receipt": "ref:sha256:<provider-receipt-hash>" },
   "next": "chief-review"
 }
 ```
@@ -206,7 +206,7 @@ Dispatched sessions that operate without supervision or feedback loops lead to s
    - Static brief headers, role definitions, and invariant repository rules are anchored at the prefix of worker prompts. Dynamic per-task arguments are appended at the end. This guarantees maximum prompt cache hits on upstream providers (Anthropic, OpenAI, Gemini), dramatically cutting latency and API costs.
 4. **Bi-directional Ask / Reply Protocol (`orch_ask` / `orch_reply`):**
    - When a worker encounters an ambiguous architectural question or missing credential, it invokes `orch_ask`, setting its state to `BLOCKED` with flag `ASK`.
-   - The master sees the question in its supervision dashboard, provides an explicit decision via `orch_reply`, and automatically transitions the worker back to `WORKING` without hanging or busy-polling.
+   - The master sees the question and its `message_id` in the supervision dashboard, provides an explicit decision via `orch_reply` with that `question_id`, and automatically transitions the worker back to `WORKING` without hanging or busy-polling; stale answers are rejected.
 5. **Cross-Platform Directory Locking (`lock.mjs`):**
    - Protected by atomic directory locks using `node:path` `basename`, ensuring zero file corruption or interleaved JSON writes even when 4–6 parallel Herdr panes report simultaneously across Linux, macOS, or Windows.
 6. **Continuous Herdr Supervision Loop:**
@@ -229,7 +229,7 @@ The orchestration contract follows the latest upstream Herdsman (`boadij/pi-herd
 - **Deduplicated full SHA-256 evidence store:** Large logs and diffs are hashed to full 64-char SHA-256 content-addressed files under `evidence/<sha256>.txt` and referenced as `ref:sha256:<hash>`. Evidence is inspectable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into model prompts.
 - **Non-blocking notifications:** Notifications to master sessions (`herdr agent prompt`) run non-blockingly (`spawn` unref) so delivery issues or unavailable Herdr runtimes cannot block mailbox report persistence or turn a completed task into a false failure.
 - **Fail-closed supervision:** Terminal agent states that report `unknown` liveness fail closed to `DECIDE`, mandating that the master reconcile with Git and CI before proceeding rather than assuming tasks are healthy.
-- **Operational boundaries:** Role-derived Herdr tab labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) are presentation only. Chiefs coordinate and normalize reports within their bounded department; they never perform destructive worktree operations without explicit confirmation from the Master control plane.
+- **Operational boundaries:** Role-derived Herdr pane and agent labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) are presentation only. Chiefs coordinate and normalize reports within their bounded department; they never perform destructive worktree operations without explicit confirmation from the Master control plane.
 - **Capability-aware dispatch:** Select Agents by effective runtime capabilities, not filenames or configured child names. If no suitable child is available, investigate locally and record the capability gap instead of simulating delegation.
 - **Simulation before live smoke:** Prefer deterministic simulated smoke for covered Pi/Herdr boundary scenarios; use live-model smoke when model/provider behavior or instruction adherence is under test.
 - **Nonterminal execution failure:** Treat model execution failure as nonterminal evidence: do not retry automatically, replay tools, stop children, integrate partial work, or publish a successful handoff.
@@ -242,7 +242,7 @@ The master categorizes completed work based on empirical evidence:
 - **`STABLE`:** All acceptance criteria, tests, and reviews pass. Ready to merge or publish to the primary branch (`main`).
 - **`DEVELOPMENT`:** Incomplete, exploratory, or partially verified work. Preserved on an isolated feature branch with a documented handoff state.
 
-Before merging individual green branches into `main`, the master executes an **Integration Pass** on the combined branch. Independent tasks that pass in isolation can still conflict when combined; the integration pass prevents broken main branches.
+Before merging individual green branches into `main`, the master executes an **Integration Pass** on the combined branch. Independent tasks that pass in isolation can still conflict when combined; the integration pass prevents broken main branches. A successful pass does not authorize delivery: commit, merge, and publish still require explicit operator authorization.
 
 ---
 
@@ -250,36 +250,42 @@ Before merging individual green branches into `main`, the master executes an **I
 
 Pi Herdr Orchestration dynamically bridges and routes between major AI coding agent skill ecosystems:
 
-### PiWorkflow (`pi-extensible-workflows` v6.2.2)
+### PiWorkflow (`pi-extensible-workflows` v6.3.0)
 - **Role:** Execution engine substrate.
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
-  - **Explicit child loadouts:** Every routed child receives a stable `label`, verified `skills` selectors, required `extensions`, and an isolated `worktree` when it writes.
-  - **Ordered Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents are created in a dedicated workspace and rendered as numbered labeled tabs in scheduler admission order.
+  - **Explicit child loadouts:** Every routed child receives a named `@piewf/pi-ext-roles` `role`, stable `label`, verified `skills` selectors, `extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, a finite role-appropriate `timeoutMs` (at least 600 seconds for research, build, review, and MCP work), and an isolated `worktree` when it writes. `builtin:codemode` is the stable bridge to MCP tools.
+  - **Pane-tree Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents split sibling panes in the caller's current tab; nested agents split their parent pane. A new workspace, tab, or cwd is created only on explicit request, while each write-capable agent keeps its isolated worktree.
   - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
   - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
-  - **Reliable Linux Process Liveness:** Uses `/proc/<pid>/stat` starttime instead of `ctime` to eliminate false positives from kernel PID recycling.
+  - **Reliable Lock Ownership:** Records the owner PID and reclaims stale locks only when the recorded process is no longer alive, avoiding deletion of active locks.
   - **Workflow Recovery:** Replaying completed operations through `workflow_status`, `workflow_retry`, and `workflow_resume`.
 
-Example dispatch:
+Example dispatch inside a named workflow (`name: "repository-audit"`):
 
 ```javascript
 const reports = await parallel("repository-audit", {
   scout: () => agent("Map the repository.", {
+    role: "scout",
     label: "[CHIEF/SCOUT] Discovery",
     skills: ["pi-herdr-orchestrator", "engineering-excellence"],
+    extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
+    timeoutMs: 600_000,
     worktree: "scout",
   }),
   tests: () => agent("Define and run focused checks.", {
+    role: "tests-expert",
     label: "[CHIEF/QUALITY] Tests",
     skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
+    extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
+    timeoutMs: 600_000,
     worktree: "tests",
   }),
 });
 return reports;
 ```
 
-Use `pipeline(...)` for ordered stages. Do not use `Promise.all`/`map` agent fan-out, omit required skills, or claim Herdr tabs when the runtime capability report says Herdr is unavailable.
+Use `pipeline(...)` for ordered stages. Native `subagents_run` is forbidden for orchestration. Do not use `Promise.all`/`map` agent fan-out, omit required roles or extensions, or claim Herdr panes when the runtime capability report says Herdr is unavailable. Run the read-only MCP smoke check with `node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000`; it reports redacted transport reachability and HTTP health status without printing credentials, arguments, or environment values. A URL MCP `initialize` probe verifies the HTTP MCP endpoint when it returns a protocol response; stdio executable probes remain `unverified` because they do not start the server.
 
 ### Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)
 - **Role:** Independent role authoring, configuration, and runtime preparation.
@@ -343,7 +349,7 @@ The orchestrator dynamically routes tasks to the minimal sufficient skill set ba
 | **Large ambiguous feature** | Matt Pocock `wayfinder` $\rightarrow$ `to-spec`; Gentle AI `sdd-explore` / `sdd-propose` |
 | **Decomposing plan into work items** | Matt Pocock `to-spec` $\rightarrow$ `to-tickets`; Engineering Excellence `sdd` |
 | **Reproducible or hard bug** | Matt Pocock `diagnosing-bugs` $\rightarrow$ `tdd` regression test; Gentle AI `rdd-defect-workflow` |
-| **Defined feature implementation** | Matt Pocock `implement` (`tdd` $\rightarrow$ review $\rightarrow$ commit); EE `sdd` + `tdd` |
+| **Defined feature implementation** | Matt Pocock `implement` (`tdd` $\rightarrow$ review $\rightarrow$ operator-authorized commit); EE `sdd` + `tdd` |
 | **Refactoring** | Behavior-preservation tests first (`tdd`); Matt Pocock `codebase-design` |
 | **Infrastructure / Containers / CI** | Engineering Excellence `docker`, `ci`, `production-readiness`; `container-test-matrix` |
 | **Security or Performance Audit** | Engineering Excellence `security`, `performance` |
@@ -376,6 +382,19 @@ npx skills add . \
   --global
 ```
 
+### Anthropic Small Business on Pi
+
+The official Anthropic Small Business plugin remains owned by Claude. Pi consumes its 44 upstream `SKILL.md` files from the canonical shared skill root and adds the `anthropic-small-business-pi` adapter for PiWorkflow routing, approvals, memory, artifacts, and connector policy. Do not auto-import the plugin's 35 remote MCP definitions.
+
+After installing or updating the Claude plugin, verify the Pi copy and adapter:
+
+```bash
+npm run check:anthropic-small-business
+npm run test:anthropic-small-business
+```
+
+Select the adapter together with the exact upstream skill in PiWorkflow. The checker must report 44/44 skills, matching canonical copies, valid frontmatter, and zero Pi-configured Anthropic connectors unless each connector was separately authorized and configured.
+
 ### Dependency Bootstrap (System Runtimes & Skill Suites)
 
 The Vercel Skills CLI installs skill definition files only; it deliberately does not run third-party installers or post-install scripts. Run the dependency bootstrap script to inspect missing dependencies and install required runtimes as well as all 4 required skill suites (**Engineering Excellence**, **Matt Pocock skills**, **Gentle AI skills**, and **Pi Herdr Orchestration**):
@@ -405,17 +424,21 @@ node scripts/init-repo.mjs --apply
 
 # Or target a specific repository path:
 node scripts/init-repo.mjs --dir /path/to/my-repo --apply
+
+# Explicitly opt in to project-local CodeGraph indexing and sqz hooks:
+node scripts/init-repo.mjs --dir /path/to/my-repo --apply --codegraph --sqz
 ```
 
 This command automatically configures:
 - **Git Baseline:** Ensures repository initialization on `main` and creates `.worktrees/`.
 - **Gitignore Rules:** Appends `.worktrees/`, `.codegraph/`, and `.atl/` to `.gitignore`.
-- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`, preserving existing workflow settings.
+- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`, preserving existing workflow settings so default runs use sibling panes in the caller's current tab.
 - **Engram Memory Identity:** Generates `.git/engram-project-identity.json` for isolated, persistent repository memory.
 - **Guardian Angel (GGA):** Creates `.gga` quality-gate configuration and baseline `AGENTS.md` guidelines.
 - **Semantic Code Navigation:** Deploys Serena project configuration for LSP symbol analysis.
-- **Token Compression:** Injects `sqz` and `rtk` local hooks for terminal and tool reduction.
-- **Herdr Workspace:** Creates a dedicated Herdr workspace named after the repository.
+- **CodeGraph:** Optionally creates a worktree-local `.codegraph` index when requested with `--codegraph`; ephemeral test worktrees remain unindexed.
+- **Token Compression:** Installs the Claude project-local `sqz` hook only when explicitly requested with `--sqz`, skipping when `.claude/settings.local.json` already exists; detects global `rtk` for terminal and tool reduction.
+- **Herdr Workspace:** Registers a named Herdr workspace for explicit workspace workflows; default workflow runs remain in the caller's current tab.
 - **Skill Registry:** Catalogs all available skills into `.atl/skill-registry.md`.
 
 ### Environment Verification
