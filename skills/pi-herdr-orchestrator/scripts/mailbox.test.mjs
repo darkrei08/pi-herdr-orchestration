@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { classify, storeEvidence, readEvidence, deriveLifecycle, fileFor, report, ask, reply, STATES, LIFECYCLE_STATES } from "./mailbox.mjs";
+import { classify, classifyLiveness, storeEvidence, readEvidence, deriveLifecycle, fileFor, report, ask, reply, runDir, STATES, LIFECYCLE_STATES } from "./mailbox.mjs";
 import { withLock } from "./lock.mjs";
 
 const now = Date.parse("2026-10-09T12:00:00Z");
@@ -27,6 +27,99 @@ test("classify flags what needs master action", () => {
   assert.equal(classify(entry("CLOSED"), undefined, now, 10 * min), "OK");
   assert.equal(classify(entry("WORKING"), live("unknown"), now, 10 * min), "DECIDE");
   assert.equal(classify(entry("BLOCKED", 0, { pending_ask: { question: "Q?" } }), live("idle"), now, 10 * min), "ASK");
+});
+
+const sessionPath = "/root/.pi/agent/sessions/x--/2026-10-31T15-47-02-621Z_01a192a4-975c-7524-b395-6fc6e737f235.jsonl";
+const recorded = { pane: "w7D:p1", session: "01a192a4-975c-7524-b395-6fc6e737f235" };
+const liveAgent = (agent_status, pane_id, session) => ({ agent_status, pane_id, agent_session: { value: session } });
+
+test("identity correlation decides on a reused pane or session", () => {
+  const trace = entry("WORKING", 0, { identity: recorded });
+
+  const match = classifyLiveness(trace, liveAgent("working", "w7D:p1", sessionPath), now, 10 * min);
+  assert.equal(match.flag, "OK");
+  assert.equal(match.state, "live");
+
+  const reusedPane = classifyLiveness(trace, liveAgent("working", "w7D:p9", sessionPath), now, 10 * min);
+  assert.equal(reusedPane.flag, "DECIDE");
+  assert.equal(reusedPane.state, "decide");
+  assert.match(reusedPane.reason, /w7D:p1/);
+  assert.match(reusedPane.reason, /w7D:p9/);
+
+  const reusedSession = classifyLiveness(trace, liveAgent("working", "w7D:p1", "/tmp/2026-10-31T15-47-02-621Z_01a19999-975c-7524-b395-6fc6e737f235.jsonl"), now, 10 * min);
+  assert.equal(reusedSession.flag, "DECIDE");
+
+  const silentLive = classifyLiveness(trace, liveAgent("working", "w7D:p1", undefined), now, 10 * min);
+  assert.equal(silentLive.flag, "OK");
+  assert.equal(silentLive.state, "unverified");
+});
+
+test("legacy record without identity keeps its previous flag", () => {
+  const legacy = classifyLiveness(entry("WORKING"), liveAgent("working", "w7D:p1", sessionPath), now, 10 * min);
+  assert.equal(legacy.flag, "OK");
+  assert.equal(legacy.state, "unverified");
+  assert.match(legacy.reason, /no identity/);
+
+  const closed = classifyLiveness(entry("CLOSED"), undefined, now, 10 * min);
+  assert.equal(closed.flag, "OK");
+  assert.equal(closed.state, "closed");
+});
+
+test("report records pane and session identity and preserves it across reports", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-identity-"));
+  try {
+    const first = report({
+      dir,
+      run: "run-test",
+      task: "I#103",
+      state: "ASSIGNED",
+      summary: "Assigned",
+      pane: "w7D:p1",
+      session: sessionPath,
+      silent: true,
+      nonBlocking: true
+    });
+    assert.deepEqual(first.identity, recorded);
+
+    const second = report({ dir, run: "run-test", task: "I#103", state: "WORKING", summary: "Working", silent: true, nonBlocking: true });
+    assert.deepEqual(second.identity, recorded);
+
+    const saved = JSON.parse(readFileSync(join(dir, "I-103.json"), "utf8"));
+    assert.deepEqual(saved.identity, recorded);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a partial identity report preserves the field it does not supply", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-identity-merge-"));
+  try {
+    report({ dir, run: "run-test", task: "I#105", state: "ASSIGNED", summary: "a", pane: "w7D:p1", session: sessionPath, silent: true, nonBlocking: true });
+    const second = report({ dir, run: "run-test", task: "I#105", state: "WORKING", summary: "b", pane: "w7D:p2", silent: true, nonBlocking: true });
+    assert.deepEqual(second.identity, { pane: "w7D:p2", session: recorded.session });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a lifecycle that contradicts the state is not treated as closed", () => {
+  const contradictory = entry("WORKING", 0, { lifecycle: "closed" });
+  const result = classifyLiveness(contradictory, liveAgent("working", "w7D:p1", sessionPath), now, 10 * min);
+  assert.equal(result.flag, "DECIDE");
+  assert.equal(result.state, "decide");
+  assert.match(result.reason, /state is WORKING/);
+});
+
+test("a corrupt record is refused instead of silently overwritten", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-corrupt-"));
+  try {
+    const file = join(dir, "I-104.json");
+    writeFileSync(file, "{ not json");
+    assert.throws(() => report({ dir, run: "run-test", task: "I#104", state: "WORKING", summary: "x", silent: true, nonBlocking: true }));
+    assert.equal(readFileSync(file, "utf8"), "{ not json");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("storeEvidence hashes and stores files deduplicated", () => {
@@ -73,6 +166,66 @@ test("deriveLifecycle maps legacy uppercase states and respects overrides", () =
   assert.equal(deriveLifecycle("CLOSED"), "closed");
   assert.equal(deriveLifecycle("running"), "running");
   assert.equal(deriveLifecycle("unknown-state"), "unknown");
+});
+
+test("runDir rejects path traversal in run identifiers", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-run-"));
+  const original = process.env.ORCH_DIR;
+  process.env.ORCH_DIR = dir;
+  try {
+    assert.throws(() => runDir({ dir: "../outside" }), /invalid orchestration directory/);
+    assert.throws(() => runDir({ dir: `${dir}/../outside` }), /invalid orchestration directory/);
+    assert.throws(() => runDir({ run: "../outside" }), /invalid run identifier/);
+    assert.throws(() => runDir({ run: "nested/run" }), /invalid run identifier/);
+    assert.equal(runDir({ dir }), dir);
+    assert.equal(runDir({ run: "repo-20261009" }), join(dir, "repo-20261009"));
+  } finally {
+    if (original === undefined) delete process.env.ORCH_DIR;
+    else process.env.ORCH_DIR = original;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("readEvidence rejects path traversal references", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-ev-safe-"));
+  try {
+    assert.throws(() => readEvidence(dir, "ref:sha256:../../outside"), /invalid evidence reference/);
+    assert.throws(() => readEvidence(dir, "ref:sha256:short"), /invalid evidence reference/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("withLock reclaims stale locks only when the recorded owner is gone", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-lock-stale-"));
+  const testFile = join(dir, "data.json");
+  const lockDir = join(dir, ".data.json.lock");
+  try {
+    mkdirSync(lockDir);
+    writeFileSync(join(lockDir, "owner.json"), JSON.stringify({ pid: Number.MAX_SAFE_INTEGER }));
+    const stale = new Date(Date.now() - 60_000);
+    utimesSync(lockDir, stale, stale);
+    let executed = false;
+    withLock(testFile, () => { executed = true; });
+    assert.equal(executed, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("withLock does not reclaim stale locks owned by a live process", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-lock-live-"));
+  const testFile = join(dir, "data.json");
+  const lockDir = join(dir, ".data.json.lock");
+  try {
+    mkdirSync(lockDir);
+    writeFileSync(join(lockDir, "owner.json"), JSON.stringify({ pid: process.pid }));
+    const stale = new Date(Date.now() - 60_000);
+    utimesSync(lockDir, stale, stale);
+    assert.throws(() => withLock(testFile, () => {}, 100), /Timed out waiting for lock/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("storeEvidence creates full SHA-256 reference and readEvidence retrieves content", () => {
