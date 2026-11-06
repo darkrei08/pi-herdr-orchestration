@@ -71,7 +71,7 @@ The master does not end its turn after dispatch. Repeat until every task is `CLO
 | Flag | Meaning | Action |
 | --- | --- | --- |
 | `OK` | Reporting on time, or closed | Nothing |
-| `ASK` | Worker submitted a blocking question (`orch_ask`) | Read question, respond with `node mailbox.mjs reply --task <id> --answer "<decision>"` or `orch_reply` |
+| `ASK` | Worker submitted a blocking question (`orch_ask`) | Read the question's `message_id`, then respond with `node mailbox.mjs reply --task <id> --question-id <message_id> --answer "<decision>"` or `orch_reply` |
 | `DECIDE` | Worker reported `READY`/`DEVELOPMENT`/`BLOCKED`/`FAILED`, or agent liveness is `unknown` (fail-closed) | Verify with Git and CI, then issue a `decision` (integrate, continue, retry, escalate) |
 | `SILENT` | Agent is idle or done but last report is still `ASSIGNED`/`WORKING` | `herdr agent read <name> --source recent-unwrapped --lines 120`, then one nudge: "Report your state with mailbox.mjs now." |
 | `STALE` | Agent is working but no report within the stale window | Read the pane; if progressing, ask for a report at the next phase boundary; if looping, steer or stop it |

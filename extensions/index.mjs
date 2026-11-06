@@ -5,7 +5,7 @@ import {
   STATES,
   LIFECYCLE_STATES,
   deriveLifecycle,
-  classify,
+  classifyLiveness,
   liveAgents,
   runDir,
   storeEvidence,
@@ -27,6 +27,7 @@ export default function (pi) {
       type: "object",
       properties: {
         task: { type: "string", description: "Task identifier, e.g. 'I#84' or 'PR#127'" },
+        id: { type: "string", description: "Stable message identifier for replay-safe delivery" },
         state: {
           type: "string",
           enum: STATES,
@@ -45,7 +46,54 @@ export default function (pi) {
           items: { type: "string" },
           description: "Validation checks, format 'name=PASS|FAIL|BLOCKED|NOT RUN'"
         },
+        required_checks: {
+          type: "array",
+          items: { type: "string" },
+          description: "Check names that must be explicitly reported as PASS for READY or evidence-bound CLOSED"
+        },
         evidence: { type: "string", description: "Large log, test output, or diff to save to disk as a semantic ref" },
+        candidate: { type: "string", description: "Exact immutable candidate identity; Git candidates must be full commit IDs" },
+        pane: { type: "string", description: "Herdr pane identity for liveness correlation" },
+        session: { type: "string", description: "Pi session identity for liveness correlation" },
+        evidence_binding: {
+          type: "object",
+          description: "Task/run/candidate-bound GGA or Gentle review evidence and Engram observation reference; passing review refs are JSON attestations checked against immutable candidate hashes",
+          properties: {
+            task: { type: "string" },
+            run: { type: "string" },
+            candidate: { type: "string" },
+            review: {
+              type: "object",
+              properties: {
+                task: { type: "string" },
+                run: { type: "string" },
+                candidate: { type: "string" },
+                provider: { type: "string", enum: ["gga", "gentle"] },
+                status: { type: "string", enum: ["PASS", "FAIL", "BLOCKED", "NOT RUN", "UNVERIFIED"] },
+                ref: { type: "string" },
+                version: { type: "string" },
+                config_digest: { type: "string" },
+                output_digest: { type: "string" },
+                file_hashes: { type: "object", additionalProperties: { type: "string" } },
+                deleted_files: { type: "array", items: { type: "object" } },
+                reason: { type: "string" }
+              }
+            },
+            memory: {
+              type: "object",
+              properties: {
+                task: { type: "string" },
+                run: { type: "string" },
+                candidate: { type: "string" },
+                provider: { type: "string", const: "engram" },
+                status: { type: "string", enum: ["PERSISTED", "BLOCKED", "NOT RUN", "UNVERIFIED"] },
+                ref: { type: "string" },
+                receipt: { type: "string", description: "Stored provider receipt proving the observation reference and identity" },
+                reason: { type: "string" }
+              }
+            }
+          }
+        },
         run: { type: "string", description: "Run identifier (defaults to ORCH_RUN env)" },
         agent: { type: "string", description: "Herdr agent name" },
         notify: { type: "string", description: "Distinct Herdr agent name to nudge; never the current Pi session or sender" }
@@ -81,7 +129,9 @@ export default function (pi) {
       const rows = files.map((f) => {
         const e = JSON.parse(readFileSync(join(dir, f), "utf8"));
         const agent = live?.get(e.agent);
-        const flag = live ? classify(e, agent, Date.now(), staleMs) : "NO_HERDR";
+        const assessment = live
+          ? classifyLiveness(e, agent, Date.now(), staleMs)
+          : { flag: "NO_HERDR", state: "unverified", reason: "Herdr liveness unavailable; mailbox and Git evidence decide" };
         const age = Math.round((Date.now() - Date.parse(e.updated_at)) / 60_000);
         return {
           task: e.task,
@@ -91,8 +141,11 @@ export default function (pi) {
           lifecycle: e.lifecycle ?? deriveLifecycle(e.state),
           seq: e.seq,
           age_min: age,
-          flag,
+          flag: assessment.flag,
+          liveness: assessment.state,
+          reason: assessment.reason,
           summary: e.summary.slice(0, 60),
+          question_id: e.pending_ask?.message_id ?? null,
           evidence: e.evidence_ref ?? "-"
         };
       });
@@ -105,10 +158,10 @@ export default function (pi) {
         return { content: [{ type: "text", text: "No active or recorded tasks in this run." }] };
       }
 
-      const header = "Task       | Agent      | Herdr   | State       | Lifecycle   | Seq | Age(m) | Flag        | Summary";
-      const sep    = "-----------+------------+---------+-------------+-------------+-----+--------+-------------+-----------------------------";
+      const header = "Task       | Agent      | Herdr   | State       | Lifecycle   | Seq | Age(m) | Flag        | Liveness    | Question ID                         | Summary";
+      const sep    = "-----------+------------+---------+-------------+-------------+-----+--------+-------------+-------------+-------------------------------------+-----------------------------";
       const lines = rows.map((r) =>
-        `${(r.task || "").padEnd(10)} | ${(r.agent || "-").padEnd(10)} | ${(r.herdr || "-").padEnd(7)} | ${(r.state || "-").padEnd(11)} | ${(r.lifecycle || "-").padEnd(11)} | ${(String(r.seq) || "1").padStart(3)} | ${String(r.age_min).padStart(6)} | ${(r.flag || "OK").padEnd(11)} | ${r.summary}`
+        `${(r.task || "").padEnd(10)} | ${(r.agent || "-").padEnd(10)} | ${(r.herdr || "-").padEnd(7)} | ${(r.state || "-").padEnd(11)} | ${(r.lifecycle || "-").padEnd(11)} | ${(String(r.seq) || "1").padStart(3)} | ${String(r.age_min).padStart(6)} | ${(r.flag || "OK").padEnd(11)} | ${(r.liveness || "-").padEnd(11)} | ${(r.question_id || "-").padEnd(35)} | ${r.summary} (${r.reason || "no reason"})`
       );
       const text = [header, sep, ...lines].join("\n");
       return { content: [{ type: "text", text }] };
@@ -124,6 +177,7 @@ export default function (pi) {
       type: "object",
       properties: {
         task: { type: "string", description: "Task identifier" },
+        id: { type: "string", description: "Stable message identifier for replay-safe delivery" },
         question: { type: "string", description: "The specific question or decision needed" },
         run: { type: "string", description: "Run identifier" },
         notify: { type: "string", description: "Distinct Herdr master agent name; never the current Pi session or sender" }
@@ -131,8 +185,8 @@ export default function (pi) {
       required: ["task", "question"]
     },
     async execute(_id, params) {
-      ask({ ...params, silent: true, nonBlocking: true });
-      return { content: [{ type: "text", text: `Question submitted for ${params.task}. State marked BLOCKED awaiting master reply.` }] };
+      const entry = ask({ ...params, silent: true, nonBlocking: true });
+      return { content: [{ type: "text", text: `Question submitted for ${params.task}. question_id=${entry.pending_ask?.message_id ?? "-"}. State marked BLOCKED awaiting master reply.` }] };
     }
   });
 
@@ -145,10 +199,12 @@ export default function (pi) {
       type: "object",
       properties: {
         task: { type: "string", description: "Task identifier" },
+        id: { type: "string", description: "Stable message identifier for replay-safe delivery" },
+        question_id: { type: "string", description: "Exact message_id returned by orch_ask for the question being answered" },
         answer: { type: "string", description: "Decision or instructions for the worker" },
         run: { type: "string", description: "Run identifier" }
       },
-      required: ["task", "answer"]
+      required: ["task", "question_id", "answer"]
     },
     async execute(_id, params) {
       reply({ ...params, silent: true, nonBlocking: true });
@@ -166,7 +222,9 @@ export default function (pi) {
       properties: {
         content: { type: "string", description: "Raw content to store (omit if reading ref)" },
         ref: { type: "string", description: "Evidence reference to read, e.g. 'ref:sha256:...'" },
-        run: { type: "string", description: "Run identifier" }
+        run: { type: "string", description: "Run identifier" },
+        offset: { type: "integer", minimum: 0, description: "Read offset in characters (default 0)" },
+        limit: { type: "integer", minimum: 1, maximum: 65536, description: "Maximum characters to return when reading (default 4096)" }
       }
     },
     async execute(_id, params) {
@@ -174,7 +232,12 @@ export default function (pi) {
       const dir = runDir({ run });
       if (params.ref) {
         const text = readEvidence(dir, params.ref);
-        return { content: [{ type: "text", text }] };
+        const offset = params.offset ?? 0;
+        const limit = params.limit ?? 4096;
+        const preview = text.slice(offset, offset + limit);
+        const end = offset + preview.length;
+        const suffix = end < text.length ? `\n[truncated; read offset ${end} to continue]` : "";
+        return { content: [{ type: "text", text: preview + suffix }] };
       }
       if (!params.content) {
         throw new Error("Either 'content' to store or 'ref' to read is required");
