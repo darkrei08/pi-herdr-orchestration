@@ -20,7 +20,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [5. Multi-Agent Supervision & Context-Preserving Architecture](#5-multi-agent-supervision--context-preserving-architecture)
   - [6. Two-Tier Integration & Merge Queue](#6-two-tier-integration--merge-queue)
 - [Skill Ecosystem Integrations](#skill-ecosystem-integrations)
-  - [PiWorkflow (`pi-extensible-workflows` v6.2.0)](#piworkflow-pi-extensible-workflows-v620)
+  - [PiWorkflow (`pi-extensible-workflows` v6.3.0)](#piworkflow-pi-extensible-workflows-v630)
   - [Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)](#pi-extensible-roles-piewfpi-ext-roles-v020)
   - [Gentle AI Suite & Engram](#gentle-ai-suite--engram)
   - [Engineering Excellence](#engineering-excellence)
@@ -184,7 +184,7 @@ Parent sessions never ingest worker transcripts. All cross-session communication
   "decisions": ["Preserve backward compatibility for legacy JSON configurations."],
   "risks": [],
   "blockers": [],
-  "memory": { "status": "persisted", "ref": "engram:obs-88219" },
+  "memory": { "task": "I#42", "run": "repo-run-42", "candidate": "<full-commit-id>", "status": "PERSISTED", "ref": "engram:obs-88219", "receipt": "ref:sha256:<provider-receipt-hash>" },
   "next": "chief-review"
 }
 ```
@@ -206,7 +206,7 @@ Dispatched sessions that operate without supervision or feedback loops lead to s
    - Static brief headers, role definitions, and invariant repository rules are anchored at the prefix of worker prompts. Dynamic per-task arguments are appended at the end. This guarantees maximum prompt cache hits on upstream providers (Anthropic, OpenAI, Gemini), dramatically cutting latency and API costs.
 4. **Bi-directional Ask / Reply Protocol (`orch_ask` / `orch_reply`):**
    - When a worker encounters an ambiguous architectural question or missing credential, it invokes `orch_ask`, setting its state to `BLOCKED` with flag `ASK`.
-   - The master sees the question in its supervision dashboard, provides an explicit decision via `orch_reply`, and automatically transitions the worker back to `WORKING` without hanging or busy-polling.
+   - The master sees the question and its `message_id` in the supervision dashboard, provides an explicit decision via `orch_reply` with that `question_id`, and automatically transitions the worker back to `WORKING` without hanging or busy-polling; stale answers are rejected.
 5. **Cross-Platform Directory Locking (`lock.mjs`):**
    - Protected by atomic directory locks using `node:path` `basename`, ensuring zero file corruption or interleaved JSON writes even when 4–6 parallel Herdr panes report simultaneously across Linux, macOS, or Windows.
 6. **Continuous Herdr Supervision Loop:**
@@ -242,7 +242,7 @@ The master categorizes completed work based on empirical evidence:
 - **`STABLE`:** All acceptance criteria, tests, and reviews pass. Ready to merge or publish to the primary branch (`main`).
 - **`DEVELOPMENT`:** Incomplete, exploratory, or partially verified work. Preserved on an isolated feature branch with a documented handoff state.
 
-Before merging individual green branches into `main`, the master executes an **Integration Pass** on the combined branch. Independent tasks that pass in isolation can still conflict when combined; the integration pass prevents broken main branches.
+Before merging individual green branches into `main`, the master executes an **Integration Pass** on the combined branch. Independent tasks that pass in isolation can still conflict when combined; the integration pass prevents broken main branches. A successful pass does not authorize delivery: commit, merge, and publish still require explicit operator authorization.
 
 ---
 
@@ -349,7 +349,7 @@ The orchestrator dynamically routes tasks to the minimal sufficient skill set ba
 | **Large ambiguous feature** | Matt Pocock `wayfinder` $\rightarrow$ `to-spec`; Gentle AI `sdd-explore` / `sdd-propose` |
 | **Decomposing plan into work items** | Matt Pocock `to-spec` $\rightarrow$ `to-tickets`; Engineering Excellence `sdd` |
 | **Reproducible or hard bug** | Matt Pocock `diagnosing-bugs` $\rightarrow$ `tdd` regression test; Gentle AI `rdd-defect-workflow` |
-| **Defined feature implementation** | Matt Pocock `implement` (`tdd` $\rightarrow$ review $\rightarrow$ commit); EE `sdd` + `tdd` |
+| **Defined feature implementation** | Matt Pocock `implement` (`tdd` $\rightarrow$ review $\rightarrow$ operator-authorized commit); EE `sdd` + `tdd` |
 | **Refactoring** | Behavior-preservation tests first (`tdd`); Matt Pocock `codebase-design` |
 | **Infrastructure / Containers / CI** | Engineering Excellence `docker`, `ci`, `production-readiness`; `container-test-matrix` |
 | **Security or Performance Audit** | Engineering Excellence `security`, `performance` |
