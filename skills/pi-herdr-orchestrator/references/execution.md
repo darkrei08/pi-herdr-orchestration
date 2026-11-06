@@ -2,9 +2,11 @@
 
 Define problem, acceptance criteria, root cause if applicable, affected files, risks, dependencies and checks before coding. Reuse an existing valid task worktree. For substantial independent work keep task → branch → worktree → session traceable, following project conventions. Example: `fix/42-config-loading`, `.worktrees/issue-42-config-loading`, `[I#42] Config loading`.
 
+CodeGraph indexes are worktree-local: a worktree without its own `.codegraph` falls back to another checkout, so cross-worktree results are suspect for symbol truth. Index a working worktree once with `codegraph init -i`; do not index an ephemeral test worktree. The initializer never runs CodeGraph or installs sqz project hooks unless the caller explicitly passes `--codegraph` or `--sqz`.
+
 ## Branch, commit and publication
 
-One branch and one worktree per independent task; never edit the default branch directly. Follow repository naming, else `fix/<scope>`, `feat/<scope>`, `refactor/<scope>`, `test/<scope>`, `docs/<scope>`. While work is unstable, commit locally as logical checkpoints and do not push intermediate commits. Publish (push, PR) only when the unit is coherent and verified, and only with authorization. Squash or reorder only when it improves reviewability without destroying useful history.
+One branch and one worktree per independent task; never edit the default branch directly. Follow repository naming, else `fix/<scope>`, `feat/<scope>`, `refactor/<scope>`, `test/<scope>`, `docs/<scope>`. Local logical checkpoint commits happen only after explicit operator authorization; do not make intermediate pushes. Push, PR, and merge remain separate decisions, each requiring its own authorization. Squash or reorder only when it improves reviewability without destroying useful history.
 
 ## Worker rules
 
@@ -29,15 +31,15 @@ When Pi and PiWorkflow support multiple sessions, keep one master session named 
 
 A chief may dispatch issue, PR or feature sessions, but it must return a concise report to the master. Child sessions do not issue competing repository-wide directives. The master decides priorities, conflict order, `main` versus development placement, retries, escalation and termination. If the host cannot create chiefs, model the same chain with named roles or a structured report; do not claim parallel sessions that do not exist.
 
-## Ordered tabs and session startup
+## Pane tree and session startup
 
-Open a task session only after the master or responsible chief has identified the task, checked dependencies and selected the branch/worktree. Rename the Pi tab immediately, before implementation, using a stable label such as `[I#42] Config loading`, `[PR#18] Parser fix`, `[F] Schema validation`, `[REV#42] Config review` or `[AUDIT] Final repository Audit`. Set the task worktree as that session's working directory. Keep the master tab visible and the child tabs numbered and ordered by chief, task type and identifier so the relationship is obvious at a glance.
+Open a task session only after the master or responsible chief has identified the task, checked dependencies and selected the branch/worktree. The default transport splits `herdr pane split <caller-pane> --direction right|down --no-focus`, then runs the agent with `herdr pane run <new-pane>` using a cd-prefixed command. The split result's `.result.pane.pane_id` identifies a sibling pane that keeps the caller's `tab_id`; nested agents split their own parent pane. Use stable semantic labels such as `[I#42] Config loading`, `[PR#18] Parser fix`, `[F] Schema validation`, `[REV#42] Config review` or `[AUDIT] Final repository Audit` for the agent and pane. Keep the master pane visible; one named workflow run remains one collapsible pane tree in one tab.
 
-For PiWorkflow dispatch, use direct `agent(...)` calls inside a named `parallel(...)` or `pipeline(...)` operation. Pass `label`, `skills`, `extensions`, and `worktree` in the agent options. The trusted `.pi/pi-extensible-workflows/settings.json` created by repository initialization enables `extensionSettings.herdr.enableFullyInspectableMode`; with Pi running inside Herdr, `@piewf/herdr` owns the workflow workspace and renders tabs as `#1`, `#2`, ... in scheduler admission order. Do not manually create duplicate panes or infer a pane from a label. If the runtime is not Herdr-managed, use the direct fallback and report that tab transport was not applicable.
+For PiWorkflow dispatch, invoke a non-empty named workflow and use direct `agent(...)` or `agent.create(...)` calls inside a named `parallel(...)` or `pipeline(...)` operation. Every call carries a `pi-ext-roles` `role`, `extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, and a bounded role-appropriate `timeoutMs` of at least 600 seconds for research, build, review, and MCP work; `builtin:codemode` is the stable bridge to MCP tools. Native `subagents_run` is forbidden for orchestration. The trusted `.pi/pi-extensible-workflows/settings.json` created by repository initialization sets `extensionSettings.herdr.enableFullyInspectableMode` to `false`; use `herdr pane zoom --on|--off` on the focused pane to collapse or expand the tree. A new workspace, tab, or cwd is created only when the user explicitly requests it. Do not manually create duplicate panes or infer a pane from a label. If PiWorkflow is genuinely unavailable, use the direct fallback and report that workflow transport was `NOT APPLICABLE`; do not use that fallback merely because a child timed out.
 
-Do not let two implementers use the same working directory. Do not create a tab for a trivial edit. A child session must send its completion or handoff report to its chief; the chief normalizes it and forwards it to the master.
+Do not let two implementers use the same working directory. Do not create a pane for a trivial edit. A child session must send its completion or handoff report to its chief; the chief normalizes it and forwards it to the master.
 
-Give each implementation session its own directory. Sequence dependent tasks. Parallelize only with host permission and little overlap in files, API and schema. Avoid worktrees/tabs for trivial edits.
+Give each implementation session its own directory. Sequence dependent tasks. Parallelize only with host permission and little overlap in files, API and schema. Avoid worktrees/panes for trivial edits.
 
 A session returns task/status, branch/worktree/session, commits/files, check outcomes, review findings, decisions/risks, memory changes, `READY`/`NOT READY`/`BLOCKED`, and next action. The controller independently judges readiness. Triage unrelated findings before expanding scope.
 
@@ -52,6 +54,6 @@ Do not close a child session as soon as its code appears to work. The chief must
 5. return the session report to the chief;
 6. let the chief forward the normalized report and recommendation to `[MASTER] Pi Herdr Orchestrator`;
 7. receive the master's decision about integration, follow-up, retry or block;
-8. close the Pi session and then close or archive its Pi tab only after the memory and report are confirmed.
+8. close the Pi session and then close its pane only after the memory and report are confirmed.
 
-The master remains open until all child reports are reconciled. Closing a tab must never be the mechanism used to discard uncommitted work or unpersisted context.
+The master remains open until all child reports are reconciled. Closing a pane must never be the mechanism used to discard uncommitted work or unpersisted context.
