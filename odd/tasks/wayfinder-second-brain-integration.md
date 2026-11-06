@@ -42,14 +42,14 @@ Supplied sources to classify and verify:
 - T1 (S1): Keep CLIProxyAPI image update deferred; no pull, compose edit, or restart. Commit: n/a.
 - T2 (S2, S5): Produce evidence-backed ownership and integration map for Gentle/Pi/Engram/GGA/Workflow. Route: local and upstream research. Commit: pending.
 - T3 (S3): Decide whether deterministic schema projection or cold-storage compression is useful; reject byte/LLM compression in the live prompt path unless replay and security proofs exist. Route: pi-extensible-workflows proposal. Commit: pending.
-- T4 (S4, S6, S7): Implement only approved, bounded slices in isolated repository worktrees with local commits and tests. Route: cross-repository workflow. Commit: pending.
-- T5 (S8, S9): Verify each slice, reconcile local repositories, and prepare authorized future PRs without bypassing host safety gates. Route: cross-repository validation. Commit: pending.
+- T4 (S4, S6, S7): Implement only approved, bounded slices in isolated repository worktrees with local commits and tests. Route: cross-repository workflow. Commits: P1=6666976, P2=b13c8a8, P3=a56841a.
+- T5 (S8, S9): Verify each slice, reconcile local repositories, and prepare authorized future PRs without bypassing host safety gates. Route: cross-repository validation. Status: verified locally; push/publication pending operator authorization.
 
 ## Proposed slices
 
-- **P1, orchestrator liveness parity**: make `extensions/index.mjs` use the existing identity-aware `classifyLiveness` result already used by `mailbox.mjs`; preserve legacy flags while exposing `state` and `reason` in JSON only. Owner: `pi-herdr-orchestration`. No upstream Workflow change.
-- **P2, effective capability preflight**: distinguish installed package inventory from live role/model/skill/extension capability selectors before dispatch. Owner: `pi-herdr-orchestration`, consuming existing Pi Workflow preparation capabilities and pi-ext-roles hooks. No duplicate resolver.
-- **P3, bounded review and memory evidence**: bind GGA/Gentle review evidence and Engram observation references to the exact task/candidate identity; unavailable or uncertain outcomes remain blocked/unverified. Owner: `pi-herdr-orchestration`. Do not create a second reviewer or memory store.
+- **P1, orchestrator liveness parity**: make `extensions/index.mjs` use the existing identity-aware `classifyLiveness` result already used by `mailbox.mjs`; preserve legacy flags while exposing `state` and `reason` in JSON only. Owner: `pi-herdr-orchestration`. Committed as `6666976` in `.worktrees/p1-liveness`.
+- **P2, effective capability preflight**: distinguish installed package inventory from live role/model/skill/extension capability selectors before dispatch. Owner: `pi-herdr-orchestration`, consuming existing Pi Workflow preparation capabilities and pi-ext-roles hooks. Committed as `b13c8a8` in `.worktrees/p2-capabilities`.
+- **P3, bounded review and memory evidence**: bind GGA/Gentle review evidence and Engram observation references to the exact task/candidate identity; unavailable or uncertain outcomes remain blocked/unverified. Owner: `pi-herdr-orchestration`. Committed as `a56841a` in `.worktrees/p3-evidence`.
 - **P4, deterministic context projection**: do not add LZ4 or LLM summarization to the live prompt path. Use typed `outputSchema`/`workflow_result` projection for inter-agent payloads; evaluate cold-storage compression separately only if a concrete retention problem is demonstrated. Owner: `pi-extensible-workflows` only if a missing contract is reproduced; otherwise documentation/tests in the orchestrator.
 - **P5, optional UI projection**: defer Gentle Pi/Shell or Herdr app changes until a concrete status-display acceptance test exists. No third-party skill installation from the supplied list in this slice; unlicensed or unrelated projects remain excluded.
 

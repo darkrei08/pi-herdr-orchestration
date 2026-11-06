@@ -6,7 +6,7 @@ CodeGraph indexes are worktree-local: a worktree without its own `.codegraph` fa
 
 ## Branch, commit and publication
 
-One branch and one worktree per independent task; never edit the default branch directly. Follow repository naming, else `fix/<scope>`, `feat/<scope>`, `refactor/<scope>`, `test/<scope>`, `docs/<scope>`. Local logical checkpoint commits happen only after explicit operator authorization; do not make intermediate pushes. Push, PR, and merge remain separate decisions, each requiring its own authorization. Squash or reorder only when it improves reviewability without destroying useful history.
+One branch and one worktree per independent task; never edit the default branch directly. Follow repository naming, else `fix/<scope>`, `feat/<scope>`, `refactor/<scope>`, `test/<scope>`, `docs/<scope>`. While work is unstable, preserve logical checkpoints locally when authorized and do not push intermediate commits. Publish (push, PR) only when the unit is coherent and verified, and only with authorization. Squash or reorder only when it improves reviewability without destroying useful history.
 
 ## Worker rules
 
