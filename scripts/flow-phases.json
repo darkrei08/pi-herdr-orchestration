@@ -3,7 +3,8 @@
   "routes": {
     "matt-ticket-pipeline": "Use Matt's ticket pipeline when the work starts as an issue, needs a spec, or needs ticket decomposition.",
     "engineering-excellence-sdd": "Use Engineering Excellence SDD for a repository that adopts its software design and delivery cycle.",
-    "gentle-sdd": "Use Gentle SDD when the Gentle review and delivery authority owns the SDD cycle."
+    "gentle-sdd": "Use Gentle SDD when the Gentle review and delivery authority owns the SDD cycle.",
+    "gentle-odd": "Use Gentle ODD (Organic Driven Development) when the work follows Gentle AI's 7-phase adaptive workflow (Authorize -> Explore -> Resolve Uncertainty -> Classify -> Track -> Implement -> Close)."
   },
   "skillRoots": [
     "~/.agents/skills",
@@ -38,6 +39,9 @@
           "engineering-excellence"
         ],
         "gentle-sdd": [
+          "gentle-ai"
+        ],
+        "gentle-odd": [
           "gentle-ai"
         ]
       },
@@ -80,6 +84,9 @@
         ],
         "gentle-sdd": [
           "gentle-ai"
+        ],
+        "gentle-odd": [
+          "gentle-ai"
         ]
       },
       "consumes": "The chart, repository evidence, existing interfaces, and the selected route's method.",
@@ -116,6 +123,10 @@
           "tdd"
         ],
         "gentle-sdd": [
+          "gentle-ai",
+          "tdd"
+        ],
+        "gentle-odd": [
           "gentle-ai",
           "tdd"
         ]
@@ -165,7 +176,8 @@
       "mandatoryByRoute": {
         "matt-ticket-pipeline": [],
         "engineering-excellence-sdd": [],
-        "gentle-sdd": []
+        "gentle-sdd": [],
+        "gentle-odd": []
       },
       "consumes": "The implementation, its tests, the claimed environments, and any route-specific verification obligations.",
       "handsOn": "Recorded commands and outputs, including platform evidence where the change makes a platform claim.",
@@ -199,6 +211,9 @@
         ],
         "gentle-sdd": [
           "code-review"
+        ],
+        "gentle-odd": [
+          "code-review"
         ]
       },
       "consumes": "The diff, verification evidence, the originating spec, and the fixed review point.",
@@ -230,6 +245,9 @@
         ],
         "gentle-sdd": [
           "work-unit-commits"
+        ],
+        "gentle-odd": [
+          "work-unit-commits"
         ]
       },
       "consumes": "The reviewed candidate, its evidence, and any required issue or PR metadata.",
@@ -259,6 +277,9 @@
           "retro"
         ],
         "gentle-sdd": [
+          "retro"
+        ],
+        "gentle-odd": [
           "retro"
         ]
       },
