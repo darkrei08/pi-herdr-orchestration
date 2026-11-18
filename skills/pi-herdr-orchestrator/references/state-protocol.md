@@ -68,6 +68,14 @@ For upstream Herdsman (`boadij/pi-herdsman`) compatibility, the envelope include
 
 Legacy consumers continue to consume uppercase `state` safely without a wire migration. Generic workflow evidence remains durable and authoritative over terminal coordination; an `unknown` or lost terminal liveness state fails closed into `DECIDE` to mandate master reconciliation before proceeding.
 
+## Persisted graph supervisor
+
+The mutable graph supervisor is separate from any read-only execution-graph adapter. It persists `repo-orchestrator/graph-supervisor/v1` state at `<git-common-dir>/orchestrator/<run>/graph/graph.json` and transition events at `events.jsonl`. `graph-supervisor.mjs` accepts immutable workflow trajectory and mailbox records, with mailbox records overriding older trajectory records for the same task. Pane titles, pane positions and ambient Herdr state are never graph authority.
+
+The graph schema covers `run`, `phase`, `task`, `agent`, `worktree`, `pr`, `gate`, `wait`, `decision` and `artifact` nodes, and the edge types `contains`, `delegates`, `runs-in`, `checks`, `waits-for`, `reports`, `retries` and `produces`. `planGraph` returns deterministic `ready`, `blocked` and `pending` sets. `stepGraphState` checks `maxTransitions` and `maxRetries` before mutating state, records a bounded transition, supports zero-model-cost wait polling and human `pause`/`resume`, and is safe to re-load after restart.
+
+Native Pi controls are intentionally narrow: `orch_graph_status` returns a bounded snapshot and best-effort Herdr projection, while `orch_graph_step` applies one validated action and persists it. Missing Herdr returns `herdr: null`; it never deletes or invalidates graph state. Neither control merges, publishes, or replaces PiWorkflow as the execution authority. The versioned structural contract is [`schemas/repo-orchestrator-graph-v1.json`](../../../schemas/repo-orchestrator-graph-v1.json).
+
 ## Message directions
 
 | Message | From → to | Purpose |

@@ -33,6 +33,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Dependency Bootstrap (System Runtimes & Skill Suites)](#dependency-bootstrap-system-runtimes--skill-suites)
   - [Mandatory Per-Repository Initialization](#mandatory-per-repository-initialization)
   - [Environment Verification](#environment-verification)
+  - [Persisted Graph Supervisor](#persisted-graph-supervisor)
   - [Mailbox & Supervision Commands](#mailbox--supervision-commands)
   - [Compaction & Overlap Rules](#compaction--overlap-rules)
 - [Release and npm Trusted Publishing](#release-and-npm-trusted-publishing)
@@ -454,6 +455,21 @@ node scripts/check.mjs --json
 node scripts/check.mjs --strict
 # or: npm run check:strict
 ```
+
+### Persisted Graph Supervisor
+
+The graph supervisor is a separate mutable scheduling layer from any read-only execution-graph report. It stores versioned state under `<git-common-dir>/orchestrator/<run>/graph/graph.json` and append-only transitions in `events.jsonl`. `skills/pi-herdr-orchestrator/scripts/graph-supervisor.mjs` accepts immutable trajectory and mailbox records, normalizes legacy uppercase mailbox states, plans `waits-for` dependencies deterministically, and persists bounded transitions.
+
+The graph supports run, phase, task, agent, worktree, PR, gate, wait, decision, and artifact nodes. Its edge types are `contains`, `delegates`, `runs-in`, `checks`, `waits-for`, `reports`, `retries`, and `produces`. Budget limits are checked before transitions; wait and human checkpoint actions do not invoke a model. Missing Herdr data produces a null projection and never discards the persisted graph.
+
+Inside Pi, use the bounded native controls:
+
+```text
+orch_graph_status   # read graph plan, bounded nodes, and best-effort Herdr projection
+orch_graph_step     # apply one validated advance/start/complete/wait/poll/pause/resume/retry action
+```
+
+The schema is [`schemas/repo-orchestrator-graph-v1.json`](schemas/repo-orchestrator-graph-v1.json). These controls never merge, publish, or replace PiWorkflow as the execution authority.
 
 ### Mailbox & Supervision Commands
 

@@ -91,3 +91,12 @@ test("repository initialization owns the project workflow settings contract", ()
   assert.match(init, /enableFullyInspectableMode/);
   assert.ok(existsSync(join(root, ".pi/pi-extensible-workflows/settings.json")));
 });
+
+test("native extension exposes bounded graph status and step controls", () => {
+  const extension = read("extensions/index.mjs");
+  assert.match(extension, /name: "orch_graph_status"/);
+  assert.match(extension, /name: "orch_graph_step"/);
+  assert.match(extension, /loadGraphState/);
+  assert.match(extension, /persistGraphState/);
+  assert.match(extension, /projectHerdrState/);
+});

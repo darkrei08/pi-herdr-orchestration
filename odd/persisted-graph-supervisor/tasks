@@ -1,0 +1,6 @@
+Source: odd/tasks/persisted-graph-supervisor.md
+
+- [ ] T1 | S1-S4,S9,S12 | Implement the pure versioned graph state model, schema, deterministic dependency planner, and immutable input normalization. Commit: pending.
+- [ ] T2 | S5-S8,S10-S11 | Implement persisted reducer transitions, budget/wait/human checkpoint handling, restart recovery, and Herdr projection. Commit: pending.
+- [ ] T3 | S10-S13 | Add dry-run, persistence, projection, and compatibility regression tests; document the supervisor contract. Commit: pending.
+- [ ] T4 | S13 | Run focused and repository checks, review the candidate, and record verified commits. Commit: pending.
