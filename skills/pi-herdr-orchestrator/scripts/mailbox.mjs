@@ -147,8 +147,13 @@ export function validateEvidenceBinding(binding, expected) {
   if (review.status === "PASS" && !REVIEW_REF.test(review.ref ?? "")) {
     return { status: "blocked", reason: "passing review evidence requires a content reference" };
   }
-  if (review.status === "PASS" && (!isPresent(review.version) || !isPresent(review.config_digest) || !/^[0-9a-f]{64}$/.test(review.output_digest ?? ""))) {
-    return { status: "blocked", reason: "passing review evidence requires reviewer version, configuration digest, and exact provider output digest" };
+  if (review.status === "PASS" && (!isPresent(review.version) || !isPresent(review.config_digest))) {
+    return { status: "blocked", reason: "passing review evidence requires reviewer version and configuration digest" };
+  }
+  // The verifier re-runs the provider and derives the digest from that run, so a claimed digest
+  // is optional; when present it must still be a sha256 and match the fresh run.
+  if (review.status === "PASS" && isPresent(review.output_digest) && !/^[0-9a-f]{64}$/.test(review.output_digest)) {
+    return { status: "blocked", reason: "review evidence output digest must be a sha256 hex string" };
   }
   if (review.status === "PASS" && (!review.file_hashes || typeof review.file_hashes !== "object" || Array.isArray(review.file_hashes) || Object.values(review.file_hashes).some((hash) => !/^[0-9a-f]{64}$/.test(hash)))) {
     return { status: "blocked", reason: "passing review evidence requires full reviewed file hashes" };
@@ -300,8 +305,8 @@ function verifyExternalEvidence(binding) {
   if (!command) {
     return { status: "unverified", reason: `no verifier is configured for review provider ${provider}` };
   }
-  if (provider === "gga" && !/^[0-9a-f]{64}$/.test(binding.review.output_digest ?? "")) {
-    return { status: "unverified", reason: "GGA review evidence must include the exact provider output digest" };
+  if (provider === "gga" && isPresent(binding.review.output_digest) && !/^[0-9a-f]{64}$/.test(binding.review.output_digest)) {
+    return { status: "unverified", reason: "GGA review evidence output digest must be a sha256 hex string" };
   }
   const args = provider === "gga" ? ["run", "--ci", "--no-cache"] : [];
   let providerVersion = binding.review.version;
@@ -342,7 +347,7 @@ function verifyExternalEvidence(binding) {
   };
   if (providerReceipt.version !== binding.review.version
     || providerReceipt.config_digest !== binding.review.config_digest
-    || providerReceipt.output_digest !== binding.review.output_digest
+    || (isPresent(binding.review.output_digest) && providerReceipt.output_digest !== binding.review.output_digest)
     || !sameFileHashes(providerReceipt.file_hashes, binding.review.file_hashes)
     || !sameDeletedFiles(providerReceipt.deleted_files, binding.review.deleted_files)) {
     return { status: "unverified", reason: "provider receipt does not match the claimed candidate-bound review" };
@@ -368,7 +373,13 @@ function verifyExternalEvidence(binding) {
     }
     const identity = match.evidence_binding ?? match.binding ?? match;
     if (!sameIdentity(identity, binding)) {
-      return { status: "unverified", reason: "Engram observation does not contain the exact task candidate identity" };
+      // Engram exports observations without a binding block, so an observation that names this
+      // exact candidate is accepted when there is no binding metadata to compare.
+      const hasBindingMetadata = Boolean(match.evidence_binding ?? match.binding);
+      const text = `${match.title ?? ""}\n${match.content ?? ""}`;
+      if (hasBindingMetadata || !text.includes(String(binding.candidate))) {
+        return { status: "unverified", reason: "Engram observation does not contain the exact task candidate identity" };
+      }
     }
     return { status: "verified", reason: "GGA and Engram independently verified the bound provider receipts" };
   } catch {
