@@ -34,6 +34,26 @@ The master inventories, builds the graph, assigns, checks evidence and decides m
 
 Each worker receives a bounded brief only: objective, issue/PR context, allowed and forbidden scope, branch/worktree, dependencies, validation to run, completion criteria, and the mandatory report-back clause from [supervision.md](supervision.md). A brief without it is not dispatchable. Progressive disclosure: no whole-project dumps. Skills are chosen per task by [routing.md](routing.md); never load every installed skill into every session.
 
+### Directive envelope
+
+For a long mixed prompt, the brief may be rendered as one XML envelope so the worker can distinguish instructions, context and acceptance conditions:
+
+```xml
+<task id="I#142">
+  <objective>...</objective>
+  <scope worktree="/abs/path" branch="fix/142-timeout">
+    <allow>src/auth/**</allow>
+    <deny>docs/**,package.json</deny>
+  </scope>
+  <dependencies>none</dependencies>
+  <validation>npm test --workspace=packages/auth</validation>
+  <done>Timeout returns 504; the new test is green.</done>
+  <report channel="mailbox" to="repo:issue-142-auth-timeout"/>
+</task>
+```
+
+This is a prompt-boundary convention, not the state protocol. The canonical source remains a validated JSON directive/state record; Markdown is the human-facing rendering. The current target has no structured-directive consumer: `notifyAgent` forwards an already-rendered string through `herdr agent prompt` and the mailbox remains authoritative. Do not add an XML parser or serializer until a real dispatcher consumes this envelope. Escape `&`, `<` and `>` in element text and keep one element per acceptance condition when an implementation is introduced.
+
 Worker lifecycle: `DISCOVER -> UNDERSTAND -> PLAN -> IMPLEMENT -> VERIFY -> SELF-REVIEW -> HANDOFF -> READY`. Not `READY` until validation has run. Master lifecycle: `INVENTORY -> DEPENDENCY GRAPH -> DISPATCH -> SUPERVISION -> INTEGRATION -> REVIEW -> MERGE -> CLEANUP`. SUPERVISION is an active loop, not a phase name: see [supervision.md](supervision.md).
 
 ## Task registry

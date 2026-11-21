@@ -1,0 +1,7 @@
+Source: odd/tasks/prompt-transport-without-txt-20261121.md
+
+- [ ] T1 | S1-S5 | Add target notifyAgent regression coverage and document JSON/XML/Markdown boundaries. Commit: pending.
+- [ ] T2 | S1,S3,S4 | Forward-port inline-safe Herdr transport from 639f0a8 onto a clean fork branch based on upstream main 6.4.0. Commit: pending.
+- [ ] T3 | S1,S3,S4 | Build/link and verify the patched runtime without publishing or version bumping. Commit: not applicable.
+- [x] T4 | S2,S6 | Assessed pi-herdsman v0.52.1: its private 0600 snapshot files in 0700 directories already cover the useful safety property, so no pi-herdsman patch is needed; the private-directory boundary was carried into the Herdr fallback. Commit: not applicable.
+- [ ] T5 | S1-S6 | Run checks, preserve local changes, commit/push authorized branches, and prepare/open PRs or report exact blockers. Commit: pending.

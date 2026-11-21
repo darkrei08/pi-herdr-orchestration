@@ -16,6 +16,7 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
   const skill = read("skills/pi-herdr-orchestrator/SKILL.md");
   const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
   const execution = read("skills/pi-herdr-orchestrator/references/execution.md");
+  const dispatch = read("skills/pi-herdr-orchestrator/references/dispatch.md");
   const readme = read("README.md");
   const environment = read("skills/pi-herdr-orchestrator/scripts/check-environment.mjs");
 
@@ -42,6 +43,9 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
   assert.match(routing, /label/);
   assert.match(execution, /pane tree/);
   assert.match(execution, /worktree/);
+  assert.match(dispatch, /### Directive envelope/);
+  assert.match(dispatch, /canonical source remains a validated JSON/);
+  assert.match(dispatch, /no structured-directive consumer/);
   assert.match(environment, /@piewf\/pi-ext-roles/);
 });
 

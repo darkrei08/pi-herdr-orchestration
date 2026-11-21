@@ -21,6 +21,16 @@ Choose the representation by boundary rather than using one format everywhere:
 
 Use JSON as the canonical durable representation even when TOON, CSV, YAML or XML is used at a boundary. TOON is a useful optimization for regular tabular data, but its own project describes it as an evolving format and recommends JSON for deeply nested or irregular data. CSV is not a general object format: use it only with a versioned typed header and escaping rules. YAML is convenient for humans but must be parsed and normalized before validation. XML tags improve prompt separation for Claude-style prompts; they do not provide schema-constrained output. Binary encodings such as CBOR, MessagePack or Protocol Buffers belong between trusted programs, not in an LLM prompt. Experimental proposals such as ADOL or ANML can inform future adapters, but they are not treated as production standards until the relevant ecosystem and implementation are stable.
 
+### JSON, XML and Markdown boundary method
+
+Use one representation per boundary:
+
+- **JSON** is the machine contract for workflow state, mailbox records, evidence references, tool results and result envelopes. Validate it before persistence and after any boundary conversion. Evidence content remains behind `ref:sha256:<hash>`; its `.txt` file is storage, not prompt transport.
+- **XML** is an optional prompt envelope for a long mixed directive containing instructions, context, examples and acceptance conditions. It is a delimiter format, not the mailbox schema and not a result parser. The current orchestrator has no runtime XML serializer or parser because `notifyAgent` has no structured-directive consumer: it forwards an opaque string through `herdr agent prompt`.
+- **Markdown** is the human-facing rendering for handoffs, reviews and reports. Generate it from the canonical JSON record when durable machine data exists; do not parse Markdown as authoritative state.
+
+The smallest safe future XML helper is a boundary adapter with one real caller: convert a validated JSON directive to escaped element text, pass the resulting string through the existing argv transport, and leave the JSON record unchanged. Until that caller exists, keep the XML envelope as a documented contract only; adding an unused parser or serializer would create a second protocol without an integration point.
+
 ## Pi and Pi VCC compaction boundary
 
 Pi remains the owner of the live transcript and its session entries. Pi's native compaction or Pi VCC may summarize that transcript; the orchestrator must not create a competing second summary. Detect the active owner and record it in the run metadata:

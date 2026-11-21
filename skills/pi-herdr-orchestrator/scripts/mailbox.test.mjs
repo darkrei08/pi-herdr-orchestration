@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { classify, classifyLiveness, storeEvidence, readEvidence, deriveLifecycle, fileFor, parse, report, ask, reply, runDir, validateEvidenceBinding, STATES, LIFECYCLE_STATES } from "./mailbox.mjs";
+import { classify, classifyLiveness, storeEvidence, readEvidence, deriveLifecycle, fileFor, parse, report, ask, reply, runDir, validateEvidenceBinding, notifyAgent, STATES, LIFECYCLE_STATES } from "./mailbox.mjs";
 import { withLock } from "./lock.mjs";
 
 const now = Date.parse("2026-10-09T12:00:00Z");
@@ -1057,6 +1057,41 @@ test("reply rejects an out-of-order answer for a replaced question", () => {
     assert.equal(answered.last_reply.question_id, second.pending_ask.message_id);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("notifyAgent sends the exact argv without creating a prompt file and rejects self-targets", () => {
+  const root = mkdtempSync(join(tmpdir(), "orch-notify-"));
+  const bin = join(root, "bin");
+  const capture = join(root, "argv.json");
+  const originalPath = process.env.PATH;
+  const originalCapture = process.env.ORCH_NOTIFY_CAPTURE;
+  mkdirSync(bin);
+  const script = join(bin, "herdr.mjs");
+  writeFileSync(script, `import { writeFileSync } from "node:fs";
+writeFileSync(process.env.ORCH_NOTIFY_CAPTURE, JSON.stringify(process.argv.slice(2)));
+`);
+  if (process.platform === "win32") {
+    writeFileSync(join(bin, "herdr.cmd"), `@node "%~dp0herdr.mjs" %*\r\n`);
+  } else {
+    const herdr = join(bin, "herdr");
+    writeFileSync(herdr, `#!/usr/bin/env node\nimport "./herdr.mjs";\n`);
+    chmodSync(herdr, 0o755);
+  }
+  process.env.PATH = `${bin}${process.platform === "win32" ? ";" : ":"}${dirname(process.execPath)}`;
+  process.env.ORCH_NOTIFY_CAPTURE = capture;
+  try {
+    const message = "<task>line & value $ 'quoted'</task>";
+    assert.equal(notifyAgent("worker-1", message, { nonBlocking: false, sender: "master" }), true);
+    assert.deepEqual(JSON.parse(readFileSync(capture, "utf8")), ["agent", "prompt", "worker-1", message]);
+    assert.equal(notifyAgent("master", "self", { nonBlocking: false, sender: "master" }), false);
+    assert.deepEqual(readdirSync(root).filter((name) => name.includes("prompt")), []);
+  } finally {
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
+    if (originalCapture === undefined) delete process.env.ORCH_NOTIFY_CAPTURE;
+    else process.env.ORCH_NOTIFY_CAPTURE = originalCapture;
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
