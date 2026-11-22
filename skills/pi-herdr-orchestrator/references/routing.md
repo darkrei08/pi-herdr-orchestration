@@ -29,7 +29,7 @@ agent(taskPrompt, {
 | Source | Provides | Notes |
 | --- | --- | --- |
 | PiWorkflow | Execution substrate: `workflow`, `parallel`, `pipeline`, `withWorktree`, `shell`, `agent.create` handles, roles, recovery (`workflow_status`, `workflow_retry`, `workflow_resume`) | Sequences work, supplies no method. `withWorktree` needs a clean launch tree and `tools.*` calls fail inside it; otherwise create worktrees with Git |
-| Gentle AI | Harness discipline (`gentle-ai`), Engram memory, installed `gentle-ai-work-unit-commits`, `gentle-ai-chained-pr`, `gentle-ai-judgment-day`, `gentle-ai-branch-pr`, `gentle-ai-rdd-defect-workflow`; `issue-creation`, `sdd-*`, `systemic-issue-triage` and `issue-root-resolution` are not installed locally | Review lifecycle (`gentle_review*`) is runtime-supplied: relay it, never reconstruct it |
+| Gentle AI | Harness discipline (`gentle-ai`), Engram memory, and the installer's frontmatter names `gentle-ai-work-unit-commits`, `gentle-ai-chained-pr`, `gentle-ai-judgment-day`, `gentle-ai-branch-pr`, `gentle-ai-issue-creation`, `gentle-ai-rdd-defect-workflow`; sdd-* phases, systemic-issue-triage, issue-root-resolution and a bare branch-pr selector are not installed locally | Review lifecycle (`gentle_review*`) is runtime-supplied: relay it, never reconstruct it |
 | Engineering Excellence | Standards loaded on demand as references: `sdd`, `tdd`, `testing`, `quality-gates`, `code-review`, `security`, `performance`, `accessibility`, `interaction`, `docker`, `ci`, `production-readiness`, `engineering-score`, plus PR/ADR templates | The maintainer fork `darkrei08/Engineering-Excellence` (upstream `micio86dev`) adds `platform-testing` and `context-budget`; an installed copy may lag, so check the files exist |
 | Matt Pocock (`mattpocock/skills`) | Flow skills: `triage`, `wayfinder`, `to-spec`, `to-tickets`, `implement`, `implement-spec`, `diagnosing-bugs`, `tdd`, `code-review`, `pr`, `handoff`, `retro`, `grill-with-docs`, `grill-me`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture` | `setup-matt-pocock-skills` stores the tracker and label mapping: read it, never assume labels |
 | Local or personal | `issue-ops`, `container-test-matrix`, `multi-repo-product-workflow`, `project-memory` | Repository and user instructions name which apply |
@@ -38,13 +38,13 @@ agent(taskPrompt, {
 
 | Situation | Minimal method, first installed wins |
 | --- | --- |
-| Raw issue or PR you did not create | Matt `triage`; Gentle `issue-creation` where its taxonomy applies. Tickets from `to-tickets` are already agent-ready: do not re-triage |
-| Backlog sharing root causes | Gentle `systemic-issue-triage` / `issue-root-resolution`: one fix per root, close against named tests |
+| Raw issue or PR you did not create | `issue-ops` in the root session, plus Matt `triage`; add `gentle-ai-issue-creation` only when the capability report lists it. Tickets from `to-tickets` are already agent-ready: do not re-triage |
+| Backlog sharing root causes | Master-session guidance only: group the backlog by shared root cause, one fix per root, close against named tests and the `to-tickets` blocking edges. The upstream systemic-issue-triage and issue-root-resolution skills are not installed, so no child selects them |
 | Ambiguous requirement or decision | Matt `grill-with-docs` (`grill-me` without a repo), or one targeted user question |
-| Foggy effort too big for one session | Matt `wayfinder`, then `to-spec`; Gentle `sdd-explore` / `sdd-propose` when the repository runs SDD |
-| Plan into work items | Matt `to-spec` then `to-tickets` (its blocking edges are dependency-graph input); EE `sdd`; Gentle `sdd-spec` / `sdd-tasks` |
-| Reproducible or hard bug | Matt `diagnosing-bugs` (tight feedback loop first), then a `tdd` regression test; Gentle `rdd-defect-workflow` when review authority is active |
-| Defined feature | Matt `implement` (`tdd`, `code-review`, commit); EE `sdd` + `tdd`; Gentle `sdd-apply` when that cycle is already running |
+| Foggy effort too big for one session | Matt `wayfinder`, then `to-spec`; the EE `sdd` reference when the repository runs SDD |
+| Plan into work items | Matt `to-spec` then `to-tickets` (its blocking edges are dependency-graph input); EE `sdd` |
+| Reproducible or hard bug | Matt `diagnosing-bugs` (tight feedback loop first), then a `tdd` regression test; `gentle-ai-rdd-defect-workflow` when review authority is active and the capability report lists it |
+| Defined feature | Matt `implement` (`tdd`, `code-review`, commit); EE `sdd` + `tdd` |
 | Refactor | Behaviour-preservation tests first (`tdd`, EE `testing`); Matt `codebase-design` / `improve-codebase-architecture` for shape |
 | Technical or factual uncertainty | Matt `prototype` (throwaway) or `research` |
 | UI work | EE `interaction`, `accessibility`, `i18n`, `seo` as relevant; browser evidence; visual design skills only for visual design tasks |

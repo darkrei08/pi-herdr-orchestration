@@ -42,10 +42,26 @@ test("workflow auto-start has one repo-owned extension", () => {
   assert.match(autostart, /issue-ops/);
   assert.match(autostart, /container-test-matrix/);
   assert.match(autostart, /only installed/);
+  assert.match(autostart, /Root default: gentle-ai\+issue-ops\. Child agents:/);
+  assert.match(autostart, /handoff and retro stay in the master session/);
+  assert.match(autostart, /createRequire/);
+  assert.match(autostart, /pathToFileURL/);
+  assert.match(autostart, /homedir\(\)/);
   assert.match(routing, /master-session only/);
   assert.match(routing, /gentle-ai-branch-pr/);
   assert.doesNotMatch(routing, /`branch-pr`/);
-  assert.ok(autostart.trim().split("\n").length <= 40);
+  assert.ok(autostart.trim().split("\n").length <= 52);
+});
+
+test("routing names only installed selectors and keeps issue routes viable", () => {
+  const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
+  for (const uninstalled of ["branch-pr", "issue-creation", "sdd-explore", "sdd-propose", "sdd-spec", "sdd-tasks", "sdd-apply", "systemic-issue-triage", "issue-root-resolution"]) {
+    assert.doesNotMatch(routing, new RegExp(`\`${uninstalled}\``), `routing offers uninstalled ${uninstalled}`);
+  }
+  assert.doesNotMatch(routing, /`sdd-/);
+  assert.match(routing, /`gentle-ai-issue-creation`/);
+  assert.match(routing, /`gentle-ai-rdd-defect-workflow`/);
+  assert.match(routing, /`issue-ops` in the root session/);
 });
 
 test("dispatch contract names deterministic workflow fan-out and explicit role loadout", () => {

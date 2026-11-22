@@ -299,10 +299,10 @@ Launch named workflows with `foreground: true` and no budget; omit `timeoutMs` o
   - `gentle-engram`: Persistent project memory across sessions, hydration of historical decisions, cross-agent handoffs.
   - `work-unit-commits`: Atomic, reviewable, self-contained commit slices.
   - `chained-pr`: Splitting changes exceeding 400 lines into stacked, reviewable PR chains.
-  - `branch-pr`: Issue-first branch and PR creation with human-in-the-loop confirmation.
+  - `gentle-ai-branch-pr`: Issue-first branch and PR creation with human-in-the-loop confirmation.
   - `rdd-defect-workflow` & `gentle_review`: Receipt-Driven Development with cryptographic review lineages.
   - `judgment-day`: Blind dual or adversarial reviews for high-stakes changes.
-  - `systemic-issue-triage` & `issue-root-resolution`: Identifying shared root causes across large issue backlogs.
+  - `gentle-ai-issue-creation` & `gentle-ai-rdd-defect-workflow`: Issue creation and receipt-backed defect correction when installed and listed by the capability report.
 
 ### Engineering Excellence
 - **Role:** Software engineering standards, architecture, and production readiness.
@@ -342,10 +342,10 @@ The orchestrator dynamically routes tasks to the minimal sufficient skill set ba
 
 | Situation | Minimal Selected Method (First Installed Wins) |
 | --- | --- |
-| **Raw issue or untriaged PR** | Matt Pocock `triage`; Gentle AI `issue-creation` |
-| **Backlog sharing common root causes** | Gentle AI `systemic-issue-triage` / `issue-root-resolution` |
+| **Raw issue or untriaged PR** | Root-only Matt Pocock `triage`; `issue-ops`; `gentle-ai-issue-creation` only when the capability report lists it |
+| **Backlog sharing common root causes** | Root-only analysis with `issue-ops`; no child selector for uninstalled `systemic-issue-triage` / `issue-root-resolution` |
 | **Ambiguous requirement or design doubt** | Matt Pocock `grill-with-docs` (`grill-me`), or targeted user question |
-| **Large ambiguous feature** | Matt Pocock `wayfinder` $\rightarrow$ `to-spec`; Gentle AI `sdd-explore` / `sdd-propose` |
+| **Large ambiguous feature** | Root-only Matt Pocock `wayfinder` $\rightarrow$ `to-spec`; Engineering Excellence `sdd` reference |
 | **Decomposing plan into work items** | Matt Pocock `to-spec` $\rightarrow$ `to-tickets`; Engineering Excellence `sdd` |
 | **Reproducible or hard bug** | Matt Pocock `diagnosing-bugs` $\rightarrow$ `tdd` regression test; Gentle AI `rdd-defect-workflow` |
 | **Defined feature implementation** | Matt Pocock `implement` (`tdd` $\rightarrow$ review $\rightarrow$ operator-authorized commit); EE `sdd` + `tdd` |
@@ -353,7 +353,7 @@ The orchestrator dynamically routes tasks to the minimal sufficient skill set ba
 | **Infrastructure / Containers / CI** | Engineering Excellence `docker`, `ci`, `production-readiness`; `container-test-matrix` |
 | **Security or Performance Audit** | Engineering Excellence `security`, `performance` |
 | **Candidate Code Review** | Matt Pocock `code-review`; Gentle AI `judgment-day` (dual review); Guardian Angel before `READY` |
-| **Commit Creation & Pull Request** | Gentle AI `work-unit-commits`, `chained-pr` (>400 lines), `branch-pr`; Matt Pocock `pr` |
+| **Commit Creation & Pull Request** | Gentle AI `gentle-ai-work-unit-commits` or `work-unit-commits`, `gentle-ai-chained-pr` or `chained-pr` (>400 lines), `gentle-ai-branch-pr`; Matt Pocock `pr` |
 | **Context Pressure & Session Handoff** | Gentle Engram handoff; Matt Pocock `handoff`; EE `context-budget` |
 
 ---
