@@ -61,8 +61,11 @@ const candidateReview = (task, candidate, version = "2.10.1") => {
     file_hashes[path] = createHash("sha256").update(file).digest("hex");
   }
   const rules = spawnSync("git", ["show", `${candidate}:AGENTS.md`], { encoding: null }).stdout;
+  const profilePath = "skills/pi-herdr-orchestrator/reviewer-profile.gga";
+  const profile = spawnSync("git", ["show", `${candidate}:${profilePath}`], { encoding: null }).stdout;
   const config_digest = createHash("sha256")
     .update("AGENTS.md\\0").update(rules)
+    .update(`${profilePath}\\0`).update(profile)
     .digest("hex");
   return { task, run: "run-test", candidate, provider: "gga", status: "PASS", version, config_digest, output_digest: "0".repeat(64), file_hashes, deleted_files: [] };
 };

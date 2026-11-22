@@ -49,6 +49,7 @@ const EVIDENCE_HASH = /^[0-9a-f]{16,64}$/;
 const PI_SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SESSION_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const GIT_MAX_BUFFER = 64 * 1024 * 1024;
+const REVIEW_PROFILE_PATH = "skills/pi-herdr-orchestrator/reviewer-profile.gga";
 const IDENTITY_FIELDS = ["pane", "session"];
 const REVIEW_PROVIDERS = new Set(["gga", "gentle"]);
 const REVIEW_STATUSES = new Set(["PASS", "FAIL", "BLOCKED", "NOT RUN", "UNVERIFIED"]);
@@ -260,11 +261,15 @@ function gitCandidateReview(candidate, fileHashes, deletedFiles = []) {
     actualDeleted.push({ path: item.path, diff_hash: item.diff_hash });
   }
   let rules;
+  let profile;
   try {
     rules = spawnSync("git", ["show", `${commit}:AGENTS.md`], { cwd: root, encoding: null, maxBuffer: GIT_MAX_BUFFER });
     if (rules.status !== 0) return { status: "blocked", reason: "review rules are absent from candidate" };
+    profile = spawnSync("git", ["show", `${commit}:${REVIEW_PROFILE_PATH}`], { cwd: root, encoding: null, maxBuffer: GIT_MAX_BUFFER });
+    if (profile.status !== 0) return { status: "blocked", reason: "review profile is absent from candidate" };
     const configDigest = createHash("sha256")
       .update("AGENTS.md\\0").update(rules.stdout)
+      .update(`${REVIEW_PROFILE_PATH}\\0`).update(profile.stdout)
       .digest("hex");
     return { status: "verified", fileHashes: actualHashes, deletedFiles: actualDeleted, configDigest };
   } catch {
@@ -431,11 +436,19 @@ function validateStoredReviewEvidence(dir, binding, result) {
   }
 }
 
-function replayTerminalEvidence(dir, prev, expected) {
+export function verifyBindingChain(dir, binding, expected, providerVerifier, { requireProvider = false } = {}) {
+  if (!binding) return { status: "blocked", reason: "evidence binding is unavailable" };
+  const shape = validateEvidenceBinding(binding, expected);
+  if (shape.status !== "verified") return shape;
+  const stored = validateStoredReviewEvidence(dir, binding, shape);
+  if (stored.status !== "verified" || !requireProvider) return stored;
+  return verifyProviderEvidence(binding, providerVerifier);
+}
+
+function replayTerminalEvidence(dir, prev, expected, providerVerifier, requireProvider = false) {
   if (!["READY", "CLOSED"].includes(prev.state)) return null;
   if (!prev.evidence_binding) return { status: "blocked", reason: "terminal reports must retain a candidate-bound evidence binding" };
-  const result = validateEvidenceBinding(prev.evidence_binding, expected);
-  return validateStoredReviewEvidence(dir, prev.evidence_binding, result);
+  return verifyBindingChain(dir, prev.evidence_binding, expected, providerVerifier, { requireProvider });
 }
 
 function currentAgentName() {
@@ -572,7 +585,7 @@ function persistEntry(dir, file, entry, event) {
     renameSync(tempFile, file);
   } finally {
     if (existsSync(tempFile)) {
-      try { unlinkSync(tempFile); } catch { /* preserve the completed rename */ }
+      try { unlinkSync(tempFile); } catch (error) { if (error.code !== "ENOENT") process.emitWarning(`[ORCH_EVIDENCE_CLEANUP_FAILED] ${error.message}`); }
     }
   }
   if (!existingEvents.some((item) => item.event_id === eventId)) {
@@ -600,7 +613,7 @@ export function storeEvidence(dir, content) {
     }
   } finally {
     if (existsSync(tempFile)) {
-      try { unlinkSync(tempFile); } catch { /* another writer completed the same content */ }
+      try { unlinkSync(tempFile); } catch (error) { if (error.code !== "ENOENT") process.emitWarning(`[ORCH_EVIDENCE_CLEANUP_FAILED] ${error.message}`); }
     }
   }
   return `ref:sha256:${hash}`;
@@ -707,7 +720,7 @@ export function report(opts) {
     const requiresTerminalEvidence = opts.state === "READY"
       || (opts.state === "CLOSED" && (isPresent(candidate) || Boolean(suppliedBinding) || Boolean(prev.evidence_binding)));
     const requestedBinding = suppliedBinding ?? (terminalState ? undefined : prev.evidence_binding);
-    let messageId = requestId("report", opts.id, {
+    const reportIdPayload = {
       task: opts.task,
       run,
       candidate: opts.candidate,
@@ -720,7 +733,8 @@ export function report(opts) {
       pane: opts.pane,
       session: opts.session,
       branch: opts.branch ?? prev.branch ?? null
-    });
+    };
+    let messageId = requestId("report", opts.id, reportIdPayload);
     if (prev.state === "CLOSED" && !messageWasSeen(prev, messageId)) {
       throw new Error(`cannot update CLOSED task ${opts.task}`);
     }
@@ -731,29 +745,23 @@ export function report(opts) {
       && (opts.branch ?? prev.branch ?? null) === (prev.branch ?? null);
     const sameTerminalAttempt = terminalState && prev.state === "BLOCKED" && messageWasSeen(prev, messageId);
     if (!opts.id && !sameTerminalAttempt && !["READY", "CLOSED"].includes(prev.state) && messageWasSeen(prev, messageId) && !sameCurrentReport) {
-      messageId = requestId("report", undefined, { task: opts.task, run, candidate: opts.candidate, state: opts.state, summary: opts.summary, checks: currentCheckStrings, required_checks: effectiveRequiredChecks, evidence: evidenceRef, evidence_binding: opts.evidence_binding ?? opts.evidenceBinding, pane: opts.pane, session: opts.session, branch: opts.branch ?? prev.branch ?? null, after: prev.message_id });
+      messageId = requestId("report", undefined, { ...reportIdPayload, after: prev.message_id });
     }
     const retryUnverifiedTerminal = prev.state === "BLOCKED" && terminalState && prev.evidence_binding?.status === "unverified";
     if (messageWasSeen(prev, messageId) && !retryUnverifiedTerminal) {
       if (prev.state === "CLOSED") {
-        let replayResult = requiresTerminalEvidence
-          ? replayTerminalEvidence(dir, prev, { task: opts.task, run: prev.run ?? run, candidate: prev.candidate ?? candidate })
+        const replayResult = requiresTerminalEvidence
+          ? replayTerminalEvidence(dir, prev, { task: opts.task, run: prev.run ?? run, candidate: prev.candidate ?? candidate }, opts.providerVerifier, true)
           : null;
-        if (replayResult?.status === "verified" && prev.evidence_binding) {
-          replayResult = verifyProviderEvidence(prev.evidence_binding, opts.providerVerifier);
-        }
         if (replayResult && replayResult.status !== "verified") {
           throw new Error(`closed report evidence verification failed for ${opts.task}: ${replayResult.reason ?? "unverified evidence"}`);
         }
         entry = prev;
         return;
       }
-      let replayResult = requiresTerminalEvidence
-        ? replayTerminalEvidence(dir, prev, { task: opts.task, run: prev.run ?? run, candidate: prev.candidate ?? candidate })
+      const replayResult = requiresTerminalEvidence
+        ? replayTerminalEvidence(dir, prev, { task: opts.task, run: prev.run ?? run, candidate: prev.candidate ?? candidate }, opts.providerVerifier, terminalState)
         : null;
-      if (replayResult?.status === "verified" && terminalState && prev.evidence_binding) {
-        replayResult = verifyProviderEvidence(prev.evidence_binding, opts.providerVerifier);
-      }
       if (!replayResult || replayResult.status === "verified" || (prev.state === "BLOCKED" && sameTerminalAttempt)) {
         if (!opts.id && sameCurrentReport && prev.state === "WORKING") {
           const heartbeatMessageId = requestId("report", randomUUID(), {
@@ -794,19 +802,10 @@ export function report(opts) {
     const evidenceRequired = requiresTerminalEvidence || isPresent(candidate) || Boolean(requestedBinding);
     const evidenceBinding = requestedBinding ?? (evidenceRequired ? { task: opts.task, run, candidate } : null);
     const terminalEvidenceMissing = requiresTerminalEvidence && (!isPresent(candidate) || !suppliedBinding);
-    let bindingResult = terminalEvidenceMissing
+    const bindingResult = terminalEvidenceMissing
       ? { status: "blocked", reason: "terminal reports must supply a candidate and fresh evidence binding" }
-      : evidenceBinding
-        ? validateEvidenceBinding(evidenceBinding, { task: opts.task, run, candidate })
-        : null;
-    if (bindingResult?.status === "verified") {
-      bindingResult = validateStoredReviewEvidence(dir, evidenceBinding, bindingResult);
-    }
-    let providerResult = null;
-    if (bindingResult?.status === "verified" && terminalState) {
-      providerResult = verifyProviderEvidence(evidenceBinding, opts.providerVerifier);
-      bindingResult = providerResult;
-    }
+      : verifyBindingChain(dir, evidenceBinding, { task: opts.task, run, candidate }, opts.providerVerifier, { requireProvider: terminalState });
+    const providerResult = terminalState && bindingResult?.status === "verified" ? bindingResult : null;
     const checkResults = new Map(currentChecks.map(({ name, status }) => [name, status]));
     const checksPass = !terminalState || (
       currentChecks.length > 0
@@ -867,7 +866,7 @@ export function report(opts) {
     notifyAgent(master, msg, { nonBlocking: opts.nonBlocking ?? true, sender });
   }
   if (!opts.silent) {
-    console.log(`${entry.task} ${entry.state} seq=${entry.seq} -> ${file}`);
+    process.stdout.write(`${entry.task} ${entry.state} seq=${entry.seq} -> ${file}\n`);
   }
   return entry;
 }
@@ -928,7 +927,7 @@ export function ask(opts) {
     notifyAgent(master, msg, { nonBlocking: opts.nonBlocking ?? true, sender });
   }
   if (!opts.silent) {
-    console.log(`Question recorded for ${opts.task}`);
+    process.stdout.write(`Question recorded for ${opts.task}\n`);
   }
   return entry;
 }
@@ -992,7 +991,7 @@ export function reply(opts) {
     notifyAgent(workerAgent, msg, { nonBlocking: opts.nonBlocking ?? true, sender: currentAgentName() });
   }
   if (!opts.silent) {
-    console.log(`Reply sent to ${opts.task}`);
+    process.stdout.write(`Reply sent to ${opts.task}\n`);
   }
   return entry;
 }
@@ -1037,10 +1036,10 @@ export function status(opts) {
       evidence: e.evidence_ref ?? "-"
     };
   });
-  if (opts.json === "true") return console.log(JSON.stringify(rows, null, 2));
+  if (opts.json === "true") { process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`); return; }
   console.table(rows);
   const open = rows.filter((r) => r.flag !== "OK").length;
-  console.log(open ? `${open} task(s) need master action` : "all tasks on track or closed");
+  process.stdout.write(`${open ? `${open} task(s) need master action` : "all tasks on track or closed"}\n`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -1053,8 +1052,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     else if (cmd === "evidence") {
       const opts = parse(rest);
       const dir = runDir(opts);
-      if (opts.ref) console.log(readEvidence(dir, opts.ref));
-      else if (opts.content) console.log(storeEvidence(dir, opts.content));
+      if (opts.ref) process.stdout.write(`${readEvidence(dir, opts.ref)}\n`);
+      else if (opts.content) process.stdout.write(`${storeEvidence(dir, opts.content)}\n`);
       else throw new Error("--ref or --content required for evidence command");
     }
     else throw new Error("usage: mailbox.mjs report|status|ask|reply|evidence --run R [...]");
