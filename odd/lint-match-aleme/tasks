@@ -5,6 +5,8 @@ Tasks
 - T2 | S3-S4 | Add zero-dependency lint script and wire npm/CI | done, 765b14c
 - T3 | S5-S7 | Fix all reported violations without behavior changes | done, 765b14c
 - T4 | S8 | Re-run lint, tests and checks; record evidence | done, 765b14c
+- T5 | release | Bump to 1.5.0 and add release notes | done, 0f1d092
+- T6 | S8 | Make Windows CI shim-dependent tests portable | done, f205ea9
 
 Log
 - L1: User request recorded verbatim in odd/tasks/lint-match-aleme-20261122.md.
