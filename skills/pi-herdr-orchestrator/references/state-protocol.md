@@ -11,7 +11,7 @@ Choose the representation by boundary rather than using one format everywhere:
 | Agent/tool result and workflow state | JSON envelope validated by the receiving workflow; strict JSON Schema when the host supports it | Deterministic validation, enums, required fields and machine routing |
 | MCP tool result | `structuredContent` JSON plus a short text fallback | Native structured result with schema validation and resource references |
 | Shared schema components | JSON Schema `$ref`/JSON Pointer and a schema digest when a schema is available | Define repeated fields once; cache and validate the referenced version |
-| Repeated homogeneous rows in an LLM prompt | TOON, encoded from canonical JSON | Lower token cost for uniform arrays; convert back to JSON before validation |
+| Repeated homogeneous rows in an LLM prompt | TOON, encoded from canonical JSON | Lower token cost for uniform arrays; convert back to JSON before validation. Encode with `toon -e` and decode with `toon -d` from the `toon` binary already on PATH; decoding reindents the JSON, so validate parsed values rather than bytes. Measured on 60 homogeneous records: 7201 bytes of JSON became 968 bytes of TOON |
 | Small flat records or CSV-like evidence | Delimited table/CSV only after a typed header | Lower overhead for regular rows; unsafe for nested values without escaping rules |
 | Append-only event or audit stream | JSONL | One independently parseable event per line and easy replay |
 | Human-edited configuration | YAML, validated into JSON before use | Readable configuration; never accept implicit YAML typing as the protocol contract |
