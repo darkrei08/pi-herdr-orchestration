@@ -10,10 +10,10 @@ Branch: fix/agent-startup-gga-mjs (from origin/main 5890282)
 6. S6: "Esegui la verifica con `node scripts/check-environment.mjs --strict` o il comando equivalente."
 
 ## Tasks
-- T1 | S1,S4 | Inspect logs, extension hooks, GGA config and issue scope | commit: TBD
-- T2 | S2 | Make model preflight non-blocking and accept null selected routes | commit: TBD
-- T3 | S3 | Add GGA .mjs coverage and workflow owner marker | commit: TBD
-- T4 | S6 | Run strict environment, lint, tests and startup smoke check | commit: TBD
+- T1 | S1,S4 | Inspect logs, extension hooks, GGA config and issue scope | commit: 2b2fd9c
+- T2 | S2 | Make model preflight non-blocking and accept null selected routes | commit: eb04d0b (dotenv source), live extension patched
+- T3 | S3 | Add GGA .mjs coverage and workflow owner marker | commit: 2b2fd9c; global GGA config updated
+- T4 | S6 | Run strict environment, lint, tests and startup smoke check | commit: 2b2fd9c
 
 ## Log
 - L1: "Ho provato ad avviare nuova sessone di oibagent ma non si avvia ruotot qualcosa e ppi compelta con Risk: le issue aperte pre-esistenti, tra cui #30, #29, #28, #27, #26 e altre, non sono state chiuse perché non appartenevano a questo work unit; GGA non ha revisionato il commit perché i suoi pattern escludono .mjs."
@@ -22,3 +22,4 @@ Branch: fix/agent-startup-gga-mjs (from origin/main 5890282)
 - L4: GGA effective config was `/root/.config/gga/config` with `FILE_PATTERNS` missing `.mjs`; `.gga.local` was inert. Updated the global pattern to `*.ts,*.tsx,*.mjs,*.cjs,*.js,*.jsx,*.py,*.go` and kept a backup at `/root/.config/gga/config.pre-mjs`.
 - L5: Open issues #30 timeout, #29 graph supervisor, #28 run budget, #27 PR-following workflow and #26 pane title were read-only verified. None were closed as they are outside this unit.
 - L6: Verification: `npm run check:strict` PASS with 0 required failures, lint 37 files clean, tests 96/96 PASS, startup smoke READY with no preflight-block or selected-route errors.
+- L7: Commits: `2b2fd9c` documents startup/GGA evidence in this repo; `eb04d0b` mirrors the advisory model-preflight fix and typebox dependency into dotenv. GGA reviewed the dotenv MJS files after the global pattern update and returned PASS.
