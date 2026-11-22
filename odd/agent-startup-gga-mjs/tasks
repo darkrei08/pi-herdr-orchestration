@@ -1,0 +1,11 @@
+Feature: agent-startup-gga-mjs
+
+Tasks
+- T1 | S1,S4 | Inspect logs, extension hooks, GGA config and issue scope | pending
+- T2 | S2 | Make model preflight non-blocking and accept null selected routes | pending
+- T3 | S3 | Add GGA .mjs coverage and workflow owner marker | pending
+- T4 | S6 | Run strict environment, lint, tests and startup smoke check | pending
+
+Log
+- L1: User request recorded verbatim in odd/tasks/agent-startup-gga-mjs-20261122.md.
+- L2: Startup fixed in live runtime; GGA patterns now include .mjs; strict check, lint, tests and startup smoke PASS.
