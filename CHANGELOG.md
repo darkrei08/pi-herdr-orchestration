@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-22
+
+### Added
+- **Context Window Policy (`config/context-window.json`, `scripts/check-context-window.mjs`)**: Enforced a 300000-token ceiling with a 276000-token compaction trigger for the orchestrator and workflow children, mirrored into dotenv and PiWorkflow role policy.
+- **Worktree Factory (`scripts/worktree-factory.mjs`)**: Added deterministic creation and audit commands for isolated worktrees derived from `origin/main`, plus cleanup rules and evidence.
+- **Workflow Context Directive (`extensions/workflow-autostart.mjs`)**: Appended pi-vcc compaction, vcc_recall, Engram, codemode, and context-ceiling guidance to parent and child prompts.
+- **Extension Startup Integrity (`model-preflight.mjs`)**: Warns at `session_start` on missing local extensions and unresolved critical modules without blocking routing.
+
 ### Changed
 - **Herdr Workflow Topology:** Documented the default current-tab sibling-pane tree, nested pane ownership, focused-pane zoom control, and explicit-only workspace, tab, or cwd changes; isolated writer worktrees remain unchanged.
+
+### Fixed
+- **TypeBox Peer Fallback (`extensions/workflow-autostart.mjs`)**: Registry resolution now falls back to the local PiWorkflow fork when the npm registry cannot import its `typebox` peer, so `agentPreparationHooks` still register.
 
 ## [1.3.1] - 2026-11-22
 
