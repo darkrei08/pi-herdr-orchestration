@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-22
+
+### Added
+- **Zero-Dependency Linter (`scripts/lint.mjs`)**: Added `npm run lint` and `npm run lint:json` with syntax checks and source rules for whitespace, line endings, duplicate lines, multiple statements, work markers and loose equality. CI now runs the linter on every validation matrix row.
+- **Linter Tests (`scripts/lint.test.mjs`)**: Added focused tests for clean sources, every rule, file-level suppression and finding locations.
+
+### Fixed
+- **Statement Layout (`scripts/flow-glossary.mjs`, `skills/pi-herdr-orchestrator/scripts/mailbox.mjs`)**: Split two multiple-statement lines without changing behavior.
+
 ## [1.4.0] - 2026-11-22
 
 ### Added
