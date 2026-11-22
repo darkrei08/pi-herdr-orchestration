@@ -18,6 +18,7 @@ Branch: fix/lint-match-aleme (from origin/main 391037f)
 - T4 | S8 | Re-run lint, tests and checks; record evidence | commit: 765b14c
 - T5 | release | Bump to 1.5.0 and add release notes | commit: 0f1d092
 - T6 | S8 | Make Windows CI shim-dependent tests portable | commit: f205ea9
+- T7 | S8 | Enforce LF checkout for source files | commit: 26d4eb5
 
 ## Log
 - L1: "Mposatlintu match aleme e risolvi"
@@ -30,3 +31,4 @@ Identifica gli errori o i riferimenti indicati ("match aleme") e risolvi tutti i
 - L6: Final checks: lint 37 files clean, npm test 95/95 PASS, check:strict PASS, git diff --check PASS. GGA hook ran but its configured patterns exclude .mjs, so no file matched.
 - L7: Multi-stage release checks all exited 0: lint, test, check:strict, check:mcp, check:anthropic-small-business, flow:sources:check, context-window, pack, diff-check.
 - L8: PR #32 CI exposed four pre-existing Windows-only test failures caused by POSIX PATH construction and extensionless/shebang shims. Fixed in test harness with platform-aware PATH and honest skips; POSIX suite stayed 96/96 PASS.
+- L9: Second CI run failed only in the new lint step because GitHub Windows checkout produced CRLF for source files. Added .gitattributes enforcing LF for .mjs/.js/.json/.md/.yml/.yaml/.sh; git check-attr confirms eol=lf and lint stays clean.
