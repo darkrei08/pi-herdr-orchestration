@@ -40,7 +40,7 @@ Practice: the evidence is a recorded command and its output, not a green suite a
 
 ### Review
 
-Review the exact candidate against its spec and repository standards with `code-review`. Use `diagnosing-bugs`, `judgment-day`, `rdd-defect-workflow`, or architecture review skills only when the risk calls for them.
+Review the exact candidate against its spec and repository standards with `code-review`. Use `diagnosing-bugs`, `judgment-day`, `gentle-ai-rdd-defect-workflow`, or architecture review skills only when the risk calls for them.
 
 Practice: a finding carries its file and line, and a pre-existing issue is a follow-up, never a blocker dressed as the candidate's fault.
 

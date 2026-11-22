@@ -300,7 +300,7 @@ Launch named workflows with `foreground: true` and no budget; omit `timeoutMs` o
   - `work-unit-commits`: Atomic, reviewable, self-contained commit slices.
   - `chained-pr`: Splitting changes exceeding 400 lines into stacked, reviewable PR chains.
   - `gentle-ai-branch-pr`: Issue-first branch and PR creation with human-in-the-loop confirmation.
-  - `rdd-defect-workflow` & `gentle_review`: Receipt-Driven Development with cryptographic review lineages.
+  - `gentle-ai-rdd-defect-workflow` & `gentle_review`: Receipt-Driven Development with cryptographic review lineages.
   - `judgment-day`: Blind dual or adversarial reviews for high-stakes changes.
   - `gentle-ai-issue-creation` & `gentle-ai-rdd-defect-workflow`: Issue creation and receipt-backed defect correction when installed and listed by the capability report.
 
@@ -347,7 +347,7 @@ The orchestrator dynamically routes tasks to the minimal sufficient skill set ba
 | **Ambiguous requirement or design doubt** | Matt Pocock `grill-with-docs` (`grill-me`), or targeted user question |
 | **Large ambiguous feature** | Root-only Matt Pocock `wayfinder` $\rightarrow$ `to-spec`; Engineering Excellence `sdd` reference |
 | **Decomposing plan into work items** | Matt Pocock `to-spec` $\rightarrow$ `to-tickets`; Engineering Excellence `sdd` |
-| **Reproducible or hard bug** | Matt Pocock `diagnosing-bugs` $\rightarrow$ `tdd` regression test; Gentle AI `rdd-defect-workflow` |
+| **Reproducible or hard bug** | Matt Pocock `diagnosing-bugs` $\rightarrow$ `tdd` regression test; Gentle AI `gentle-ai-rdd-defect-workflow` |
 | **Defined feature implementation** | Matt Pocock `implement` (`tdd` $\rightarrow$ review $\rightarrow$ operator-authorized commit); EE `sdd` + `tdd` |
 | **Refactoring** | Behavior-preservation tests first (`tdd`); Matt Pocock `codebase-design` |
 | **Infrastructure / Containers / CI** | Engineering Excellence `docker`, `ci`, `production-readiness`; `container-test-matrix` |

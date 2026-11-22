@@ -18,6 +18,7 @@ test("workflow auto-start has one repo-owned extension", () => {
   const autostart = read("extensions/workflow-autostart.mjs");
   const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
   const developmentFlow = read("docs/development-flow.md");
+  const readme = read("README.md");
   assert.ok(manifest.pi.extensions.includes("./extensions/workflow-autostart.mjs"));
   assert.equal(owner.workflowOwner, "pi-herdr-orchestrator");
   assert.match(autostart, /before_agent_start/);
@@ -52,6 +53,8 @@ test("workflow auto-start has one repo-owned extension", () => {
   assert.match(routing, /gentle-ai-branch-pr/);
   assert.doesNotMatch(routing, /`branch-pr`/);
   assert.doesNotMatch(developmentFlow, /`branch-pr`/);
+  assert.doesNotMatch(readme, /`rdd-defect-workflow`/);
+  assert.doesNotMatch(developmentFlow, /`rdd-defect-workflow`/);
   assert.ok(autostart.trim().split("\n").length <= 52);
 });
 
