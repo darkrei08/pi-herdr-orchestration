@@ -1,0 +1,91 @@
+diff --git a/extensions/promptimize/core.ts b/extensions/promptimize/core.ts
+index b2b0536..6d5f8d3 100644
+--- a/extensions/promptimize/core.ts
++++ b/extensions/promptimize/core.ts
+@@ -122,6 +122,8 @@ export interface Llm {
+ 	streamSimple(model: unknown, context: { systemPrompt: string; messages: unknown[] }, options: Record<string, unknown>): { result(): Promise<Reply> };
+ 	model: unknown;
+ 	thinkingLevel?: string;
++	/** The pi session id, so session-aware providers can cache or route; absent when unknown. */
++	sessionId?: string;
+ 	cwd: string;
+ }
+ 
+@@ -194,7 +196,7 @@ export function reasoningFor(level: string | undefined, cheap: boolean): string
+ export async function complete(llm: Llm, systemPrompt: string, text: string, signal: AbortSignal, cheap: boolean): Promise<string | null> {
+ 	const messages = [{ role: "user", content: [{ type: "text", text }], timestamp: Date.now() }];
+ 	const once = (reasoning: string | undefined): Promise<Reply> =>
+-		llm.streamSimple(llm.model, { systemPrompt, messages }, { signal, cacheRetention: "none", reasoning }).result()
++		llm.streamSimple(llm.model, { systemPrompt, messages }, { signal, cacheRetention: "none", reasoning, sessionId: llm.sessionId }).result()
+ 			.catch((err: Error) => ({ stopReason: "error", errorMessage: err.message, content: [] }));
+ 	const reasoning = reasoningFor(llm.thinkingLevel, cheap);
+ 	let res = await once(reasoning);
+diff --git a/extensions/promptimize/index.ts b/extensions/promptimize/index.ts
+index 9d8038d..ec4f5b2 100644
+--- a/extensions/promptimize/index.ts
++++ b/extensions/promptimize/index.ts
+@@ -409,6 +409,16 @@ class PromptimizePopup implements Focusable {
+ 	}
+ }
+ 
++function llmFor(ctx: ExtensionContext, model: NonNullable<ExtensionContext["model"]>): Llm {
++	return {
++		streamSimple: (m, c, o) => ctx.modelRegistry.streamSimple(m as never, c as never, o as never),
++		model,
++		thinkingLevel: ctx.thinkingLevel,
++		sessionId: ctx.sessionManager.getSessionId(),
++		cwd: ctx.cwd,
++	};
++}
++
+ async function open(pi: ExtensionAPI, ctx: ExtensionContext, initial = "") {
+ 	if (ctx.mode !== "tui") {
+ 		ctx.ui.notify("promptimize needs interactive mode", "error");
+@@ -421,12 +431,7 @@ async function open(pi: ExtensionAPI, ctx: ExtensionContext, initial = "") {
+ 		ctx.ui.notify("promptimize: no model selected.", "error");
+ 		return;
+ 	}
+-	const llm: Llm = {
+-		streamSimple: (m, c, o) => ctx.modelRegistry.streamSimple(m as never, c as never, o as never),
+-		model,
+-		thinkingLevel: ctx.thinkingLevel,
+-		cwd: ctx.cwd,
+-	};
++	const llm = llmFor(ctx, model);
+ 	// Same list /model shows: the scoped models when set, else every model with auth.
+ 	const models = ctx.scopedModels.length ? ctx.scopedModels.map((s) => s.model) : [...ctx.modelRegistry.getAvailable()];
+ 	if (!models.some((m) => idOf(m) === idOf(model))) models.unshift(model);
+diff --git a/test/core.test.ts b/test/core.test.ts
+index 317693a..1c09d2e 100644
+--- a/test/core.test.ts
++++ b/test/core.test.ts
+@@ -67,13 +67,14 @@ test("stripFence removes one wrapping code fence only", () => {
+ 
+ /** Fake model: answers from a queue; an entry can be an Error, a stop reason, or text. */
+ function fakeLlm(replies: (string | Error | { stopReason: string })[], thinkingLevel = "high") {
+-	const calls: { reasoning: unknown; text: string }[] = [];
++	const calls: { reasoning: unknown; text: string; sessionId: unknown }[] = [];
+ 	const llm: Llm = {
+ 		model: {},
+ 		thinkingLevel,
+ 		cwd: "/x/repo",
++		sessionId: "sess-1",
+ 		streamSimple(_m, c, o) {
+-			calls.push({ reasoning: o.reasoning, text: (c.messages[0] as any).content[0].text });
++			calls.push({ reasoning: o.reasoning, text: (c.messages[0] as any).content[0].text, sessionId: o.sessionId });
+ 			const r = replies.shift();
+ 			return {
+ 				result: async () => {
+@@ -93,6 +94,12 @@ test("complete retries once without reasoning when the reasoning call fails", as
+ 	assert.deepEqual(calls.map((c) => c.reasoning), ["high", undefined]);
+ });
+ 
++test("complete forwards the session id in the stream options", async () => {
++	const { llm, calls } = fakeLlm(["ok"]);
++	await complete(llm, "sys", "hi", new AbortController().signal, false);
++	assert.equal(calls[0].sessionId, "sess-1");
++});
++
+ test("complete does not retry without reasoning to drop, and throws the error", async () => {
+ 	const { llm, calls } = fakeLlm([new Error("boom")], "off");
+ 	await assert.rejects(complete(llm, "sys", "hi", new AbortController().signal, false), /boom/);
