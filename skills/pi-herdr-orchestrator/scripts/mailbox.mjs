@@ -137,11 +137,8 @@ export function validateEvidenceBinding(binding, expected) {
   if (!review || typeof review !== "object" || !memory || typeof memory !== "object") {
     return { status: "unverified", reason: "review or memory evidence is unavailable" };
   }
-  for (const field of ["task", "run", "candidate"]) {
-    if (!isPresent(review[field]) || review[field] !== expected[field]) {
-      return { status: "blocked", reason: `review evidence ${field} does not match the exact task candidate identity` };
-    }
-  }
+  const reviewMismatch = identityMismatch(review, expected, "review");
+  if (reviewMismatch) return { status: "blocked", reason: reviewMismatch };
   if (!REVIEW_PROVIDERS.has(review.provider) || !REVIEW_STATUSES.has(review.status)) {
     return { status: "blocked", reason: "review evidence provider or status is invalid" };
   }
@@ -160,11 +157,8 @@ export function validateEvidenceBinding(binding, expected) {
   if (memory.provider !== "engram" || !MEMORY_STATUSES.has(memory.status)) {
     return { status: "blocked", reason: "memory evidence provider or status is invalid" };
   }
-  for (const field of ["task", "run", "candidate"]) {
-    if (!isPresent(memory[field]) || memory[field] !== expected[field]) {
-      return { status: "blocked", reason: `memory evidence ${field} does not match the exact task candidate identity` };
-    }
-  }
+  const memoryMismatch = identityMismatch(memory, expected, "memory");
+  if (memoryMismatch) return { status: "blocked", reason: memoryMismatch };
   if (memory.status === "PERSISTED" && !ENGRAM_REF.test(memory.ref ?? "")) {
     return { status: "blocked", reason: "persisted memory evidence requires an Engram observation reference" };
   }
@@ -178,6 +172,28 @@ export function validateEvidenceBinding(binding, expected) {
     return { status: "unverified", reason: "review or memory evidence is unavailable or uncertain" };
   }
   return { status: "verified", reason: "review and memory evidence match the exact task candidate identity" };
+}
+
+export function parseEngramIdentity(content) {
+  if (typeof content !== "string") return null;
+  try {
+    const value = JSON.parse(content);
+    if (value && typeof value === "object" && ["task", "run", "candidate"].every((field) => typeof value[field] === "string")) {
+      return { task: value.task, run: value.run, candidate: value.candidate };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function identityMismatch(evidence, expected, label) {
+  for (const field of ["task", "run", "candidate"]) {
+    if (!isPresent(evidence[field]) || evidence[field] !== expected[field]) {
+      return `${label} evidence ${field} does not match the exact task candidate identity`;
+    }
+  }
+  return null;
 }
 
 function sameIdentity(left, right) {
@@ -369,7 +385,7 @@ function verifyExternalEvidence(binding) {
     if (!match) {
       return { status: "unverified", reason: "Engram export does not contain the exact observation reference" };
     }
-    const identity = match.evidence_binding ?? match.binding ?? match;
+    const identity = match.evidence_binding ?? match.binding ?? parseEngramIdentity(match.content) ?? match;
     if (!sameIdentity(identity, binding)) {
       return { status: "unverified", reason: "Engram observation does not contain the exact task candidate identity" };
     }
@@ -584,13 +600,16 @@ function persistEntry(dir, file, entry, event) {
     writeFileSync(tempFile, `${JSON.stringify(entry, null, 2)}\n`, { flag: "wx" });
     renameSync(tempFile, file);
   } finally {
-    if (existsSync(tempFile)) {
-      try { unlinkSync(tempFile); } catch (error) { if (error.code !== "ENOENT") process.emitWarning(`[ORCH_EVIDENCE_CLEANUP_FAILED] ${error.message}`); }
-    }
+    cleanupTempFile(tempFile);
   }
   if (!existingEvents.some((item) => item.event_id === eventId)) {
     appendFileSync(eventsFile, `${JSON.stringify(persistedEvent)}\n`);
   }
+}
+
+function cleanupTempFile(tempFile) {
+  if (!existsSync(tempFile)) return;
+  try { unlinkSync(tempFile); } catch (error) { if (error.code !== "ENOENT") process.emitWarning(`[ORCH_EVIDENCE_CLEANUP_FAILED] ${error.message}`); }
 }
 
 // Store large evidence payloads into deduplicated files to protect context windows
@@ -612,9 +631,7 @@ export function storeEvidence(dir, content) {
       }
     }
   } finally {
-    if (existsSync(tempFile)) {
-      try { unlinkSync(tempFile); } catch (error) { if (error.code !== "ENOENT") process.emitWarning(`[ORCH_EVIDENCE_CLEANUP_FAILED] ${error.message}`); }
-    }
+    cleanupTempFile(tempFile);
   }
   return `ref:sha256:${hash}`;
 }

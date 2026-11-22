@@ -5,11 +5,16 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { report, storeEvidence, validateEvidenceBinding, verifyBindingChain } from "./mailbox.mjs";
+import { parseEngramIdentity, report, storeEvidence, validateEvidenceBinding, verifyBindingChain } from "./mailbox.mjs";
 
 const PROFILE_PATH = "skills/pi-herdr-orchestrator/reviewer-profile.gga";
 
 const git = (cwd, args) => spawnSync("git", args, { cwd, encoding: "utf8" });
+const cleanupScratch = (previousCwd, root, dir) => {
+  process.chdir(previousCwd);
+  rmSync(root, { recursive: true, force: true });
+  rmSync(dir, { recursive: true, force: true });
+};
 
 function makeCandidateRepo() {
   const root = mkdtempSync(join(tmpdir(), "orch-review-profile-"));
@@ -84,10 +89,13 @@ test("config digest binds the repository-tracked reviewer profile", () => {
     agentsOnly.ref = storeEvidence(dir, JSON.stringify(agentsOnly));
     assert.equal(report({ ...options, evidence_binding: { ...binding, review: agentsOnly } }).state, "BLOCKED");
   } finally {
-    process.chdir(previousCwd);
-    rmSync(root, { recursive: true, force: true });
-    rmSync(dir, { recursive: true, force: true });
+    cleanupScratch(previousCwd, root, dir);
   }
+});
+
+test("Engram content can carry the evidence identity", () => {
+  assert.deepEqual(parseEngramIdentity(JSON.stringify({ task: "T", run: "R", candidate: "C" })), { task: "T", run: "R", candidate: "C" });
+  assert.equal(parseEngramIdentity("plain note"), null);
 });
 
 test("binding chain compares the real digest at call sites", () => {
@@ -112,8 +120,6 @@ test("binding chain compares the real digest at call sites", () => {
     assert.equal(validateEvidenceBinding(forgedBinding, expected).status, "verified");
     assert.equal(verifyBindingChain(dir, forgedBinding, expected).status, "blocked");
   } finally {
-    process.chdir(previousCwd);
-    rmSync(root, { recursive: true, force: true });
-    rmSync(dir, { recursive: true, force: true });
+    cleanupScratch(previousCwd, root, dir);
   }
 });
