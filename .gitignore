@@ -8,6 +8,9 @@ CLAUDE.md
 .worktrees/
 .serena/
 
+# fast-anything profiler artifacts
+.fast/
+
 # Local agent hooks & settings
 .gga
 .gga.local

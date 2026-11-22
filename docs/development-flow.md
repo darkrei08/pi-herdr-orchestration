@@ -38,6 +38,8 @@ Run focused checks and any claimed platform checks. Use `container-test-matrix`,
 
 Practice: the evidence is a recorded command and its output, not a green suite alone; a platform claim is run on that platform.
 
+Profiling is optional and read-only. `npm run perf:scan -- doctor` checks the local toolchain, `npm run perf:scan -- list-candidates` prints the allowlisted entrypoints, and `npm run perf:scan -- scan --date YYYY-MM-DD scripts/flow-sources-check.mjs` records bounded profiler output under `reports/`. The wrapper refuses every command outside `doctor`, `scan`, and `list-candidates`; it never runs `port`, `verify`, `enable`, `disable`, or `bench`.
+
 ### Review
 
 Review the exact candidate against its spec and repository standards with `code-review`. Use `diagnosing-bugs`, `judgment-day`, `gentle-ai-rdd-defect-workflow`, or architecture review skills only when the risk calls for them.
