@@ -18,10 +18,10 @@ Scope: pi-herdr-orchestration, pi-workflow-extensible, dotenv, /root/.pi/agent/e
 13. S13: "Esegui `npm test` e `git diff --check`."
 
 ## Tasks
-- T1 | S1-S4 | Inspect extensions, simulate compatibility, verify/fix session header, add startup integrity check | commit: TBD
-- T2 | S5-S6 | Enforce 256k-300k context ceiling for parent and child models across repos and dotenv | commit: TBD
-- T3 | S7-S8 | Audit and safely remove obsolete worktrees, document factory rules | commit: TBD
-- T4 | S9-S13 | Wire pi-vcc directive, validate hook/typebox and real child prompt delivery, run final checks | commit: TBD
+- T1 | S1-S4 | Inspect extensions, simulate compatibility, verify/fix session header, add startup integrity check | commit: fe7b27b (dotenv), 7483696 (docs)
+- T2 | S5-S6 | Enforce 256k-300k context ceiling for parent and child models across repos and dotenv | commit: 7483696, fe7b27b, 00f4ccf (workflow fork role files)
+- T3 | S7-S8 | Audit and safely remove obsolete worktrees, document factory rules | commit: 7483696
+- T4 | S9-S13 | Wire pi-vcc directive, validate hook/typebox and real child prompt delivery, run final checks | commit: 7483696, 400efa0 (live autostart worktree)
 
 ## Log
 - L1: "## Goal
@@ -60,3 +60,8 @@ Fornisci un report suddiviso per ticket con:
 - Elenco dei worktree rimossi e regole operative stabilite.
 - Log di esecuzione di `@sting8k/pi-vcc`, verifica del system prompt child ed esito dei test."
 - L2: Read-only discovery delegated to one configured explorer workflow (f84607f4-bcf6-413c-b2e7-240447cc4978); findings reconciled with direct reads and git worktree audit before any write.
+- L3: Compatibility simulation was read-only: Pi 1.6.0 requires Node >=22.19.0 (local v22.23.4); pi-vcc 0.12.0 peers typebox >=1.1.24 <2 and pi-coding-agent >=0.74 <2; pi-goal 0.55.4 peers are wildcard; ponytail 1.0.57 has no peers. No upgrade was installed. Pi 1.5.2 already sends x-opencode-session via opencode-headers.js and model-runtime.js:473-476, so no extra header was configured.
+- L4: Context ceiling set by compaction.modelOverrides in dotenv source and live settings; every listed trigger is 276000. check-context-window reports ok for both paths. Workflow fork expresses the same policy in packages/core/starter/roles/*.md because its repository rules reject ad-hoc config scripts.
+- L5: Removed worktrees .worktrees/fix-v1.3.1, loop-graph-research, p2-capabilities, p3-evidence and release-v1.3.0-final after verifying clean status and zero commits ahead of origin/main; no branch deleted. workflow-autostart stayed because live settings references it as an installed extension.
+- L6: Real child workflow spawn a41bf3fc-2a93-45f2-a1ea-202df6a467cb report child did not see the directive in the pre-restart session. After the fallback fix, a fresh Node process loaded the real registry from the local fork despite npm typebox being absent, registered herdrWorkflowLoadout at priority MAX_SAFE_INTEGER-1, and produced a child prompt containing the marker, pi-vcc directive and 300000 ceiling. Fresh Pi TUI launch displayed the new startup integrity warning; full child-prompt delivery inside a restarted interactive TUI was not re-run.
+- L7: npm test 91/91 PASS; model-preflight 22/22 PASS in dotenv source and global extension; workflow-autostart 4/4 PASS; git diff --check PASS in all four touched repositories; GGA PASS on all four commits.
