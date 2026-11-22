@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { classify, classifyLiveness, storeEvidence, readEvidence, deriveLifecycle, fileFor, parse, report, ask, reply, runDir, validateEvidenceBinding, notifyAgent, STATES, LIFECYCLE_STATES } from "./mailbox.mjs";
@@ -61,7 +61,7 @@ const candidateReview = (task, candidate, version = "2.10.1") => {
     file_hashes[path] = createHash("sha256").update(file).digest("hex");
   }
   const rules = spawnSync("git", ["show", `${candidate}:AGENTS.md`], { encoding: null }).stdout;
-  const gga = readFileSync(".gga");
+  const gga = existsSync(".gga") ? readFileSync(".gga") : Buffer.alloc(0);
   const config_digest = createHash("sha256")
     .update("AGENTS.md\\0").update(rules)
     .update(".gga\\0").update(gga)
