@@ -1079,7 +1079,7 @@ test("reply rejects an out-of-order answer for a replaced question", () => {
   }
 });
 
-test("notifyAgent sends the exact argv without creating a prompt file and rejects self-targets", () => {
+test("notifyAgent sends the exact argv without creating a prompt file and rejects self-targets", { skip: process.platform === "win32" ? "a .cmd shim cannot spawn with exact argv on Windows" : false }, () => {
   const root = mkdtempSync(join(tmpdir(), "orch-notify-"));
   const bin = join(root, "bin");
   const capture = join(root, "argv.json");
@@ -1090,13 +1090,9 @@ test("notifyAgent sends the exact argv without creating a prompt file and reject
   writeFileSync(script, `import { writeFileSync } from "node:fs";
 writeFileSync(process.env.ORCH_NOTIFY_CAPTURE, JSON.stringify(process.argv.slice(2)));
 `);
-  if (process.platform === "win32") {
-    writeFileSync(join(bin, "herdr.cmd"), `@node "%~dp0herdr.mjs" %*\r\n`);
-  } else {
-    const herdr = join(bin, "herdr");
-    writeFileSync(herdr, `#!/usr/bin/env node\nimport "./herdr.mjs";\n`);
-    chmodSync(herdr, 0o755);
-  }
+  const herdr = join(bin, "herdr");
+  writeFileSync(herdr, `#!/usr/bin/env node\nimport "./herdr.mjs";\n`);
+  chmodSync(herdr, 0o755);
   process.env.PATH = `${bin}${process.platform === "win32" ? ";" : ":"}${dirname(process.execPath)}`;
   process.env.ORCH_NOTIFY_CAPTURE = capture;
   try {
@@ -1173,7 +1169,14 @@ process.stdout.write(readFileSync(process.env.HERDR_FIXTURE));
   }
 }
 
-test("extension orch_status preserves liveness state and reason in JSON", async () => {
+test("extension orch_status reports NO_HERDR when herdr is unavailable", async () => {
+  const missingHerdr = await runExtensionStatus({ missingHerdr: true });
+  assert.equal(missingHerdr.flag, "NO_HERDR");
+  assert.equal(missingHerdr.liveness, "unverified");
+  assert.equal(missingHerdr.reason, "Herdr liveness unavailable; mailbox and Git evidence decide");
+});
+
+test("extension orch_status preserves liveness state and reason in JSON", { skip: process.platform === "win32" ? "an extensionless /usr/bin/env node shim cannot spawn on Windows" : false }, async () => {
   const matching = await runExtensionStatus({
     identity: recorded,
     agent: { agent_status: "working", pane_id: "w7D:p1", agent_session: { value: sessionPath } },
@@ -1205,10 +1208,6 @@ test("extension orch_status preserves liveness state and reason in JSON", async 
   assert.equal(legacy.liveness, "unverified");
   assert.match(legacy.reason, /legacy record/);
 
-  const missingHerdr = await runExtensionStatus({ missingHerdr: true });
-  assert.equal(missingHerdr.flag, "NO_HERDR");
-  assert.equal(missingHerdr.liveness, "unverified");
-  assert.equal(missingHerdr.reason, "Herdr liveness unavailable; mailbox and Git evidence decide");
 });
 
 test("extension tools integrate with mailbox and support evidence reading", async () => {
