@@ -61,15 +61,25 @@ const candidateReview = (task, candidate, version = "2.10.1", cwd) => {
     }
   }
   const file_hashes = {};
+  const deleted_files = [];
   for (const path of changedPaths) {
-    const file = git(["show", `${candidate}:${path}`], null).stdout;
-    file_hashes[path] = createHash("sha256").update(file).digest("hex");
+    const present = git(["cat-file", "-e", `${candidate}:${path}`]);
+    if (present.status === 0) {
+      const file = git(["show", `${candidate}:${path}`], null).stdout;
+      file_hashes[path] = createHash("sha256").update(file).digest("hex");
+      continue;
+    }
+    const deletion = parentIds
+      .map((parentId) => git(["diff", "--binary", parentId, candidate, "--", path], null))
+      .find((result) => result.status === 0 && result.stdout?.length > 0);
+    if (!deletion) throw new Error(`cannot describe deletion of ${path}`);
+    deleted_files.push({ path, diff_hash: createHash("sha256").update(deletion.stdout).digest("hex") });
   }
   const rules = git(["show", `${candidate}:AGENTS.md`], null).stdout;
   const profilePath = "skills/pi-herdr-orchestrator/reviewer-profile.gga";
   const profile = git(["show", `${candidate}:${profilePath}`], null).stdout;
   const config_digest = configDigest(rules, profile, profilePath);
-  return { task, run: "run-test", candidate, provider: "gga", status: "PASS", version, config_digest, output_digest: "0".repeat(64), file_hashes, deleted_files: [] };
+  return { task, run: "run-test", candidate, provider: "gga", status: "PASS", version, config_digest, output_digest: "0".repeat(64), file_hashes, deleted_files };
 };
 const memoryEvidence = (dir, task, candidate, observation = "obs-test") => {
   const memory = { task, run: "run-test", candidate, provider: "engram", status: "PERSISTED", ref: `engram:${observation}` };
