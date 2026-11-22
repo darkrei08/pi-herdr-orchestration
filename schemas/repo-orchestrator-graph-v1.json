@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "repo-orchestrator/graph-supervisor/v1",
+  "title": "Persisted repository orchestration graph",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["version", "run_id", "status", "budget", "nodes", "edges", "revision", "transition_count"],
+  "properties": {
+    "version": { "const": "repo-orchestrator/graph-supervisor/v1" },
+    "run_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "status": { "enum": ["running", "paused", "blocked", "completed", "failed"] },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxTransitions": { "type": "integer", "minimum": 0 },
+        "maxRetries": { "type": "integer", "minimum": 0 },
+        "maxTokens": { "type": "integer", "minimum": 0 },
+        "maxWallMs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "paused": { "type": "boolean" },
+    "revision": { "type": "integer", "minimum": 0 },
+    "transition_count": { "type": "integer", "minimum": 0 },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+    "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
+    "transitions": { "type": "array" }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "status"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "type": { "enum": ["run", "phase", "task", "agent", "worktree", "pr", "gate", "wait", "decision", "artifact"] },
+        "status": { "enum": ["pending", "ready", "running", "waiting", "blocked", "paused", "completed", "failed", "closed"] }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "type", "from", "to"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "type": { "enum": ["contains", "delegates", "runs-in", "checks", "waits-for", "reports", "retries", "produces"] },
+        "from": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "to": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    }
+  }
+}

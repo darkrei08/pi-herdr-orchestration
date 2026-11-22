@@ -46,6 +46,8 @@ For every capability, write a compact status record:
 
 Allowed statuses are `installed`, `missing`, `incompatible`, `disabled`, `blocked` and `not_applicable`. Keep credentials, tokens and account databases out of this registry. A missing optional capability changes the workflow to a documented fallback; it does not silently fail.
 
+Package rows are installed-inventory evidence only. Before workflow dispatch, the Pi Herdr capability-preflight hook consumes Pi Workflow's live `AgentPreparationContext` and the pi-ext-roles hook result to validate the effective model, role, skill, and extension capabilities; package presence never substitutes for that live check.
+
 ## Installation policy
 
 The capability report and repository initialization are executable from a checkout:

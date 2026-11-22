@@ -1,0 +1,31 @@
+{
+  "schema": "pi-herdr-orchestration/skill-sources/v1",
+  "updated": "2026-11-03",
+  "sources": [
+    {
+      "id": "matt-pocock-skills",
+      "kind": "github",
+      "url": "https://github.com/mattpocock/skills",
+      "ref": "main",
+      "paths": ["skills/*/SKILL.md", "commands/*.md"],
+      "look_for": "engineering flows: charting, specs, tickets, implementation, review",
+      "trust": "primary",
+      "cadence": "monthly",
+      "enabled": true,
+      "last_checked": null,
+      "notes": "the collection this repository's flow is modelled on"
+    },
+    {
+      "id": "installed-local",
+      "kind": "local",
+      "url": "file:///root/.agents/skills",
+      "paths": ["*/SKILL.md"],
+      "look_for": "what is actually installed on this machine",
+      "trust": "primary",
+      "cadence": "on demand",
+      "enabled": true,
+      "last_checked": null,
+      "notes": "scanned by the glossary generator itself"
+    }
+  ]
+}

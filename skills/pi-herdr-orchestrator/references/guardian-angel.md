@@ -2,6 +2,8 @@
 
 `Gentleman-Programming/gentleman-guardian-angel` (GGA) is an optional review gate, not the master orchestrator. It is provider-agnostic, runs from Git hooks or CI and checks staged/PR changes against the repository's `AGENTS.md` and `.gga` configuration.
 
+The `.gga` profile is machine-local: it is a link to the shared profile in the operator's dotenv checkout, ignored by Git and never committed, so the same rules apply in every repository without duplicating them or pointing a repository at a path outside itself.
+
 ## Responsibility boundary
 
 ```text
@@ -21,7 +23,7 @@ Recommended sequence:
 2. Run `gga run` on the staged or PR diff.
 3. Record the review result, GGA version, configuration hash and reviewed file hashes in `checks`.
 4. Let the chief normalize the evidence and let the master decide stable integration or development branch.
-5. Persist the decision and review references before closing the Pi session and tab.
+5. Persist the decision and review references before closing the Pi session and pane.
 
 Do not put provider credentials, OAuth tokens or full review transcripts in the state envelope or durable memory. Store long output as a CI/file artifact and pass its path and digest.
 

@@ -1,0 +1,133 @@
+{
+  "schema": "pi-herdr-orchestration/skill-sources/v1",
+  "updated": "2026-11-03",
+  "sources": [
+    {
+      "id": "matt-pocock-skills",
+      "kind": "github",
+      "url": "https://github.com/mattpocock/skills",
+      "ref": "main",
+      "paths": ["skills/*/SKILL.md", "commands/*.md"],
+      "look_for": "engineering flows: charting, specs, tickets, implementation, review",
+      "trust": "primary",
+      "cadence": "monthly",
+      "enabled": true,
+      "last_checked": null,
+      "notes": "Primary collection used to model this repository's development flow. VERIFIED: MIT, 311015 stars, 208 open issues. REPORTED: about 89 percent PR closure and tagged release v1.3.2."
+    },
+    {
+      "id": "obra-superpowers",
+      "kind": "github",
+      "url": "https://github.com/obra/superpowers",
+      "ref": "main",
+      "paths": ["skills/*/SKILL.md"],
+      "look_for": "tested software-development skills and SKILL.md structure",
+      "trust": "primary",
+      "cadence": "monthly",
+      "enabled": true,
+      "last_checked": null,
+      "notes": "Primary maintained comparison collection. VERIFIED: MIT, 311656 stars, 351 open issues. REPORTED: about 89 percent PR closure, tagged release v7.0.x, and CI validating SKILL.md structure."
+    },
+    {
+      "id": "addyosmani-agent-skills",
+      "kind": "github",
+      "url": "https://github.com/addyosmani/agent-skills",
+      "ref": "main",
+      "paths": ["skills/*/SKILL.md"],
+      "look_for": "agent skills with reusable implementation and review guidance",
+      "trust": "secondary",
+      "cadence": "monthly",
+      "enabled": true,
+      "last_checked": null,
+      "notes": "Secondary candidate collection. VERIFIED: MIT, 112967 stars, 126 open issues; retained for breadth and comparison against the primary collections."
+    },
+    {
+      "id": "vercel-labs-skills",
+      "kind": "github",
+      "url": "https://github.com/vercel-labs/skills",
+      "ref": "main",
+      "paths": ["skills/*/SKILL.md"],
+      "look_for": "current SKILL.md-compatible agent skills from the Vercel ecosystem",
+      "trust": "secondary",
+      "cadence": "monthly",
+      "enabled": true,
+      "last_checked": null,
+      "notes": "Secondary source for current ecosystem coverage. VERIFIED: MIT, 37910 stars; retained as a maintained comparison source, not as the incumbent."
+    },
+    {
+      "id": "skills-sh",
+      "kind": "registry",
+      "url": "https://skills.sh",
+      "paths": [],
+      "look_for": "registry-discovered skill collections and upstream provenance",
+      "trust": "secondary",
+      "cadence": "weekly",
+      "enabled": true,
+      "last_checked": null,
+      "notes": "Secondary registry used to discover collections that the repository sources may omit; every candidate still needs hard-gate verification."
+    },
+    {
+      "id": "anthropics-skills",
+      "kind": "github",
+      "url": "https://github.com/anthropics/skills",
+      "ref": "main",
+      "paths": ["skills/*/SKILL.md"],
+      "look_for": "Anthropic-authored skills and office-document skill formats",
+      "trust": "unsure",
+      "cadence": "monthly",
+      "enabled": true,
+      "last_checked": null,
+      "notes": "QUARANTINE: VERIFIED licence NONE, 187012 stars, 1466 open issues, and no root LICENSE. Legal blocker for redistribution; office-document skills carry source-available terms. REPORTED: about 29 percent PR closure, roughly 1037 open PRs, and zero releases."
+    },
+    {
+      "id": "patrickjs-awesome-cursorrules",
+      "kind": "github",
+      "url": "https://github.com/PatrickJS/awesome-cursorrules",
+      "ref": "main",
+      "paths": [".cursor/rules/*.mdc"],
+      "look_for": "Cursor rule collections only as format comparison evidence",
+      "trust": "secondary",
+      "cadence": "monthly",
+      "enabled": false,
+      "last_checked": null,
+      "notes": "SKIP: VERIFIED CC0-1.0 and 41092 stars, but the collection is .cursor/rules/*.mdc rather than loadable SKILL.md, so it fails the format gate."
+    },
+    {
+      "id": "vercel-labs-agent-skills",
+      "kind": "github",
+      "url": "https://github.com/vercel-labs/agent-skills",
+      "ref": "main",
+      "paths": ["skills/*/SKILL.md"],
+      "look_for": "Vercel agent-skill collection for licence and format comparison",
+      "trust": "secondary",
+      "cadence": "monthly",
+      "enabled": false,
+      "last_checked": null,
+      "notes": "SKIP: VERIFIED licence NONE, 33471 stars, and 192 open issues. README claims MIT, but no LICENSE file exists; redistribution is not cleared."
+    },
+    {
+      "id": "cursor-directory",
+      "kind": "site",
+      "url": "https://cursor.directory",
+      "paths": [],
+      "look_for": "public rule listings as discovery evidence only",
+      "trust": "secondary",
+      "cadence": "monthly",
+      "enabled": false,
+      "last_checked": null,
+      "notes": "SKIP: site listings are not a committed, auditable SKILL.md collection and therefore cannot pass the local format and provenance gates."
+    },
+    {
+      "id": "installed-local",
+      "kind": "local",
+      "url": "file:///root/.agents/skills",
+      "paths": ["*/SKILL.md"],
+      "look_for": "skills actually installed in the canonical local root",
+      "trust": "primary",
+      "cadence": "on demand",
+      "enabled": true,
+      "last_checked": null,
+      "notes": "Primary incumbent baseline. The glossary generator scans this root; it stays in the pool so installed compatibility is compared with upstream evidence."
+    }
+  ]
+}

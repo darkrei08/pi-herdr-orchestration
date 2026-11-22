@@ -4,28 +4,32 @@ Read installed skill instructions and select the smallest sufficient set. Every 
 
 ## Executable PiWorkflow loadout
 
-A routing decision is incomplete until it is encoded in the child-agent options:
+A routing decision is incomplete until it is encoded in a named workflow's direct child-agent options. Every direct call must select a `pi-ext-roles` role and retain the MCP bridge:
 
 ```javascript
 agent(taskPrompt, {
+  role: "reviewer",
   label: "[CHIEF/QUALITY] Verification",
   skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
-  extensions: ["builtin:codemode"],
+  extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
   worktree: "quality",
 });
 ```
 
-- `skills` selects skill names, `extensions` selects Pi extensions, `label` becomes the human-facing Herdr tab label, and `worktree` gives a writing agent an isolated Git worktree. Use only selectors confirmed by the live capability report and the current Pi settings.
-- Use `parallel("<operation>", { ... })` for independent agents and `pipeline("<operation>", items, stages)` for repeated ordered stages. The object insertion order is the intended launch order; PiWorkflow assigns the display indices and `@piewf/herdr` renders them as numbered tabs when fully inspectable mode is enabled.
+- `role` selects a named `@piewf/pi-ext-roles` role; `skills` selects skill names; `extensions` selects Pi extensions; `label` becomes the human-facing Herdr agent and pane label; `worktree` gives a writing agent an isolated Git worktree. Use only selectors confirmed by the live capability report and the current Pi settings.
+- `builtin:codemode` is the stable bridge to MCP tools. `builtin:tool-search` and `builtin:mcp` are required alongside it for every workflow-owned role session, even when the role file's own selectors are narrower. Omit `timeoutMs` entirely; in Vekexasia's runner omitted or null means no timer is armed. Launch the named workflow with `foreground: true` and no budget; a foreground run can detach and deliver later.
+- Default child loadout is `skills: ["pi-herdr-orchestrator", "engineering-excellence"]` plus one installed task skill (`tdd`, `code-review`, `diagnosing-bugs`, `pr`, `container-test-matrix`, `work-unit-commits`, `chained-pr`, `judgment-day`, `gentle-ai-branch-pr`). `issue-ops` is root-only. Matt `wayfinder`, `to-spec`, `to-tickets`, `handoff`, `retro`, `grilling` and `grill-with-docs` are master-session only; most carry `disable-model-invocation: true`, so a child must be told to run `/skill:<name>` if it genuinely needs one.
+- Use `parallel("<operation>", { ... })` for independent agents and `pipeline("<operation>", items, stages)` for repeated ordered stages. The object insertion order is the intended launch order; default Herdr transport creates sibling panes in the caller's current tab, with nested agents splitting their parent pane. Labels remain semantic presentation only, and a new workspace, tab, or cwd requires an explicit user request.
+- Native `subagents_run` is forbidden for orchestration. A host without PiWorkflow uses the documented direct fallback only when PiWorkflow is genuinely unavailable; do not silently downgrade an available workflow runtime.
 - The common Engineering Excellence loadout is `skills: ["engineering-excellence"]`; add `tdd`, `code-review`, `testing`, `security`, `ci`, or `platform-testing` only when the capability report confirms those skill files exist and the task needs them. Add `gentle-ai`, `work-unit-commits`, or `judgment-day` only for their applicable lifecycle responsibilities.
-- A missing requested skill or extension is a routing failure. Record `BLOCKED` with the missing selector and do not silently launch a child with a weaker contract. A host without PiWorkflow or Herdr uses the documented direct-session fallback and reports `NOT APPLICABLE` for tab transport.
+- A missing requested skill or extension is a routing failure. Record `BLOCKED` with the missing selector and do not silently launch a child with a weaker contract. A host without PiWorkflow or Herdr uses the documented direct-session fallback and reports `NOT APPLICABLE` for pane transport.
 
 ## Ecosystems
 
 | Source | Provides | Notes |
 | --- | --- | --- |
 | PiWorkflow | Execution substrate: `workflow`, `parallel`, `pipeline`, `withWorktree`, `shell`, `agent.create` handles, roles, recovery (`workflow_status`, `workflow_retry`, `workflow_resume`) | Sequences work, supplies no method. `withWorktree` needs a clean launch tree and `tools.*` calls fail inside it; otherwise create worktrees with Git |
-| Gentle AI | Harness discipline (`gentle-ai`), Engram memory, `work-unit-commits`, `chained-pr`, `branch-pr`, `issue-creation`, `judgment-day`, `rdd-defect-workflow`, `sdd-*` phases; `systemic-issue-triage` and `issue-root-resolution` in the upstream skill set | Review lifecycle (`gentle_review*`) is runtime-supplied: relay it, never reconstruct it |
+| Gentle AI | Harness discipline (`gentle-ai`), Engram memory, and the installer's frontmatter names `gentle-ai-work-unit-commits`, `gentle-ai-chained-pr`, `gentle-ai-judgment-day`, `gentle-ai-branch-pr`, `gentle-ai-issue-creation`, `gentle-ai-rdd-defect-workflow`; sdd-* phases, systemic-issue-triage, issue-root-resolution and a bare branch-pr selector are not installed locally | Review lifecycle (`gentle_review*`) is runtime-supplied: relay it, never reconstruct it |
 | Engineering Excellence | Standards loaded on demand as references: `sdd`, `tdd`, `testing`, `quality-gates`, `code-review`, `security`, `performance`, `accessibility`, `interaction`, `docker`, `ci`, `production-readiness`, `engineering-score`, plus PR/ADR templates | The maintainer fork `darkrei08/Engineering-Excellence` (upstream `micio86dev`) adds `platform-testing` and `context-budget`; an installed copy may lag, so check the files exist |
 | Matt Pocock (`mattpocock/skills`) | Flow skills: `triage`, `wayfinder`, `to-spec`, `to-tickets`, `implement`, `implement-spec`, `diagnosing-bugs`, `tdd`, `code-review`, `pr`, `handoff`, `retro`, `grill-with-docs`, `grill-me`, `prototype`, `research`, `codebase-design`, `improve-codebase-architecture` | `setup-matt-pocock-skills` stores the tracker and label mapping: read it, never assume labels |
 | Local or personal | `issue-ops`, `container-test-matrix`, `multi-repo-product-workflow`, `project-memory` | Repository and user instructions name which apply |
@@ -34,21 +38,22 @@ agent(taskPrompt, {
 
 | Situation | Minimal method, first installed wins |
 | --- | --- |
-| Raw issue or PR you did not create | Matt `triage`; Gentle `issue-creation` where its taxonomy applies. Tickets from `to-tickets` are already agent-ready: do not re-triage |
-| Backlog sharing root causes | Gentle `systemic-issue-triage` / `issue-root-resolution`: one fix per root, close against named tests |
+| Raw issue or PR you did not create | `issue-ops` in the root session, plus Matt `triage`; add `gentle-ai-issue-creation` only when the capability report lists it. Tickets from `to-tickets` are already agent-ready: do not re-triage |
+| Backlog sharing root causes | Master-session guidance only: group the backlog by shared root cause, one fix per root, close against named tests and the `to-tickets` blocking edges. The upstream systemic-issue-triage and issue-root-resolution skills are not installed, so no child selects them |
 | Ambiguous requirement or decision | Matt `grill-with-docs` (`grill-me` without a repo), or one targeted user question |
-| Foggy effort too big for one session | Matt `wayfinder`, then `to-spec`; Gentle `sdd-explore` / `sdd-propose` when the repository runs SDD |
-| Plan into work items | Matt `to-spec` then `to-tickets` (its blocking edges are dependency-graph input); EE `sdd`; Gentle `sdd-spec` / `sdd-tasks` |
-| Reproducible or hard bug | Matt `diagnosing-bugs` (tight feedback loop first), then a `tdd` regression test; Gentle `rdd-defect-workflow` when review authority is active |
-| Defined feature | Matt `implement` (`tdd`, `code-review`, commit); EE `sdd` + `tdd`; Gentle `sdd-apply` when that cycle is already running |
+| Foggy effort too big for one session | Matt `wayfinder`, then `to-spec`; the EE `sdd` reference when the repository runs SDD |
+| Plan into work items | Matt `to-spec` then `to-tickets` (its blocking edges are dependency-graph input); EE `sdd` |
+| Reproducible or hard bug | Matt `diagnosing-bugs` (tight feedback loop first), then a `tdd` regression test; `gentle-ai-rdd-defect-workflow` when review authority is active and the capability report lists it |
+| Defined feature | Matt `implement` (`tdd`, `code-review`, commit); EE `sdd` + `tdd` |
 | Refactor | Behaviour-preservation tests first (`tdd`, EE `testing`); Matt `codebase-design` / `improve-codebase-architecture` for shape |
 | Technical or factual uncertainty | Matt `prototype` (throwaway) or `research` |
 | UI work | EE `interaction`, `accessibility`, `i18n`, `seo` as relevant; browser evidence; visual design skills only for visual design tasks |
 | Infrastructure, containers, CI | EE `docker`, `ci`, `production-readiness`; OS-specific behaviour: EE `platform-testing` or `container-test-matrix` |
 | Security, performance | EE `security`, `performance`; matching reviewer role |
 | Candidate review | Independent context: Matt `code-review` (Standards and Spec vs a fixed point) or a reviewer role; Gentle `judgment-day` only when dual or adversarial review is requested; GGA before `READY` |
-| Commits and PR | Gentle `work-unit-commits`, `chained-pr` for oversized diffs, `branch-pr` (issue-first, each remote action separately authorized); Matt `pr` for the body; EE pull-request template |
+| Commits and PR | Installed `gentle-ai-work-unit-commits` or `work-unit-commits`, `gentle-ai-chained-pr` or `chained-pr` for oversized diffs, `gentle-ai-branch-pr` (issue-first, each remote action separately authorized); Matt `pr` for the body; EE pull-request template |
 | Cross-repository feature | `multi-repo-product-workflow` when installed; provider-first order in [dispatch.md](dispatch.md) |
+| Anthropic Small Business skill | `anthropic-small-business-pi` plus the exact upstream skill; route chains through PiWorkflow `pipeline(...)`, preserve approval gates, and use only the active Pi MCP registry |
 | Context pressure, new harness | Engram handoff and [state-protocol.md](state-protocol.md); Matt `handoff` (narrow: new harness, directory or colleague); EE `context-budget` |
 | Session lessons | Matt `retro` |
 | Large codebase context | Serena/graphify for targeted evidence, then RTK/sqz/LEA/TOON as discovered |

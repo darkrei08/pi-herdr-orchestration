@@ -21,6 +21,16 @@ Choose the representation by boundary rather than using one format everywhere:
 
 Use JSON as the canonical durable representation even when TOON, CSV, YAML or XML is used at a boundary. TOON is a useful optimization for regular tabular data, but its own project describes it as an evolving format and recommends JSON for deeply nested or irregular data. CSV is not a general object format: use it only with a versioned typed header and escaping rules. YAML is convenient for humans but must be parsed and normalized before validation. XML tags improve prompt separation for Claude-style prompts; they do not provide schema-constrained output. Binary encodings such as CBOR, MessagePack or Protocol Buffers belong between trusted programs, not in an LLM prompt. Experimental proposals such as ADOL or ANML can inform future adapters, but they are not treated as production standards until the relevant ecosystem and implementation are stable.
 
+### JSON, XML and Markdown boundary method
+
+Use one representation per boundary:
+
+- **JSON** is the machine contract for workflow state, mailbox records, evidence references, tool results and result envelopes. Validate it before persistence and after any boundary conversion. Evidence content remains behind `ref:sha256:<hash>`; its `.txt` file is storage, not prompt transport.
+- **XML** is an optional prompt envelope for a long mixed directive containing instructions, context, examples and acceptance conditions. It is a delimiter format, not the mailbox schema and not a result parser. The current orchestrator has no runtime XML serializer or parser because `notifyAgent` has no structured-directive consumer: it forwards an opaque string through `herdr agent prompt`.
+- **Markdown** is the human-facing rendering for handoffs, reviews and reports. Generate it from the canonical JSON record when durable machine data exists; do not parse Markdown as authoritative state.
+
+The smallest safe future XML helper is a boundary adapter with one real caller: convert a validated JSON directive to escaped element text, pass the resulting string through the existing argv transport, and leave the JSON record unchanged. Until that caller exists, keep the XML envelope as a documented contract only; adding an unused parser or serializer would create a second protocol without an integration point.
+
 ## Pi and Pi VCC compaction boundary
 
 Pi remains the owner of the live transcript and its session entries. Pi's native compaction or Pi VCC may summarize that transcript; the orchestrator must not create a competing second summary. Detect the active owner and record it in the run metadata:
@@ -50,7 +60,7 @@ When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In bo
   "decisions": ["Keep environment values ahead of defaults."],
   "risks": [],
   "blockers": [],
-  "memory": {"status": "persisted", "ref": "engram:repo-run-42:i42"},
+  "memory": {"task": "I#42", "run": "repo-run-42", "candidate": "<full-commit-id>", "status": "PERSISTED", "ref": "engram:repo-run-42:i42", "receipt": "ref:sha256:<provider-receipt-hash>"},
   "next": "chief-review"
 }
 ```
@@ -67,6 +77,14 @@ For upstream Herdsman (`boadij/pi-herdsman`) compatibility, the envelope include
 - `CLOSED` $\rightarrow$ `closed`
 
 Legacy consumers continue to consume uppercase `state` safely without a wire migration. Generic workflow evidence remains durable and authoritative over terminal coordination; an `unknown` or lost terminal liveness state fails closed into `DECIDE` to mandate master reconciliation before proceeding.
+
+## Persisted graph supervisor
+
+The mutable graph supervisor is separate from any read-only execution-graph adapter. It persists `repo-orchestrator/graph-supervisor/v1` state at `<git-common-dir>/orchestrator/<run>/graph/graph.json` and transition events at `events.jsonl`. `graph-supervisor.mjs` accepts immutable workflow trajectory and mailbox records, with mailbox records overriding older trajectory records for the same task. Pane titles, pane positions and ambient Herdr state are never graph authority.
+
+The graph schema covers `run`, `phase`, `task`, `agent`, `worktree`, `pr`, `gate`, `wait`, `decision` and `artifact` nodes, and the edge types `contains`, `delegates`, `runs-in`, `checks`, `waits-for`, `reports`, `retries` and `produces`. `planGraph` returns deterministic `ready`, `blocked` and `pending` sets. `stepGraphState` checks `maxTransitions` and `maxRetries` before mutating state, records a bounded transition, supports zero-model-cost wait polling and human `pause`/`resume`, and is safe to re-load after restart.
+
+Native Pi controls are intentionally narrow: `orch_graph_status` returns a bounded snapshot and best-effort Herdr projection, while `orch_graph_step` applies one validated action and persists it. Missing Herdr returns `herdr: null`; it never deletes or invalidates graph state. Neither control merges, publishes, or replaces PiWorkflow as the execution authority. The versioned structural contract is [`schemas/repo-orchestrator-graph-v1.json`](../../../schemas/repo-orchestrator-graph-v1.json).
 
 ## Message directions
 
@@ -85,7 +103,7 @@ The chief may summarize several child results, but must preserve child IDs and e
 
 The envelope needs a concrete channel or it is only a description. Between Herdr panes the canonical channel is the mailbox written by `scripts/mailbox.mjs report` or native tool `orch_report` (a subset of the envelope with `seq`, atomic directory locks, and timestamps), read by `mailbox.mjs status` / `orch_status`; `herdr agent prompt` carries only directives and wake-up nudges. A direct session-message API is not the mailbox transport: discover a distinct peer first, never address the current sender session, and fall back to the mailbox when no peer is available.
 
-Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 hashed files under `<git-common-dir>/orchestrator/<run>/evidence/` via `storeEvidence` (`orch_evidence`) and referenced as full SHA-256 content-addressed records `ref:sha256:<hash>`. The envelope passes the semantic reference only, ensuring prompt contexts remain completely unpolluted; content remains readable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into prompts. Mailbox report notifications to the master are dispatched non-blockingly, guaranteeing that notification failures never prevent report persistence. See [supervision.md](supervision.md).
+Large outputs (test logs, build traces, multi-file diffs) are saved as SHA-256 hashed files under `<git-common-dir>/orchestrator/<run>/evidence/` via `storeEvidence` (`orch_evidence`) and referenced as full SHA-256 content-addressed records `ref:sha256:<hash>`. The envelope passes the semantic reference only, ensuring prompt contexts remain completely unpolluted; content remains readable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into prompts. When a report supplies `evidence_binding`, the mailbox validates the exact `run`, `task` and `candidate` identity, accepts one `gga` or `gentle` review reference plus one `engram` observation reference, and records unavailable or uncertain evidence as `BLOCKED`/`unverified` rather than `READY`. Mailbox report notifications to the master are dispatched non-blockingly, guaranteeing that notification failures never prevent report persistence. See [supervision.md](supervision.md).
 
 ## Token and reliability rules
 
@@ -109,18 +127,45 @@ await tools.orch_report({ task: "I#42", state: "WORKING", phase: "IMPLEMENT", su
 
 // Offload heavy test/diff outputs to protect context windows
 const evidence = await tools.orch_evidence({ content: testTrace }); // returns ref:sha256:...
-await tools.orch_report({ task: "I#42", state: "READY", summary: "All tests pass", checks: ["unit=PASS"], evidence: testTrace });
+await tools.orch_report({
+  task: "I#42",
+  state: "READY",
+  candidate: "<full-commit-sha>",
+  summary: "All tests pass",
+  checks: ["unit=PASS"],
+  required_checks: ["unit"],
+  evidence: testTrace,
+  evidence_binding: {
+    task: "I#42",
+    run: "repo-run-42",
+    candidate: "<full-commit-sha>",
+    review: {
+      task: "I#42",
+      run: "repo-run-42",
+      candidate: "<full-commit-sha>",
+      provider: "gga",
+      status: "PASS",
+      ref: "ref:sha256:<review-digest>",
+      version: "2.10.1",
+      config_digest: "<sha256>",
+      output_digest: "<sha256 of exact provider stdout and stderr>",
+      file_hashes: { "src/example.mjs": "<sha256>" },
+      deleted_files: [{ path: "src/obsolete.mjs", diff_hash: "<sha256>" }]
+    },
+    memory: { task: "I#42", run: "repo-run-42", candidate: "<full-commit-sha>", provider: "engram", status: "PERSISTED", ref: "engram:repo-run-42:i42", receipt: "ref:sha256:<memory-receipt-digest>" }
+  }
+});
 
 // Worker asks master a blocking question (maps to PiWorkflow checkpoint)
 await tools.orch_ask({ task: "I#42", question: "Should we deprecate the legacy auth token?" });
 
-// Master replies to worker
-await tools.orch_reply({ task: "I#42", answer: "Yes, deprecate with a warning" });
+// Master replies to the exact question returned by orch_ask
+await tools.orch_reply({ task: "I#42", question_id: "ask:<message-id>", answer: "Yes, deprecate with a warning" });
 ```
 
-Feed only compact envelopes or semantic evidence references (`ref:sha256:...`) to the next step. Use `parallel` for independent chiefs or review tasks, `pipeline` for ordered phases, `withWorktree` for isolated implementation, and a persistent agent handle when a chief must continue across turns. Each direct `agent` call must carry the selected `label`, `skills`, `extensions`, and `worktree` options; this is the executable bridge from routing decisions to child sessions. In Herdr, use one workspace per repository, one master pane, chief panes grouped by department and child panes named after their task. Multiple panes may observe or coordinate inside a worktree; only one writer may modify a given worktree at a time. Give every implementation a dedicated linked worktree. When fully inspectable mode is enabled, PiWorkflow owns numbered tab order; the envelope records the semantic label and worktree, not a fabricated pane ID.
+Feed only compact envelopes or semantic evidence references (`ref:sha256:...`) to the next step. Use `parallel` for independent chiefs or review tasks, `pipeline` for ordered phases, `withWorktree` for isolated implementation, and a persistent agent handle when a chief must continue across turns. Each direct `agent` call must carry the selected `label`, `skills`, `extensions`, and `worktree` options; this is the executable bridge from routing decisions to child sessions. In Herdr, one named workflow run stays in the caller's current tab: the master, chiefs, and children form a sibling-pane tree, with nested agents splitting their parent pane. Multiple panes may observe or coordinate inside a worktree; only one writer may modify a given worktree at a time. Give every implementation a dedicated linked worktree, which is the pane's cwd. A new workspace, tab, or cwd is created only on explicit user request; the envelope records the semantic label, worktree, and verified pane identity rather than fabricated tab order.
 
-Run Guardian Angel after implementation checks and before a result becomes `READY`. Record the GGA review status, version, configuration digest and reviewed file hashes in `checks`; a stale cached pass is `BLOCKED` until invalidated and rerun.
+Run Guardian Angel after implementation checks and before a result becomes `READY` or `CLOSED`. Record the GGA review status, version, configuration digest and reviewed file hashes in `checks`; a stale cached pass is `BLOCKED` until invalidated and rerun. The review evidence binding must repeat the exact task, run and candidate so a pass cannot be reused for another candidate. A passing review reference points to a JSON attestation containing the same task, run, candidate, provider, status, reviewer version, configuration digest, exact provider output digest, and full reviewed-file hash map. Persisted Engram memory also carries the same task, run and candidate plus a local provider receipt reference whose content repeats the exact task, run, candidate, provider, status and observation reference; the mailbox compares the attestation and invokes the configured GGA and Engram provider verifiers before accepting the terminal state. Tests may inject only an in-process verifier seam; CLI and extension callers use the real providers. Git candidates must be full immutable commit IDs. For those candidates, the mailbox requires `file_hashes` plus `deleted_files` to cover every file changed by the candidate, recomputes every reviewed-file SHA-256 from the candidate tree, recomputes every deletion hash from the candidate's binary parent diff, and recomputes the configuration digest from candidate `AGENTS.md` and the tracked `skills/pi-herdr-orchestrator/reviewer-profile.gga`; machine-local `.gga` bytes are intentionally excluded so evidence validates in clean checkouts while the repository-owned provider profile remains bound to the candidate. Any mismatch remains `BLOCKED`.
 
 For OpenAI Structured Outputs or equivalent strict tool schemas, request the envelope directly as a schema-constrained object. For providers without schema-constrained generation, require one JSON object delimited by a unique marker, parse it, validate it, and retry once with the validation error; never pass unvalidated prose upstream as a successful result. MCP tools should expose an `outputSchema` and return `structuredContent`; the short serialized JSON fallback exists for clients that do not yet consume structured results.
 
