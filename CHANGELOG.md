@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Process-Identity Mailbox Locks (`skills/pi-herdr-orchestrator/scripts/lock.mjs`)**: Lock owners now publish a UUID and Linux boot-id/start-ticks identity atomically, so stale locks are not mistaken for a reused PID.
 
+### Fixed
+- **Portable Review Evidence (`skills/pi-herdr-orchestrator/scripts/mailbox.mjs`)**: The evidence config digest now binds only committed `AGENTS.md` rules, so validation works in clean checkouts where the machine-local `.gga` profile is absent.
+
 ## [1.2.6] - 2026-10-21
 
 ### Changed

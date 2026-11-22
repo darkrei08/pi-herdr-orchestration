@@ -263,10 +263,8 @@ function gitCandidateReview(candidate, fileHashes, deletedFiles = []) {
   try {
     rules = spawnSync("git", ["show", `${commit}:AGENTS.md`], { cwd: root, encoding: null, maxBuffer: GIT_MAX_BUFFER });
     if (rules.status !== 0) return { status: "blocked", reason: "review rules are absent from candidate" };
-    const gga = readFileSync(join(root, ".gga"));
     const configDigest = createHash("sha256")
       .update("AGENTS.md\\0").update(rules.stdout)
-      .update(".gga\\0").update(gga)
       .digest("hex");
     return { status: "verified", fileHashes: actualHashes, deletedFiles: actualDeleted, configDigest };
   } catch {
