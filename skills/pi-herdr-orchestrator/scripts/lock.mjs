@@ -3,6 +3,10 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
+function cleanupWarning(scope, error) {
+  if (!["ENOENT", "ENOTEMPTY", "EEXIST"].includes(error.code)) process.emitWarning(`[ORCH_LOCK_CLEANUP_FAILED] ${scope}: ${error.message}`);
+}
+
 function processExists(pid) {
   try {
     process.kill(pid, 0);
@@ -29,19 +33,39 @@ function linuxBirth(pid) {
   return { bootId, startTicks };
 }
 
-function ownerIsAlive(lockDir) {
+function readOwner(lockDir, read = readFileSync) {
   try {
-    const owner = JSON.parse(readFileSync(join(lockDir, "owner.json"), "utf8"));
-    if (!Number.isInteger(owner.pid) || owner.pid <= 0) return true;
-    if (!processExists(owner.pid)) return false;
-    if (process.platform !== "linux" || owner.linuxBirth === undefined) return true;
-    if (!owner.linuxBirth || typeof owner.linuxBirth !== "object" || typeof owner.linuxBirth.bootId !== "string" || typeof owner.linuxBirth.startTicks !== "string") return true;
-    const current = linuxBirth(owner.pid);
-    return current !== undefined && current.bootId === owner.linuxBirth.bootId && current.startTicks === owner.linuxBirth.startTicks;
+    return { owner: JSON.parse(read(join(lockDir, "owner.json"), "utf8")) };
   } catch (error) {
-    // A missing owner can be the short window between mkdir and publication.
-    return error.code === "ENOENT" ? false : true;
+    return { error };
   }
+}
+
+function ownerIsAlive(owner) {
+  if (!owner) return false;
+  if (!Number.isInteger(owner.pid) || owner.pid <= 0) return true;
+  if (!processExists(owner.pid)) return false;
+  if (process.platform !== "linux" || owner.linuxBirth === undefined) return true;
+  if (!owner.linuxBirth || typeof owner.linuxBirth !== "object" || typeof owner.linuxBirth.bootId !== "string" || typeof owner.linuxBirth.startTicks !== "string") return true;
+  const current = linuxBirth(owner.pid);
+  return current !== undefined && current.bootId === owner.linuxBirth.bootId && current.startTicks === owner.linuxBirth.startTicks;
+}
+
+function sameOwner(left, right) {
+  return Boolean(left && right && left.pid === right.pid && left.id === right.id
+    && JSON.stringify(left.linuxBirth ?? null) === JSON.stringify(right.linuxBirth ?? null));
+}
+
+export function reclaimStaleLock(lockDir, { statSync: stat = statSync, readFileSync: read = readFileSync, unlinkSync: unlink = unlinkSync, rmdirSync: rmdir = rmdirSync } = {}) {
+  const stats = stat(lockDir);
+  if (Date.now() - stats.mtimeMs <= 15000) return false;
+  const observed = readOwner(lockDir, read);
+  if (observed.error || ownerIsAlive(observed.owner)) return false;
+  const current = readOwner(lockDir, read);
+  if (current.error || !sameOwner(observed.owner, current.owner)) return false;
+  unlink(join(lockDir, "owner.json"));
+  rmdir(lockDir);
+  return true;
 }
 
 function publishOwner(lockDir, owner) {
@@ -50,19 +74,24 @@ function publishOwner(lockDir, owner) {
     writeFileSync(temporary, JSON.stringify(owner), { encoding: "utf8", mode: 0o600, flag: "wx" });
     renameSync(temporary, join(lockDir, "owner.json"));
   } finally {
-    try { unlinkSync(temporary); } catch { /* ignore missing temporary owner */ }
+    try { unlinkSync(temporary); } catch (error) { cleanupWarning("remove temporary owner", error); }
   }
+}
+
+function removeLockFiles(lockDir) {
+  try { unlinkSync(join(lockDir, "owner.json")); } catch (error) { cleanupWarning("remove owner", error); }
+  try { rmdirSync(lockDir); } catch (error) { cleanupWarning("remove lock directory", error); }
 }
 
 function releaseLock(lockDir, id) {
   try {
     const owner = JSON.parse(readFileSync(join(lockDir, "owner.json"), "utf8"));
     if (owner.id !== id) return;
-  } catch {
+  } catch (error) {
+    cleanupWarning("read owner", error);
     return;
   }
-  try { unlinkSync(join(lockDir, "owner.json")); } catch { /* ignore missing owner */ }
-  try { rmdirSync(lockDir); } catch { /* ignore */ }
+  removeLockFiles(lockDir);
 }
 
 export function withLock(filePath, fn, timeoutMs = 5000) {
@@ -80,21 +109,17 @@ export function withLock(filePath, fn, timeoutMs = 5000) {
         publishOwner(lockDir, owner);
         acquired = true;
       } catch (error) {
-        try { unlinkSync(join(lockDir, "owner.json")); } catch { /* ignore missing owner */ }
-        try { rmdirSync(lockDir); } catch { /* ignore cleanup failure */ }
+        removeLockFiles(lockDir);
         throw error;
       }
     } catch (err) {
       if (err.code === "EEXIST") {
         // Reclaim stale locks only when the recorded process identity is gone.
         try {
-          const stats = statSync(lockDir);
-          if (Date.now() - stats.mtimeMs > 15000 && !ownerIsAlive(lockDir)) {
-            try { unlinkSync(join(lockDir, "owner.json")); } catch { /* ignore missing owner */ }
-            rmdirSync(lockDir);
-            continue;
-          }
-        } catch { /* lock was already released */ }
+          if (reclaimStaleLock(lockDir)) continue;
+        } catch (error) {
+          cleanupWarning("reclaim stale lock", error);
+        }
 
         if (Date.now() - start > timeoutMs) {
           throw new Error(`Timed out waiting for lock: ${lockDir}`);
