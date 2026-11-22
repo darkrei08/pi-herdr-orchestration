@@ -1,10 +1,11 @@
 Feature: lint-match-aleme
 
 Tasks
-- T1 | S1-S2 | Inspect lint config and match/aleme references | pending
-- T2 | S3-S4 | Add zero-dependency lint script and wire npm/CI | pending
-- T3 | S5-S7 | Fix all reported violations without behavior changes | pending
-- T4 | S8 | Re-run lint, tests and checks; record evidence | pending
+- T1 | S1-S2 | Inspect lint config and match/aleme references | done, 765b14c
+- T2 | S3-S4 | Add zero-dependency lint script and wire npm/CI | done, 765b14c
+- T3 | S5-S7 | Fix all reported violations without behavior changes | done, 765b14c
+- T4 | S8 | Re-run lint, tests and checks; record evidence | done, 765b14c
 
 Log
 - L1: User request recorded verbatim in odd/tasks/lint-match-aleme-20261122.md.
+- L2: lint 37 files clean; tests 95/95; check:strict and diff check PASS; no `aleme` references found.
