@@ -46,7 +46,7 @@ Practice: a finding carries its file and line, and a pre-existing issue is a fol
 
 ### Deliver
 
-Package one coherent work unit. `work-unit-commits` is shared by all routes; `branch-pr`, `chained-pr`, `pr`, `handoff`, and `claude-handoff` are selected by the delivery target.
+Package one coherent work unit. `work-unit-commits` is shared by all routes; `gentle-ai-branch-pr`, `chained-pr` or `gentle-ai-chained-pr`, `pr`, `handoff`, and `claude-handoff` are selected by the delivery target.
 
 Practice: one work unit per commit, tests and docs with the behaviour.
 

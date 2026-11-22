@@ -33,7 +33,10 @@ export default async function registerWorkflowAutostart(pi) {
     return;
   }
   const { registerWorkflowExtension } = registry;
-  if (!registerWorkflowExtension) return;
+  if (!registerWorkflowExtension) {
+    process.emitWarning("[HERDR_AUTOSTART] registry does not expose registerWorkflowExtension");
+    return;
+  }
   registerWorkflowExtension({
     version: JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version,
     headline: "Pi Herdr workflow auto-start",
