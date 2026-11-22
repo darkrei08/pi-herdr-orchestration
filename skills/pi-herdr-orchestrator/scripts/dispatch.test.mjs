@@ -12,12 +12,25 @@ test("trusted project settings select the pane topology for Herdr workflow agent
   assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, false);
 });
 
+test("workflow auto-start has one repo-owned extension", () => {
+  const manifest = JSON.parse(read("package.json"));
+  const owner = JSON.parse(read(".pi/workflow-owner.json"));
+  const autostart = read("extensions/workflow-autostart.mjs");
+  assert.ok(manifest.pi.extensions.includes("./extensions/workflow-autostart.mjs"));
+  assert.equal(owner.workflowOwner, "pi-herdr-orchestrator");
+  assert.match(autostart, /before_agent_start/);
+  assert.match(autostart, /foreground: true/);
+  assert.match(autostart, /omit timeoutMs/);
+  assert.match(autostart, /no budget/);
+});
+
 test("dispatch contract names deterministic workflow fan-out and explicit role loadout", () => {
   const skill = read("skills/pi-herdr-orchestrator/SKILL.md");
   const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
   const execution = read("skills/pi-herdr-orchestrator/references/execution.md");
   const dispatch = read("skills/pi-herdr-orchestrator/references/dispatch.md");
   const readme = read("README.md");
+  const smallBusiness = read("skills/anthropic-small-business-pi/SKILL.md");
   const environment = read("skills/pi-herdr-orchestrator/scripts/check-environment.mjs");
 
   assert.match(skill, /named workflow/);
@@ -31,13 +44,18 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
     assert.match(source, /builtin:codemode/);
     assert.match(source, /builtin:tool-search/);
     assert.match(source, /builtin:mcp/);
-    assert.match(source, /timeoutMs/);
+    assert.doesNotMatch(source, /timeoutMs:\s*\d/);
+    assert.doesNotMatch(source, /bounded timeout/i);
   }
+  assert.doesNotMatch(smallBusiness, /timeoutMs:\s*\d/);
+  assert.doesNotMatch(smallBusiness, /bounded timeout/i);
   assert.match(execution, /pi-ext-roles.*role/);
   assert.match(execution, /builtin:codemode/);
   assert.match(execution, /builtin:tool-search/);
   assert.match(execution, /builtin:mcp/);
-  assert.match(execution, /600 seconds/);
+  assert.match(execution, /omit timeoutMs/);
+  assert.match(execution, /foreground: true/);
+  assert.match(execution, /no budget/);
   assert.match(routing, /skills:\s*\[/);
   assert.match(routing, /extensions:\s*\[/);
   assert.match(routing, /label/);

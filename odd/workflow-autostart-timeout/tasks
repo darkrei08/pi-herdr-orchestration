@@ -1,0 +1,6 @@
+Source: odd/tasks/workflow-autostart-timeout-20261122.md
+
+- [x] T1 | S1,S2 | Removed fixed timeout guidance from docs/README/tests; focused dispatch test 7/7 PASS. Commit: pending.
+- [x] T2 | S1,S5,S6,S7 | Added repo marker and workflow-autostart extension; authorized external gate in workflow-intent.mjs; fake-hook checks PASS. Commit: pending.
+- [x] T3 | S4 | Commit and PR correction recorded as T3; dispatch contract test covers no-timeout ownership. Commit: pending.
+- [x] T4 | S1,S2 | Real workflow 317a28ad returned WORKFLOW_OK with foreground:true, no budget, no timeoutMs; npm test 80/80. Commit: pending.

@@ -1,0 +1,27 @@
+Feature: Workflow auto-start and timeout fix
+Issue: local follow-up after loop-graph source acquisition AGENT_TIMEOUT
+Branch: fix/workflow-autostart-20261122
+
+## Specs
+
+1. **S1**: "Risolvi l'agent time out e il conflitto che impedisce a P Workflow Extensible di avviarsi sempre da P-Header Orchestrations."
+2. **S2**: "Non impostare un limite a priori all'agent: trova come Vech Hexasia evita il blocco e applica lo stesso approccio."
+3. **S3**: "Considera la troncatura del lavoro della gente come ultima risorsa e spiega quando serve."
+4. **S4**: "Aggiungi la correzione di Commit e PR come task ulteriore dell'ultima modifica."
+5. **S5**: "Trova dove nasce il conflitto: Ex ansia, a ogni prompt, avvia in automatico PRD orchestrations e quindi anche P Workflow Extensible."
+6. **S6**: "Fai in modo che P Workflow Extensible sia richiamato sempre da P-Header Orchestrations, senza richieste manuali del tipo 'esegui questo, esegui questo'."
+7. **S7**: "Mantieni il comportamento attuale per tutto il resto."
+
+## Tasks
+
+- T1 (S1,S2): Replace fixed `timeoutMs: 600_000` guidance with omitted timeout/no budget/foreground workflow contract in skill docs, README and tests. Route: `.worktrees/workflow-autostart`. Status: closed with RED/GREEN evidence. Commit: pending.
+- T2 (S1,S5,S6,S7): Establish one auto-start owner for PiWorkflow from the root orchestrator and remove the duplicate prompt-triggered PRD/workflow route or gate it. Route: repo marker, repo extension, and authorized gate in `/root/.pi/agent/extensions/workflow-intent.mjs`. Status: closed with fake-hook evidence. Commit: pending.
+- T3 (S4): Add Commit and PR correction as an explicit task of this last modification and verify commit/PR guidance follows the no-timeout contract. Route: ODD doc T3 plus dispatch contract test. Status: closed. Commit: pending.
+- T4 (S1,S2): Reproduce the timeout path, verify the no-timeout workflow contract with a real short workflow, and record what remains unverified. Route: `.worktrees/workflow-autostart`. Status: closed; real workflow `317a28ad-df1a-4086-8ccb-7d674143c568` returned `WORKFLOW_OK` with `foreground: true`, no budget and no `timeoutMs`. Commit: pending.
+
+## Log
+
+- L1: "Dobbiamo anche risolvere il agent time out. Come fa Vech Hexasia a non far bloccare? Non devo impostare un limite a priori. Potrei troncare il lavoro della gente implementa quest'ultima modifica: come ulteriore task di correzione di Commit e PR e soprattutto vorrei capire come posso far eseguire sempre P Workflow Extensible richiamato dalla mia P-Header Orchestrations. Non è che ogni volta devo richiedere, esegui questo, esegui questo. Quindi devi trovare dove si trova il conflitto perché io so che l'Ex ansia ogni volta che fa un prompt in automatico si avvia PRD orchestrations e quindi anche P Workflow Extensible."
+- L2: Scouting evidence: Vekexasia's runner treats omitted/null `timeoutMs` as no timer (`/root/.pi/agent/npm/node_modules/pi-extensible-workflows/src/pi-runtime-runner.ts:130-135`); foreground runs detach and deliver later (`src/host-delivery.ts:48-70`, `src/host.ts:1324-1329`). The repo has no code that auto-starts a workflow: only tools/command in `extensions/index.mjs:19-46,243,327-331` and capability hook in `extensions/capability-preflight.mjs:14-28`. The prompt-triggered duplicate is `/root/.pi/agent/extensions/workflow-intent.mjs:328-373`. "PRD orchestrations" is a route name from `odd/tasks/wayfinder-second-brain-integration.md:14,59`, not a file or command.
+- L3: RED evidence: `dispatch.test.mjs` failed on stale `timeoutMs: 600_000` docs and on missing `.pi/workflow-owner.json`. GREEN evidence: focused dispatch test 7/7 PASS. Repo now adds `extensions/workflow-autostart.mjs`, registers it in `package.json`, and writes `.pi/workflow-owner.json`. The user explicitly authorized a gate in the external `workflow-intent.mjs`; a backup was saved at `/tmp/workflow-intent.mjs.backup-20261122`. Fake-hook verification from the repo cwd showed `input` returning `{action:"continue"}` and `before_agent_start` returning `undefined`; the repo extension injected the single-owner directive once and returned `undefined` on the second call.
+- L4: Full `npm test` passed 80/80. A real foreground workflow with no budget and no `timeoutMs` returned `WORKFLOW_OK` (run `317a28ad-df1a-4086-8ccb-7d674143c568`). Live Pi restart was not performed, so actual `before_agent_start` delivery in the operator's running TUI remains unverified; fake-hook evidence proves registration and gating logic only.

@@ -255,7 +255,7 @@ Pi Herdr Orchestration dynamically bridges and routes between major AI coding ag
 - **Role:** Execution engine substrate.
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
-  - **Explicit child loadouts:** Every routed child receives a named `@piewf/pi-ext-roles` `role`, stable `label`, verified `skills` selectors, `extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, a finite role-appropriate `timeoutMs` (at least 600 seconds for research, build, review, and MCP work), and an isolated `worktree` when it writes. `builtin:codemode` is the stable bridge to MCP tools.
+  - **Explicit child loadouts:** Every routed child receives a named `@piewf/pi-ext-roles` `role`, stable `label`, verified `skills` selectors, `extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, no preset `timeoutMs` or budget, and an isolated `worktree` when it writes. `builtin:codemode` is the stable bridge to MCP tools.
   - **Pane-tree Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents split sibling panes in the caller's current tab; nested agents split their parent pane. A new workspace, tab, or cwd is created only on explicit request, while each write-capable agent keeps its isolated worktree.
   - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
   - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
@@ -271,7 +271,6 @@ const reports = await parallel("repository-audit", {
     label: "[CHIEF/SCOUT] Discovery",
     skills: ["pi-herdr-orchestrator", "engineering-excellence"],
     extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
-    timeoutMs: 600_000,
     worktree: "scout",
   }),
   tests: () => agent("Define and run focused checks.", {
@@ -279,14 +278,13 @@ const reports = await parallel("repository-audit", {
     label: "[CHIEF/QUALITY] Tests",
     skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
     extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
-    timeoutMs: 600_000,
     worktree: "tests",
   }),
 });
 return reports;
 ```
 
-Use `pipeline(...)` for ordered stages. Native `subagents_run` is forbidden for orchestration. Do not use `Promise.all`/`map` agent fan-out, omit required roles or extensions, or claim Herdr panes when the runtime capability report says Herdr is unavailable. Run the read-only MCP smoke check with `node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000`; it reports redacted transport reachability and HTTP health status without printing credentials, arguments, or environment values. A URL MCP `initialize` probe verifies the HTTP MCP endpoint when it returns a protocol response; stdio executable probes remain `unverified` because they do not start the server.
+Launch named workflows with `foreground: true` and no budget; omit `timeoutMs` on child agents because Vekexasia's runner treats omission as no timer. Use `pipeline(...)` for ordered stages. Native `subagents_run` is forbidden for orchestration. Do not use `Promise.all`/`map` agent fan-out, omit required roles or extensions, or claim Herdr panes when the runtime capability report says Herdr is unavailable. Run the read-only MCP smoke check with `node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000`; it reports redacted transport reachability and HTTP health status without printing credentials, arguments, or environment values. A URL MCP `initialize` probe verifies the HTTP MCP endpoint when it returns a protocol response; stdio executable probes remain `unverified` because they do not start the server.
 
 ### Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)
 - **Role:** Independent role authoring, configuration, and runtime preparation.

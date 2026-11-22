@@ -35,7 +35,8 @@
   "pi": {
     "extensions": [
       "./extensions/index.mjs",
-      "./extensions/capability-preflight.mjs"
+      "./extensions/capability-preflight.mjs",
+      "./extensions/workflow-autostart.mjs"
     ],
     "skills": [
       "./skills/pi-herdr-orchestrator",
