@@ -607,6 +607,12 @@ function persistEntry(dir, file, entry, event) {
   }
 }
 
+function notifyMaster(opts, message) {
+  const master = opts.notify ?? process.env.ORCH_MASTER;
+  const sender = currentAgentName() || (opts.agent === master ? opts.agent : "");
+  if (master && master !== sender) notifyAgent(master, message, { nonBlocking: opts.nonBlocking ?? true, sender });
+}
+
 function cleanupTempFile(tempFile) {
   if (!existsSync(tempFile)) return;
   try { unlinkSync(tempFile); } catch (error) { if (error.code !== "ENOENT") process.emitWarning(`[ORCH_EVIDENCE_CLEANUP_FAILED] ${error.message}`); }
@@ -666,8 +672,8 @@ export function notifyAgent(agent, message, { nonBlocking = true, sender = curre
         stdio: "ignore",
         detached: true,
       });
-      child.on("error", () => {
-        // Notification failure cannot block report persistence
+      child.on("error", (error) => {
+        process.emitWarning(`[ORCH_NOTIFY_FAILED] ${error.message}`);
       });
       child.unref?.();
       return true;
@@ -876,12 +882,7 @@ export function report(opts) {
 
   const persisted = readEntry(file);
   if (persisted.message_id !== entry.message_id) entry = persisted;
-  const master = opts.notify ?? process.env.ORCH_MASTER;
-  const sender = currentAgentName() || (opts.agent === master ? opts.agent : "");
-  if (master && master !== sender) {
-    const msg = `[REPORT ${entry.task} ${entry.state}] ${entry.summary.slice(0, 160)} (run ${entry.run}: mailbox.mjs status --run ${entry.run})`;
-    notifyAgent(master, msg, { nonBlocking: opts.nonBlocking ?? true, sender });
-  }
+  notifyMaster(opts, `[REPORT ${entry.task} ${entry.state}] ${entry.summary.slice(0, 160)} (run ${entry.run}: mailbox.mjs status --run ${entry.run})`);
   if (!opts.silent) {
     process.stdout.write(`${entry.task} ${entry.state} seq=${entry.seq} -> ${file}\n`);
   }
@@ -937,12 +938,7 @@ export function ask(opts) {
     persistEntry(dir, file, entry, { event: "ask", task: opts.task, question: opts.question, timestamp: now });
   });
 
-  const master = opts.notify ?? process.env.ORCH_MASTER;
-  const sender = currentAgentName() || (opts.agent === master ? opts.agent : "");
-  if (master && master !== sender) {
-    const msg = `[ASK ${opts.task}] ${opts.question.slice(0, 160)} (question ${entry.pending_ask.message_id}; run ${entry.run ?? opts.run}: mailbox.mjs reply --task ${opts.task} --question-id ${entry.pending_ask.message_id} --answer <msg>)`;
-    notifyAgent(master, msg, { nonBlocking: opts.nonBlocking ?? true, sender });
-  }
+  notifyMaster(opts, `[ASK ${opts.task}] ${opts.question.slice(0, 160)} (question ${entry.pending_ask.message_id}; run ${entry.run ?? opts.run}: mailbox.mjs reply --task ${opts.task} --question-id ${entry.pending_ask.message_id} --answer <msg>)`);
   if (!opts.silent) {
     process.stdout.write(`Question recorded for ${opts.task}\n`);
   }
