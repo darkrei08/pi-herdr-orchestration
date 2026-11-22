@@ -1046,7 +1046,10 @@ export function status(opts) {
       evidence: e.evidence_ref ?? "-"
     };
   });
-  if (opts.json === "true") { process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`); return; }
+  if (opts.json === "true") {
+    process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`);
+    return;
+  }
   console.table(rows);
   const open = rows.filter((r) => r.flag !== "OK").length;
   process.stdout.write(`${open ? `${open} task(s) need master action` : "all tasks on track or closed"}\n`);

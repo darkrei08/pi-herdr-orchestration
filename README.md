@@ -478,7 +478,8 @@ Supervise distributed worker sessions and inspect the shared mailbox:
 node scripts/mailbox.mjs status --run <run-id>
 # or: npm run mailbox:status -- --run <run-id>
 
-# Run unit tests for supervision classification logic and file locking
+# Run the zero-dependency source linter and unit tests
+npm run lint
 npm test
 
 # Native Pi interactive inspection (inside an active Pi session):
