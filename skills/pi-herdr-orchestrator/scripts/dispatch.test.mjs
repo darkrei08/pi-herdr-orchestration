@@ -38,7 +38,13 @@ test("workflow auto-start has one repo-owned extension", () => {
   assert.match(autostart, /wayfinder/);
   assert.match(autostart, /to-spec/);
   assert.match(autostart, /to-tickets/);
+  assert.match(autostart, /gentle-ai/);
+  assert.match(autostart, /issue-ops/);
+  assert.match(autostart, /container-test-matrix/);
+  assert.match(autostart, /only installed/);
   assert.match(routing, /master-session only/);
+  assert.match(routing, /gentle-ai-branch-pr/);
+  assert.doesNotMatch(routing, /`branch-pr`/);
   assert.ok(autostart.trim().split("\n").length <= 40);
 });
 

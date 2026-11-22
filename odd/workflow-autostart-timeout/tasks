@@ -5,4 +5,5 @@ Source: odd/tasks/workflow-autostart-timeout-20261122.md
 - [x] T2 | S1,S5,S6,S7 | Added repo marker and workflow-autostart extension; authorized external gate in workflow-intent.mjs; fake-hook checks PASS. Commit: pending.
 - [x] T3 | S4 | Commit and PR correction recorded as T3; dispatch contract test covers no-timeout ownership. Commit: 10f32ca.
 - [x] T4 | S1,S2 | Real workflow 317a28ad returned WORKFLOW_OK with foreground:true, no budget, no timeoutMs; npm test 80/80. Commit: 1b40968.
-- [x] T5 | S1,S6 | Local install PASS; Matt/prompt tooling analyzed; context-reading prompt and skill split injected with RED/GREEN. Commit: pending.
+- [x] T6 | S1,S6 | Peer/child skill loadout analyzed; installed-only skill manifest injected into directive and routing; RED/GREEN dispatch test. Commit: pending.
+- [x] T5 | S1,S6 | Local install PASS; Matt/prompt tooling analyzed; context-reading prompt and skill split injected with RED/GREEN. Commit: 8a2ad27.
