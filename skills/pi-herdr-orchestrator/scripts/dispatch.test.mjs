@@ -49,13 +49,18 @@ test("workflow auto-start has one repo-owned extension", () => {
   assert.match(autostart, /createRequire/);
   assert.match(autostart, /pathToFileURL/);
   assert.match(autostart, /homedir\(\)/);
+  assert.match(autostart, /@sting8k\/pi-vcc/);
+  assert.match(autostart, /vcc_recall/);
+  assert.match(autostart, /gentle-engram/);
+  assert.match(autostart, /300000/);
+  assert.match(autostart, /localForks/);
   assert.match(routing, /master-session only/);
   assert.match(routing, /gentle-ai-branch-pr/);
   assert.doesNotMatch(routing, /`branch-pr`/);
   assert.doesNotMatch(developmentFlow, /`branch-pr`/);
   assert.doesNotMatch(readme, /`rdd-defect-workflow`/);
   assert.doesNotMatch(developmentFlow, /`rdd-defect-workflow`/);
-  assert.ok(autostart.trim().split("\n").length <= 52);
+  assert.ok(autostart.trim().split("\n").length <= 110);
 });
 
 test("routing names only installed selectors and keeps issue routes viable", () => {

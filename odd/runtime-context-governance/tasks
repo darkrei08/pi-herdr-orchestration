@@ -1,0 +1,10 @@
+Feature: runtime-context-governance
+
+Tasks
+- T1 | S1-S4 | Inspect extensions, simulate compatibility, verify/fix session header, add startup integrity check | pending
+- T2 | S5-S6 | Enforce 256k-300k context ceiling for parent and child models across repos and dotenv | pending
+- T3 | S7-S8 | Audit and safely remove obsolete worktrees, document factory rules | pending
+- T4 | S9-S13 | Wire pi-vcc directive, validate hook/typebox and real child prompt delivery, run final checks | pending
+
+Log
+- L1: User request recorded verbatim in odd/tasks/runtime-context-governance-20261122.md.
