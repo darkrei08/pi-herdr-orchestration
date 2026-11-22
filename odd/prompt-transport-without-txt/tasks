@@ -1,7 +1,10 @@
 Source: odd/tasks/prompt-transport-without-txt-20261121.md
 
-- [ ] T1 | S1-S5 | Add target notifyAgent regression coverage and document JSON/XML/Markdown boundaries. Commit: pending.
-- [ ] T2 | S1,S3,S4 | Forward-port inline-safe Herdr transport from 639f0a8 onto a clean fork branch based on upstream main 6.4.0. Commit: pending.
-- [ ] T3 | S1,S3,S4 | Build/link and verify the patched runtime without publishing or version bumping. Commit: not applicable.
+- [x] T1 | S1-S5 | Added target notifyAgent regression coverage and documented JSON/XML/Markdown boundaries. Commit: target changes remain in the target worktree pending delivery review.
+- [x] T2 | S1,S3,S4 | Forward-ported inline-safe Herdr transport from 639f0a8 onto a clean fork branch based on upstream main 6.4.0. Commit: `58a7f6164bfba83ba64912e10bf213efbaaa6bcc`.
+- [x] T3 | S1,S3,S4 | Built/linked and verified the patched runtime without publishing or version bumping. Commit: not applicable.
 - [x] T4 | S2,S6 | Assessed pi-herdsman v0.52.1: its private 0600 snapshot files in 0700 directories already cover the useful safety property, so no pi-herdsman patch is needed; the private-directory boundary was carried into the Herdr fallback. Commit: not applicable.
-- [ ] T5 | S1-S6 | Run checks, preserve local changes, commit/push authorized branches, and prepare/open PRs or report exact blockers. Commit: pending.
+- [x] T5 | S1-S6 | Fork work unit committed as `58a7f6164bfba83ba64912e10bf213efbaaa6bcc`, pushed as `darkrei08:feat/herdr-inline-prompt-64`, and submitted as upstream PR #406 (`https://github.com/vekexasia/pi-extensible-workflows/pull/406`). Checks and installed verification pass; GitHub CI is not yet reported. Commit: `58a7f6164bfba83ba64912e10bf213efbaaa6bcc`.
+- [x] T6 | S7 | Reproduced the seven pi-herdsman timeout reports and fixed the shared test-runner budget on dedicated branch `fix/test-timeout-suite-20261122`. Commit: `4593567` (`test: raise integration suite timeout`); `corepack npm run lint`, `corepack npm run build`, and `corepack npm test` pass with 1626 passed, 15 skipped, 0 failed/cancelled.
+- [x] T7 | S6 | Port process-identity lock freshness to orchestration and bounded Herdr bridge framing with regression tests and documentation. Route: target orchestration and Herdr worktree. Commit: Herdr `7fac761`; orchestration `a9d0254`; fork pushed and PR #406 updated.
+- [ ] T8 | S3,S8,S9 | Bump and publish only `pi-herdr-orchestration@1.3.0`, reinstall from npm, and perform final installed transport verification. Route: target release. Commit: version bump in `a9d0254`; release pending.
