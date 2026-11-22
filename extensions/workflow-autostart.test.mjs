@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 import registerWorkflowAutostart, {
   MARKER,
   resolveRegistryUrl,
@@ -25,7 +26,7 @@ test("registry resolution falls back to the local fork when typebox is missing f
     warn: () => {},
     home: "/home/pi",
   });
-  assert.equal(url, "file:///fake/packages/core/dist/src/registry.js");
+  assert.equal(url, pathToFileURL("/fake/packages/core/dist/src/registry.js").href);
 });
 
 test("falls back to the local registry when the npm registry fails to import", async () => {
