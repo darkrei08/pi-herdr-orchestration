@@ -126,18 +126,15 @@ export function validateEvidenceBinding(binding, expected) {
     return { status: "unverified", reason: "evidence binding unavailable" };
   }
 
-  for (const field of ["task", "run", "candidate"]) {
-    if (!isPresent(expected?.[field]) || binding[field] !== expected[field]) {
-      return { status: "blocked", reason: `evidence binding ${field} does not match the exact task candidate identity` };
-    }
-  }
+  const bindingMismatch = identityMismatch(binding, expected ?? {}, "evidence binding");
+  if (bindingMismatch) return { status: "blocked", reason: bindingMismatch };
 
   const review = binding.review;
   const memory = binding.memory;
   if (!review || typeof review !== "object" || !memory || typeof memory !== "object") {
     return { status: "unverified", reason: "review or memory evidence is unavailable" };
   }
-  const reviewMismatch = identityMismatch(review, expected, "review");
+  const reviewMismatch = identityMismatch(review, expected, "review evidence");
   if (reviewMismatch) return { status: "blocked", reason: reviewMismatch };
   if (!REVIEW_PROVIDERS.has(review.provider) || !REVIEW_STATUSES.has(review.status)) {
     return { status: "blocked", reason: "review evidence provider or status is invalid" };
@@ -157,7 +154,7 @@ export function validateEvidenceBinding(binding, expected) {
   if (memory.provider !== "engram" || !MEMORY_STATUSES.has(memory.status)) {
     return { status: "blocked", reason: "memory evidence provider or status is invalid" };
   }
-  const memoryMismatch = identityMismatch(memory, expected, "memory");
+  const memoryMismatch = identityMismatch(memory, expected, "memory evidence");
   if (memoryMismatch) return { status: "blocked", reason: memoryMismatch };
   if (memory.status === "PERSISTED" && !ENGRAM_REF.test(memory.ref ?? "")) {
     return { status: "blocked", reason: "persisted memory evidence requires an Engram observation reference" };
@@ -190,7 +187,7 @@ export function parseEngramIdentity(content) {
 function identityMismatch(evidence, expected, label) {
   for (const field of ["task", "run", "candidate"]) {
     if (!isPresent(evidence[field]) || evidence[field] !== expected[field]) {
-      return `${label} evidence ${field} does not match the exact task candidate identity`;
+      return `${label} ${field} does not match the exact task candidate identity`;
     }
   }
   return null;
