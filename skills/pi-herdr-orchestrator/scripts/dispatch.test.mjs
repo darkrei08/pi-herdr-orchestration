@@ -19,9 +19,17 @@ test("workflow auto-start has one repo-owned extension", () => {
   assert.ok(manifest.pi.extensions.includes("./extensions/workflow-autostart.mjs"));
   assert.equal(owner.workflowOwner, "pi-herdr-orchestrator");
   assert.match(autostart, /before_agent_start/);
+  assert.match(autostart, /registerWorkflowExtension/);
+  assert.match(autostart, /agentPreparationHooks/);
   assert.match(autostart, /foreground: true/);
   assert.match(autostart, /omit timeoutMs/);
   assert.match(autostart, /no budget/);
+  assert.match(autostart, /pi-ext-roles/);
+  assert.match(autostart, /pi-herdr-orchestrator/);
+  assert.match(autostart, /builtin:codemode/);
+  assert.match(autostart, /builtin:tool-search/);
+  assert.match(autostart, /builtin:mcp/);
+  assert.ok(autostart.trim().split("\n").length <= 40);
 });
 
 test("dispatch contract names deterministic workflow fan-out and explicit role loadout", () => {
