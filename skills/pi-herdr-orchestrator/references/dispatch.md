@@ -64,6 +64,26 @@ agent(brief, { role: "developer", skills: ["!*", "tdd", "tigerstyle"], extension
 
 `!*` clears the inherited set and later patterns re-enable what the task needs; `!*` alone selects none. A positive-only selector is not an allow-list, it adds to whatever was inherited, and `piewf doctor` reports that as `AGENT_RESOURCE_TOOL_SELECTOR_ALLOWLIST`. Choose the allowlist from [routing.md](routing.md) per task; never load every installed skill into every session.
 
+### Directive envelope
+
+For a long mixed prompt, the brief may be rendered as one XML envelope so the worker can distinguish instructions, context and acceptance conditions:
+
+```xml
+<task id="I#142">
+  <objective>...</objective>
+  <scope worktree="/abs/path" branch="fix/142-timeout">
+    <allow>src/auth/**</allow>
+    <deny>docs/**,package.json</deny>
+  </scope>
+  <dependencies>none</dependencies>
+  <validation>npm test --workspace=packages/auth</validation>
+  <done>Timeout returns 504; the new test is green.</done>
+  <report channel="mailbox" to="repo:issue-142-auth-timeout"/>
+</task>
+```
+
+This is a prompt-boundary convention, not the state protocol. The canonical source remains a validated JSON directive/state record; Markdown is the human-facing rendering. The current target has no structured-directive consumer: `notifyAgent` forwards an already-rendered string through `herdr agent prompt` and the mailbox remains authoritative. Do not add an XML parser or serializer until a real dispatcher consumes this envelope. Escape `&`, `<` and `>` in element text and keep one element per acceptance condition when an implementation is introduced.
+
 Worker lifecycle: `DISCOVER -> UNDERSTAND -> PLAN -> IMPLEMENT -> VERIFY -> SELF-REVIEW -> HANDOFF -> READY`. Not `READY` until validation has run. Master lifecycle: `INVENTORY -> DEPENDENCY GRAPH -> DISPATCH -> SUPERVISION -> INTEGRATION -> REVIEW -> MERGE -> CLEANUP`. SUPERVISION is an active loop, not a phase name: see [supervision.md](supervision.md).
 
 ## Task registry

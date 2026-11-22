@@ -16,6 +16,13 @@ import {
 } from "../skills/pi-herdr-orchestrator/scripts/mailbox.mjs";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  loadGraphState,
+  persistGraphState,
+  planGraph,
+  projectHerdrState,
+  stepGraphState,
+} from "../skills/pi-herdr-orchestrator/scripts/graph-supervisor.mjs";
 
 export default function (pi) {
   // 1. Tool: orch_report
@@ -168,7 +175,76 @@ export default function (pi) {
     }
   });
 
-  // 3. Tool: orch_ask
+  // 3. Tool: orch_graph_status
+  pi.registerTool({
+    name: "orch_graph_status",
+    label: "Orchestrator Graph Status",
+    description: "Read a bounded persisted graph supervisor snapshot and its deterministic plan. Herdr is presentation-only.",
+    parameters: {
+      type: "object",
+      properties: {
+        run: { type: "string", description: "Run identifier" },
+        max_nodes: { type: "integer", minimum: 1, maximum: 1000, description: "Maximum node rows in the response (default 100)" },
+      },
+    },
+    async execute(_id, params) {
+      const directory = join(runDir({ run: params.run ?? process.env.ORCH_RUN }), "graph");
+      const state = loadGraphState(directory);
+      if (!state) return { content: [{ type: "text", text: "No persisted graph for this run." }] };
+      const maxNodes = params.max_nodes ?? 100;
+      const snapshot = {
+        version: state.version,
+        run_id: state.run_id,
+        status: state.status,
+        paused: state.paused,
+        revision: state.revision,
+        transition_count: state.transition_count,
+        budget: state.budget,
+        plan: planGraph(state),
+        nodes: state.nodes.slice(0, maxNodes),
+        node_count: state.nodes.length,
+        nodes_truncated: state.nodes.length > maxNodes,
+        projection: projectHerdrState(state, liveAgents()),
+      };
+      return { content: [{ type: "text", text: JSON.stringify(snapshot) }] };
+    },
+  });
+
+  // 4. Tool: orch_graph_step
+  pi.registerTool({
+    name: "orch_graph_step",
+    label: "Advance Orchestrator Graph",
+    description: "Apply one bounded deterministic graph action and persist the transition; does not invoke a model or publish work.",
+    parameters: {
+      type: "object",
+      properties: {
+        run: { type: "string", description: "Run identifier" },
+        action: {
+          type: "object",
+          properties: {
+            type: { type: "string", enum: ["advance", "start", "complete", "wait", "poll", "pause", "resume", "retry"] },
+            nodeId: { type: "string" },
+            status: { type: "string", enum: ["completed", "closed"] },
+            reason: { type: "string", maxLength: 512 },
+            satisfied: { type: "boolean" },
+          },
+          required: ["type"],
+          additionalProperties: false,
+        },
+      },
+      required: ["action"],
+    },
+    async execute(_id, params) {
+      const directory = join(runDir({ run: params.run ?? process.env.ORCH_RUN }), "graph");
+      const state = loadGraphState(directory);
+      if (!state) throw new Error("No persisted graph for this run.");
+      const next = stepGraphState(state, params.action);
+      persistGraphState(directory, next);
+      return { content: [{ type: "text", text: JSON.stringify({ run_id: next.run_id, status: next.status, revision: next.revision, transition_count: next.transition_count, budget_reason: next.budget_reason ?? null }) }] };
+    },
+  });
+
+  // 5. Tool: orch_ask
   pi.registerTool({
     name: "orch_ask",
     label: "Orchestrator Ask Master",

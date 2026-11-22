@@ -1,0 +1,10 @@
+Source: odd/tasks/patch-v1.3.1-defects-20261122.md
+
+- [x] T1 | S1,S12 | Test-first doc contract guard for state-protocol.md; RED on v1.3.0 scratch, GREEN 1/1 focused and 75/75 full in worktree. npm 1.3.1 package check deferred to T6. Commit: e3266e9.
+- [x] T2 | S2,S12 | Portable provider-config digest binding via tracked reviewer-profile.gga; RED BLOCKED!=READY, GREEN 2/2 focused. Commit: da952ff (shipped with T3 gate remediation).
+- [x] T3 | S3,S12 | Shared verifyBindingChain performs shape+stored+provider checks at terminal call sites; RED import failure, GREEN 3/3 focused, full 77/77. Commit: da952ff.
+- [x] T4 | S4,S12 | Reproduced TOCTOU via injected stale/fresh owner reads; reclaimStaleLock rechecks identity before destructive calls; RED import failure, GREEN 48/48 focused and 78/78 full. Commit: 2d3b3b1.
+- [x] T5 | S5,S10 | Real GGA/Engram verification on candidate dd4b604; report READY, binding verified, version 2.10.1, config/output digests recorded. Commit: evidence commit pending.
+- [ ] T6 | S6,S9,S10,S11 | Prepare, verify, GGA-pass, and publish v1.3.1 with provenance. Route: fix worktree. Commit: pending.
+- [ ] T7 | S7,S12 | Acquire and transcribe all listed X/YouTube material; extract comments, links, PDFs, alternatives. Route: research worktree. Commit: pending.
+- [ ] T8 | S8,S12 | Produce reports/loop-graph-research.md with sourced comparative analysis. Route: research worktree. Commit: pending.

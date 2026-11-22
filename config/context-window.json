@@ -1,0 +1,20 @@
+{
+  "maxContextTokens": 300000,
+  "targetTriggerTokens": 276000,
+  "minimumTriggerTokens": 256000,
+  "scope": [
+    "orchestrator",
+    "child"
+  ],
+  "modelWindows": {
+    "cliproxyapi/beam-free": 1048576,
+    "cliproxyapi/deepseek-v4-pro": 1048576,
+    "cliproxyapi/deepseek-v4.1-flash": 1048576,
+    "cliproxyapi/go/beam-free": 1048576,
+    "cliproxyapi/go/deepseek-v4-pro": 1048576,
+    "cliproxyapi/go/deepseek-v4.1-flash": 1048576,
+    "cliproxyapi/gpt-6.1-sol": 500000,
+    "cliproxyapi/gpt-6.1-terra": 500000,
+    "cliproxyapi/gpt-6.2-sol": 500000
+  }
+}

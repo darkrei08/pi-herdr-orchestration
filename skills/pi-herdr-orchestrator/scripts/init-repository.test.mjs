@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { test } from "node:test";
 
 const root = join(import.meta.dirname, "../../..");
 const script = join(root, "skills/pi-herdr-orchestrator/scripts/init-repository.mjs");
+const shimSkip = process.platform === "win32" ? "Windows cannot spawn an extensionless /bin/sh PATH shim" : false;
 
 function setup() {
   const dir = mkdtempSync(join(tmpdir(), "orch-init-"));
@@ -42,10 +43,16 @@ function runInit({ dir, binDir, logPath, sqzLogPath }, extraArgs = [], options =
   if (options.codegraph) args.push("--codegraph");
   if (options.sqz) args.push("--sqz");
   args.push(...extraArgs);
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.toLowerCase() === "path") delete env[key];
+  }
+  env.PATH = process.platform === "win32"
+    ? [binDir, process.env.Path ?? process.env.PATH].filter(Boolean).join(delimiter)
+    : `${binDir}:/usr/bin:/bin`;
   return spawnSync(process.execPath, args, {
     env: {
-      ...process.env,
-      PATH: `${binDir}:/usr/bin:/bin`,
+      ...env,
       CODEGRAPH_LOG: logPath,
       SQZ_LOG: sqzLogPath,
     },
@@ -65,7 +72,7 @@ function invocations(logPath) {
   }
 }
 
-test("CodeGraph indexes a worktree only when --codegraph is requested", () => {
+test("CodeGraph indexes a worktree only when --codegraph is requested", { skip: shimSkip }, () => {
   const fixture = setup();
   try {
     installFakeCodegraph(fixture.binDir);
@@ -151,7 +158,7 @@ test("sqz skips an existing Claude hook even when --sqz is requested", () => {
   }
 });
 
-test("sqz receives the constrained Claude hook arguments when --sqz is requested", () => {
+test("sqz receives the constrained Claude hook arguments when --sqz is requested", { skip: shimSkip }, () => {
   const fixture = setup();
   try {
     installFakeSqz(fixture.binDir);

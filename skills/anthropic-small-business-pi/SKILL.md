@@ -11,7 +11,7 @@ This is the Pi adapter for Anthropic's official `small-business` plugin. The ups
 ## Runtime contract
 
 1. Select the exact upstream skill by name, for example `smb-router`, `grow-pipeline`, `speed-to-lead`, `content-strategy`, `social-content-engine`, `review-reputation`, `proposal-builder`, `plan-payroll`, `build-agent`, or `build-connector`.
-2. Run orchestration skills through a named PiWorkflow direct `agent(...)` call. Every child selects a `pi-ext-roles` role, the MCP bridge `builtin:codemode`, `builtin:tool-search`, and `builtin:mcp`, a bounded timeout of at least 600000 ms, and a named worktree when it writes.
+2. Run orchestration skills through a named PiWorkflow direct `agent(...)` call with `foreground: true` and no budget. Every child selects a `pi-ext-roles` role, the MCP bridge `builtin:codemode`, `builtin:tool-search`, and `builtin:mcp`, no preset `timeoutMs`, and a named worktree when it writes.
 3. Use `smb-router` only to choose one next skill. The Pi parent owns the workflow graph, approval checkpoints, worktree ownership, mailbox reporting, and final decision; the skill does not create native subagents or an alternate scheduler.
 4. Use `pipeline(...)` for a fixed upstream chain such as `grow-pipeline` or `plan-payroll`; use `parallel(...)` only for independent research or validation legs. Pass structured outputs explicitly between stages.
 

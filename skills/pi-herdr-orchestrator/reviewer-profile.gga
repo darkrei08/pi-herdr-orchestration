@@ -1,0 +1,6 @@
+PROVIDER="kilo:reviewer-model"
+FILE_PATTERNS="*"
+EXCLUDE_PATTERNS=".git/*,node_modules/*,.worktrees/*,*.log,*.jsonl"
+RULES_FILE="AGENTS.md"
+STRICT_MODE="true"
+TIMEOUT="900"

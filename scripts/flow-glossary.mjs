@@ -106,7 +106,8 @@ console.log(`Duplicate names across roots: ${duplicates.length}`);
 console.log(`Vanished skills: ${vanished.length}${vanished.length ? ` (${vanished.join(", ")})` : ""}`);
 console.log(`New unclassified skills: ${newUnclassified.length}${newUnclassified.length ? ` (${newUnclassified.join(", ")})` : ""}`);
 console.log(`Phases missing mandatory skills: ${missingMandatory.length}`);
-if (duplicates.length) console.log(`Duplicate names: ${duplicates.map((entry) => `${entry.name} [${entry.roots.join(", ")}]`).join("; ")}`);if (missingMandatory.length) console.log(`Missing mandatory: ${missingMandatory.map((entry) => `${entry.phase}/${entry.route}/${entry.skill}`).join(", ")}`);
+if (duplicates.length) console.log(`Duplicate names: ${duplicates.map((entry) => `${entry.name} [${entry.roots.join(", ")}]`).join("; ")}`);
+if (missingMandatory.length) console.log(`Missing mandatory: ${missingMandatory.map((entry) => `${entry.phase}/${entry.route}/${entry.skill}`).join(", ")}`);
 
 if (process.argv.includes("--write")) {
   glossary.machine = machine;
