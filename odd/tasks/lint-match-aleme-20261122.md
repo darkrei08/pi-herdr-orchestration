@@ -16,6 +16,7 @@ Branch: fix/lint-match-aleme (from origin/main 391037f)
 - T2 | S3-S4 | Add zero-dependency lint script and wire npm/CI | commit: 765b14c
 - T3 | S5-S7 | Fix all reported violations without behavior changes | commit: 765b14c
 - T4 | S8 | Re-run lint, tests and checks; record evidence | commit: 765b14c
+- T5 | release | Bump to 1.5.0, publish PR/tag/npm | commit: TBD
 
 ## Log
 - L1: "Mposatlintu match aleme e risolvi"
@@ -26,3 +27,4 @@ Identifica gli errori o i riferimenti indicati ("match aleme") e risolvi tutti i
 - L4: Added `scripts/lint.mjs` with syntax checks plus textual rules for trailing whitespace, tabs, CRLF, duplicate consecutive lines, multiple statements, work markers and loose equality. Wired `npm run lint`, `npm run lint:json`, CI step and focused tests.
 - L5: Fixed two real violations: split two statements on one line in `scripts/flow-glossary.mjs:109` and `skills/pi-herdr-orchestrator/scripts/mailbox.mjs:1049`; added suppression directives for linter's own intentional pattern literals and fixture strings.
 - L6: Final checks: lint 37 files clean, npm test 95/95 PASS, check:strict PASS, git diff --check PASS. GGA hook ran but its configured patterns exclude .mjs, so no file matched.
+- L7: Multi-stage release checks all exited 0: lint, test, check:strict, check:mcp, check:anthropic-small-business, flow:sources:check, context-window, pack, diff-check.
