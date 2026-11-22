@@ -19,7 +19,7 @@ S4. Repository baseline: worktree from `origin/main` b120fff at version 1.5.0. T
 T1 | S1,S2 | parent inline | done | install toolchain, register MCP, isolate worktree and open ledger
 T2 | S1,S3,S4 | delegated developer | done | add a deterministic scan wrapper, npm script, tests and docs in the isolated worktree
 T3 | S1,S3 | delegated developer | done | run focused scans on safe repo scripts and write a dated optimization report
-T4 | S1-S4 | parent inline + verifier | pending | run all repository checks, review diffs, commit and report
+T4 | S1-S4 | parent inline + verifier | in_progress | checks passed; work-unit commit 9647013 recorded
 
 ## Log
 
@@ -42,3 +42,5 @@ L7. 2026-11-22: verification passed: `node --test scripts/fast-anything.test.mjs
 L8. 2026-11-22: closed both gaps from L6 and L7. `scripts/fast-anything.test.mjs` is now part of the `npm test` script, `.fast/` is git-ignored in `.gitignore`, and `.fast` is in `SKIP_DIRS` in `scripts/lint.mjs`. Follow-up note corrected in `reports/2026-11-22-fast-anything-scan.md`. No production code, allowlist or provider inference touched; `port`, `verify`, `enable`, `disable` and `bench` were still not run.
 
 L9. 2026-11-22: verification of the gap fixes, all in this worktree. Red first: after a real scan, `node scripts/lint.mjs` exited 1 with two `loose-equality` findings in `.fast/runner.mjs`. After the fix: `npm test` exit 0 (110/110, includes `scripts/fast-anything.test.mjs`), `npm run check` exit 0, `npm run lint` before the scan exit 0 (41 files clean), `node scripts/fast-anything.mjs scan --date 2026-11-22 scripts/flow-sources-check.mjs` exit 0 (25 ms), `npm run lint` after the scan exit 0 (41 files clean), `git diff --check` exit 0, `git check-ignore -v .fast` exit 0 (`.gitignore:12:.fast/`), and `git status --short` shows no `.fast` entry. `node --test scripts/lint.test.mjs` was left unchanged because it does not cover `SKIP_DIRS`. Remaining risk: the explanatory comment above `CANDIDATES` in `scripts/fast-anything.mjs` still says `lint.mjs` does not skip `.fast`; that file was outside this task's edit surface.
+
+L10. 2026-11-22: work-unit commit `96470133d2f057d3c90dfe7e28ee463c2773436d` passed GGA: read-only profiling wrapper, 110/110 tests, check PASS, lint PASS before and after a real scan, `git diff --check` PASS. Verification run measured 24-25 ms with `isIsoDate` at about 1.3%; no portable hot path and no speedup claim.
