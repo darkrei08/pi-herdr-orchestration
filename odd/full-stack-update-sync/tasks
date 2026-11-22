@@ -1,0 +1,9 @@
+Feature: full-stack-update-sync
+
+Tasks
+- T1 | S1-S3 | Fix promptimize sessionId plumbing and stale gentle-ai pin state | pending
+- T2 | S1,S4 | Update skills, framework, Pi and gentle-shell safely | pending
+- T3 | S1-S4 | Run full compatibility and functional test suite | pending
+
+Log
+- L1: User request recorded verbatim in odd/tasks/full-stack-update-sync-20261122.md.
