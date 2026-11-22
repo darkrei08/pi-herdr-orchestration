@@ -568,10 +568,18 @@ test("withLock protects critical sections", () => {
   const testFile = join(dir, "data.json");
   try {
     let executed = false;
+    let owner;
     withLock(testFile, () => {
       executed = true;
+      owner = JSON.parse(readFileSync(join(dir, ".data.json.lock", "owner.json"), "utf8"));
     });
     assert.equal(executed, true);
+    assert.equal(owner.pid, process.pid);
+    assert.match(owner.id, /^[0-9a-f-]{36}$/);
+    if (process.platform === "linux") {
+      assert.equal(typeof owner.linuxBirth?.bootId, "string");
+      assert.equal(typeof owner.linuxBirth?.startTicks, "string");
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -670,6 +678,27 @@ test("withLock does not reclaim stale locks owned by a live process", () => {
     const stale = new Date(Date.now() - 60_000);
     utimesSync(lockDir, stale, stale);
     assert.throws(() => withLock(testFile, () => {}, 100), /Timed out waiting for lock/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("withLock reclaims a stale lock when the PID was recycled", { skip: process.platform !== "linux" }, () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-lock-recycled-"));
+  const testFile = join(dir, "data.json");
+  const lockDir = join(dir, ".data.json.lock");
+  try {
+    mkdirSync(lockDir);
+    writeFileSync(join(lockDir, "owner.json"), JSON.stringify({
+      pid: process.pid,
+      id: "old-owner",
+      linuxBirth: { bootId: "00000000-0000-0000-0000-000000000000", startTicks: "0" },
+    }));
+    const stale = new Date(Date.now() - 60_000);
+    utimesSync(lockDir, stale, stale);
+    let executed = false;
+    withLock(testFile, () => { executed = true; });
+    assert.equal(executed, true);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

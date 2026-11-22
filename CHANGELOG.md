@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Herdr Workflow Topology:** Documented the default current-tab sibling-pane tree, nested pane ownership, focused-pane zoom control, and explicit-only workspace, tab, or cwd changes; isolated writer worktrees remain unchanged.
 
+## [1.3.0] - 2026-11-22
+
+### Added
+- **Process-Identity Mailbox Locks (`skills/pi-herdr-orchestrator/scripts/lock.mjs`)**: Lock owners now publish a UUID and Linux boot-id/start-ticks identity atomically, so stale locks are not mistaken for a reused PID.
+
 ## [1.2.6] - 2026-10-21
 
 ### Changed

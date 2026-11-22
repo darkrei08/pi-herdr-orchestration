@@ -1,32 +1,83 @@
 // Lightweight atomic lock based on directory creation (atomic on all POSIX/Windows filesystems)
-import { mkdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { mkdirSync, readFileSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+
+function processExists(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM";
+  }
+}
+
+function linuxBirth(pid) {
+  if (process.platform !== "linux") return undefined;
+  const bootId = readFileSync("/proc/sys/kernel/random/boot_id", "utf8").trim();
+  let stat;
+  try {
+    stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT" && !processExists(pid)) return undefined;
+    throw error;
+  }
+  const end = stat.lastIndexOf(") ");
+  if (end < 0 || !stat.startsWith(`${pid} (`)) throw new Error("Invalid Linux process stat");
+  const startTicks = stat.slice(end + 2).trim().split(/\s+/)[19];
+  if (!bootId || !startTicks) throw new Error("Invalid Linux process identity");
+  return { bootId, startTicks };
+}
 
 function ownerIsAlive(lockDir) {
   try {
     const owner = JSON.parse(readFileSync(join(lockDir, "owner.json"), "utf8"));
-    if (!Number.isInteger(owner.pid) || owner.pid <= 0) return false;
-    try {
-      process.kill(owner.pid, 0);
-      return true;
-    } catch (error) {
-      return error.code === "EPERM";
-    }
-  } catch {
-    return false;
+    if (!Number.isInteger(owner.pid) || owner.pid <= 0) return true;
+    if (!processExists(owner.pid)) return false;
+    if (process.platform !== "linux" || owner.linuxBirth === undefined) return true;
+    if (!owner.linuxBirth || typeof owner.linuxBirth !== "object" || typeof owner.linuxBirth.bootId !== "string" || typeof owner.linuxBirth.startTicks !== "string") return true;
+    const current = linuxBirth(owner.pid);
+    return current !== undefined && current.bootId === owner.linuxBirth.bootId && current.startTicks === owner.linuxBirth.startTicks;
+  } catch (error) {
+    // A missing owner can be the short window between mkdir and publication.
+    return error.code === "ENOENT" ? false : true;
   }
+}
+
+function publishOwner(lockDir, owner) {
+  const temporary = join(lockDir, `.owner-${owner.id}.tmp`);
+  try {
+    writeFileSync(temporary, JSON.stringify(owner), { encoding: "utf8", mode: 0o600, flag: "wx" });
+    renameSync(temporary, join(lockDir, "owner.json"));
+  } finally {
+    try { unlinkSync(temporary); } catch { /* ignore missing temporary owner */ }
+  }
+}
+
+function releaseLock(lockDir, id) {
+  try {
+    const owner = JSON.parse(readFileSync(join(lockDir, "owner.json"), "utf8"));
+    if (owner.id !== id) return;
+  } catch {
+    return;
+  }
+  try { unlinkSync(join(lockDir, "owner.json")); } catch { /* ignore missing owner */ }
+  try { rmdirSync(lockDir); } catch { /* ignore */ }
 }
 
 export function withLock(filePath, fn, timeoutMs = 5000) {
   const lockDir = join(dirname(filePath), `.${basename(filePath)}.lock`);
   const start = Date.now();
+  const id = randomUUID();
   let acquired = false;
 
   while (!acquired) {
     try {
       mkdirSync(lockDir);
       try {
-        writeFileSync(join(lockDir, "owner.json"), JSON.stringify({ pid: process.pid }));
+        const owner = { pid: process.pid, id, linuxBirth: linuxBirth(process.pid) };
+        if (owner.linuxBirth === undefined) delete owner.linuxBirth;
+        publishOwner(lockDir, owner);
         acquired = true;
       } catch (error) {
         try { unlinkSync(join(lockDir, "owner.json")); } catch { /* ignore missing owner */ }
@@ -35,7 +86,7 @@ export function withLock(filePath, fn, timeoutMs = 5000) {
       }
     } catch (err) {
       if (err.code === "EEXIST") {
-        // Reclaim stale locks only when their recorded owner is gone.
+        // Reclaim stale locks only when the recorded process identity is gone.
         try {
           const stats = statSync(lockDir);
           if (Date.now() - stats.mtimeMs > 15000 && !ownerIsAlive(lockDir)) {
@@ -60,7 +111,6 @@ export function withLock(filePath, fn, timeoutMs = 5000) {
   try {
     return fn();
   } finally {
-    try { unlinkSync(join(lockDir, "owner.json")); } catch { /* ignore missing owner */ }
-    try { rmdirSync(lockDir); } catch { /* ignore */ }
+    releaseLock(lockDir, id);
   }
 }
