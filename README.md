@@ -271,14 +271,14 @@ const reports = await parallel("repository-audit", {
   scout: () => agent("Map the repository.", {
     role: "scout",
     label: "[CHIEF/SCOUT] Discovery",
-    skills: ["pi-herdr-orchestrator", "engineering-excellence", "diagnosing-bugs"],
+    skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "diagnosing-bugs"],
     extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
     worktree: "scout",
   }),
   tests: () => agent("Define and run focused checks.", {
     role: "tests-expert",
     label: "[CHIEF/QUALITY] Tests",
-    skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
+    skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "tdd"],
     extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
     worktree: "tests",
   }),

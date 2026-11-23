@@ -49,14 +49,14 @@ const results = await parallel("dispatch", {
   scout: () => agent("Map the repository and return evidence.", {
     role: "scout",
     label: "[CHIEF/SCOUT] Discovery",
-    skills: ["pi-herdr-orchestrator", "engineering-excellence", "diagnosing-bugs"],
+    skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "diagnosing-bugs"],
     extensions: mcpExtensions,
     worktree: "scout",
   }),
   build: () => agent("Implement the bounded task and verify it.", {
     role: "developer",
     label: "[CHIEF/BUILD] Implementation",
-    skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
+    skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "tdd"],
     extensions: mcpExtensions,
     worktree: "build",
   }),

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-11-23
+
+### Fixed
+- **Explicit Child Skill Loadouts (`README.md`, `skills/pi-herdr-orchestrator/SKILL.md`, `skills/pi-herdr-orchestrator/references/routing.md`)**: Reset inherited skill selectors before applying verified workflow-specific skills, preventing stale host skills from blocking dispatch.
+- **Writer Worktree Routing (`skills/pi-herdr-orchestrator/SKILL.md`, `skills/pi-herdr-orchestrator/references/routing.md`)**: Require isolated worktrees for writing children while allowing read-only scouts to use the shared source worktree when their tools are read-only.
+
+### Tests
+- **Dispatch Contract Regression (`skills/pi-herdr-orchestrator/scripts/dispatch.test.mjs`)**: Assert that documented workflow loadouts clear inherited skills before selecting explicit capabilities.
+
 ## [1.5.0] - 2026-11-22
 
 ### Added

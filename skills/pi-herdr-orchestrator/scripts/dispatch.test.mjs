@@ -106,7 +106,9 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
   assert.match(execution, /omit timeoutMs/);
   assert.match(execution, /foreground: true/);
   assert.match(execution, /no budget/);
-  assert.match(routing, /skills:\s*\[/);
+  for (const source of [skill, routing, readme]) {
+    assert.match(source, /skills:\s*\[\"!\*\",/);
+  }
   assert.match(routing, /extensions:\s*\[/);
   assert.match(routing, /label/);
   assert.match(execution, /pane tree/);
