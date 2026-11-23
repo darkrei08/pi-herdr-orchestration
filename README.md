@@ -454,6 +454,16 @@ node scripts/check.mjs --strict
 # or: npm run check:strict
 ```
 
+### Read-only profiling
+
+The `perf:scan` wrapper exposes only `doctor`, `scan`, and `list-candidates` from `fast-anything`. It runs an allowlisted repository script under the profiler and writes a bounded Markdown report to `reports/`; it never runs `port`, `verify`, `enable`, `disable`, or `bench`.
+
+```bash
+npm run perf:scan -- doctor
+npm run perf:scan -- list-candidates
+npm run perf:scan -- scan --date 2026-11-22 scripts/flow-sources-check.mjs
+```
+
 ### Persisted Graph Supervisor
 
 The graph supervisor is a separate mutable scheduling layer from any read-only execution-graph report. It stores versioned state under `<git-common-dir>/orchestrator/<run>/graph/graph.json` and append-only transitions in `events.jsonl`. `skills/pi-herdr-orchestrator/scripts/graph-supervisor.mjs` accepts immutable trajectory and mailbox records, normalizes legacy uppercase mailbox states, plans `waits-for` dependencies deterministically, and persists bounded transitions.

@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const SKIP_DIRS = new Set([".git", ".worktrees", ".pi", "node_modules", "dist", "build", "odd"]);
+const SKIP_DIRS = new Set([".git", ".worktrees", ".pi", ".fast", "node_modules", "dist", "build", "odd"]);
 // lint-disable-next-line loose-equality
 const LOOSE_EQUALITY = /(?<![=!<>])==(?!=)|(?<![!=])!=(?!=)/;
 const MULTIPLE_STATEMENTS = /;\s*(?:if|for|while|switch|const|let|var|return|throw|console\.[a-z]+)\b/;
