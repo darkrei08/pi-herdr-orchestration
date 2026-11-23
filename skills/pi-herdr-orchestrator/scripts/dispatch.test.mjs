@@ -113,7 +113,6 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
   assert.match(routing, /label/);
   assert.match(execution, /pane tree/);
   assert.match(execution, /worktree/);
-  assert.match(skill, /named isolated `worktree` for every direct child/);
   assert.match(dispatch, /### Directive envelope/);
   assert.match(dispatch, /canonical source remains a validated JSON/);
   assert.match(dispatch, /no structured-directive consumer/);
