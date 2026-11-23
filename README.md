@@ -2,7 +2,7 @@
 
 Deterministic, provider-agnostic multi-agent repository orchestration for coding agents. Dynamically coordinates task discovery, dependency graphs, isolated Git worktrees, terminal multiplexing with Herdr, and evidence-based verification across your entire development lifecycle.
 
-The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigravity**. It works out-of-the-box with plain Git and a single agent, and dynamically discovers optional high-leverage integrations at runtime: **PiWorkflow**, **Gentle AI / Engram**, **Herdr**, **Guardian Angel (GGA)**, **Engineering Excellence**, **Matt Pocock's skill suite**, and context reduction engines.
+The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigravity**. It works out-of-the-box with plain Git and a single agent, and dynamically discovers optional high-leverage integrations at runtime: **PiWorkflow**, **Pi Agent roster (`list_agents`)**, **Gentle AI / Engram**, **Herdr**, **Guardian Angel (GGA)**, **Engineering Excellence**, **Matt Pocock's skill suite**, and context reduction engines.
 
 ---
 
@@ -22,6 +22,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
 - [Skill Ecosystem Integrations](#skill-ecosystem-integrations)
   - [PiWorkflow (`pi-extensible-workflows` v6.3.0)](#piworkflow-pi-extensible-workflows-v630)
   - [Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)](#pi-extensible-roles-piewfpi-ext-roles-v020)
+  - [Host Agent Roster (`list_agents`)](#host-agent-roster-list_agents)
   - [Gentle AI Suite & Engram](#gentle-ai-suite--engram)
   - [Engineering Excellence](#engineering-excellence)
   - [Matt Pocock Skill Suite](#matt-pocock-skill-suite)
@@ -34,6 +35,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Mandatory Per-Repository Initialization](#mandatory-per-repository-initialization)
   - [Environment Verification](#environment-verification)
   - [Persisted Graph Supervisor](#persisted-graph-supervisor)
+  - [Optional Rust Graph Core](#optional-rust-graph-core)
   - [Mailbox & Supervision Commands](#mailbox--supervision-commands)
   - [Compaction & Overlap Rules](#compaction--overlap-rules)
 - [Release and npm Trusted Publishing](#release-and-npm-trusted-publishing)
@@ -293,6 +295,11 @@ Launch named workflows with `foreground: true` and no budget; omit `timeoutMs` o
   - Independent CLI inspection: `pi-role --identify <role>` prints the resolved file path and complete role frontmatter.
   - Native workflow preparation adapter (`registerRolePreparationHook`) decoupling roles from the workflow core.
 
+### Host Agent Roster (`list_agents`)
+- **Role:** Live discovery of effective Agent definitions available to the current controller.
+- **Capability contract:** Use the roster result to select Agents by effective capabilities; a configured definition is not proof that it is runnable.
+- **Failure contract:** If roster validation fails, report `BLOCKED` with the exact definition path and field error. Do not simulate delegation or infer availability from filenames. The current host reported: `/root/.pi/agent/agents/gentle-ai-verify.md` has an invalid `tools` field because it must be an array of non-empty strings.
+
 ### Gentle AI Suite & Engram
 - **Role:** Harness discipline, durable memory, and review authority.
 - **Capabilities Used:**
@@ -478,6 +485,18 @@ orch_graph_step     # apply one validated advance/start/complete/wait/poll/pause
 ```
 
 The schema is [`schemas/repo-orchestrator-graph-v1.json`](schemas/repo-orchestrator-graph-v1.json). These controls never merge, publish, or replace PiWorkflow as the execution authority.
+
+### Optional Rust Graph Core
+
+The repository includes an optional dependency-free Rust implementation of the graph supervisor's deterministic `waits-for` planning step. It is deliberately limited to pure graph planning: Pi extension loading, Herdr transport, mailbox liveness and filesystem locking remain JavaScript host boundaries.
+
+```bash
+npm run check:rust
+npm run test:rust
+npm run graph:plan:rust < graph.json
+```
+
+JavaScript remains the authoritative runtime. See [`docs/rust-core.md`](docs/rust-core.md) for the protocol, rationale and fallback behavior.
 
 ### Mailbox & Supervision Commands
 

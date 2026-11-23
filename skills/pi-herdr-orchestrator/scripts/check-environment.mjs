@@ -121,6 +121,8 @@ for (const [id, command, requiredFor, flag] of [
   ["gh", "gh", ["optional issue and PR provider"]],
   ["docker", "docker", ["optional runtime validation"]],
   ["docker-compose", "docker", ["optional Compose validation"], ["compose", "version"]],
+  ["cargo", "cargo", ["optional Rust graph core"]],
+  ["rustc", "rustc", ["optional Rust graph core"]],
 ]) {
   const version = commandVersion(command, flag);
   checks.push(record(id, version ? "installed" : "missing", {
@@ -215,6 +217,13 @@ checks.push(record("pi-compaction-owner", compaction.status, {
   detected_pi_vcc: Boolean(vccPackage),
   vcc_override: vccConfig?.overrideDefaultCompaction ?? null,
   required_for: ["single compaction owner"],
+}));
+
+const rustManifest = join(process.cwd(), "rust", "orchestrator-core", "Cargo.toml");
+const rustReady = existsSync(rustManifest) && Boolean(commandVersion("cargo")) && Boolean(commandVersion("rustc"));
+checks.push(record("rust-orchestrator-core", rustReady ? "installed" : existsSync(rustManifest) ? "blocked" : "not_applicable", {
+  manifest: existsSync(rustManifest) ? rustManifest : null,
+  required_for: ["optional graph planning accelerator"],
 }));
 
 const agentRoots = {

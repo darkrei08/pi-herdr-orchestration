@@ -23,3 +23,6 @@ agents/gga-pi.local/
 .kiro/
 opencode.json
 .gentle-ai-default-agent.json
+
+# Rust build output
+target/

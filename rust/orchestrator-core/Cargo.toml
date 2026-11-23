@@ -1,0 +1,13 @@
+[package]
+name = "orchestrator-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "orchestrator_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "graph-plan"
+path = "src/main.rs"
