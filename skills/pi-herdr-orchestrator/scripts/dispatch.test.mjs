@@ -9,7 +9,7 @@ const read = (path) => readFileSync(join(root, path), "utf8");
 
 test("trusted project settings select the pane topology for Herdr workflow agents", () => {
   const settings = JSON.parse(read(".pi/pi-extensible-workflows/settings.json"));
-  assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, false);
+  assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, true);
 });
 
 test("dispatch contract names deterministic workflow fan-out and explicit role loadout", () => {
@@ -22,8 +22,8 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
 
   assert.match(skill, /named workflow/);
   assert.match(skill, /parallel\(/);
-  assert.match(skill, /herdr pane split/);
-  assert.match(skill, /herdr pane zoom/);
+  assert.match(skill, /enableFullyInspectableMode/);
+  assert.match(skill, /fully inspectable/);
   assert.match(skill, /subagents_run/);
   assert.match(skill, /forbidden/);
   for (const source of [skill, routing, readme]) {
@@ -41,12 +41,13 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
   assert.match(routing, /skills:\s*\[/);
   assert.match(routing, /extensions:\s*\[/);
   assert.match(routing, /label/);
-  assert.match(execution, /pane tree/);
+  assert.match(execution, /fully inspectable/);
   assert.match(execution, /worktree/);
   assert.match(dispatch, /### Directive envelope/);
   assert.match(dispatch, /canonical source remains a validated JSON/);
   assert.match(dispatch, /no structured-directive consumer/);
   assert.match(environment, /@piewf\/pi-ext-roles/);
+  assert.match(environment, /rust-orchestrator-core/);
 });
 
 test("MCP checker reports reachability without leaking registry secrets", async () => {

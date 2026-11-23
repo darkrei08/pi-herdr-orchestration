@@ -2,7 +2,7 @@
 
 Deterministic, provider-agnostic multi-agent repository orchestration for coding agents. Dynamically coordinates task discovery, dependency graphs, isolated Git worktrees, terminal multiplexing with Herdr, and evidence-based verification across your entire development lifecycle.
 
-The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigravity**. It works out-of-the-box with plain Git and a single agent, and dynamically discovers optional high-leverage integrations at runtime: **PiWorkflow**, **Gentle AI / Engram**, **Herdr**, **Guardian Angel (GGA)**, **Engineering Excellence**, **Matt Pocock's skill suite**, and context reduction engines.
+The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigravity**. It works out-of-the-box with plain Git and a single agent, and dynamically discovers optional high-leverage integrations at runtime: **PiWorkflow**, **Pi Agent roster (`list_agents`)**, **Gentle AI / Engram**, **Herdr**, **Guardian Angel (GGA)**, **Engineering Excellence**, **Matt Pocock's skill suite**, and context reduction engines.
 
 ---
 
@@ -34,6 +34,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Mandatory Per-Repository Initialization](#mandatory-per-repository-initialization)
   - [Environment Verification](#environment-verification)
   - [Persisted Graph Supervisor](#persisted-graph-supervisor)
+  - [Optional Rust Graph Core](#optional-rust-graph-core)
   - [Mailbox & Supervision Commands](#mailbox--supervision-commands)
   - [Compaction & Overlap Rules](#compaction--overlap-rules)
 - [Release and npm Trusted Publishing](#release-and-npm-trusted-publishing)
@@ -256,7 +257,7 @@ Pi Herdr Orchestration dynamically bridges and routes between major AI coding ag
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
   - **Explicit child loadouts:** Every routed child receives a named `@piewf/pi-ext-roles` `role`, stable `label`, verified `skills` selectors, `extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, a finite role-appropriate `timeoutMs` (at least 600 seconds for research, build, review, and MCP work), and an isolated `worktree` when it writes. `builtin:codemode` is the stable bridge to MCP tools.
-  - **Pane-tree Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents split sibling panes in the caller's current tab; nested agents split their parent pane. A new workspace, tab, or cwd is created only on explicit request, while each write-capable agent keeps its isolated worktree.
+  - **Pane-tree Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, each workflow agent receives a visible Herdr workspace/tab and pane while preserving its session and isolated worktree.
   - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
   - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
   - **Reliable Lock Ownership:** Records the owner PID and reclaims stale locks only when the recorded process is no longer alive, avoiding deletion of active locks.
@@ -294,6 +295,11 @@ Use `pipeline(...)` for ordered stages. Native `subagents_run` is forbidden for 
   - Reusable Markdown role definitions (`roles/*.md`) with tool, skill, and context file selectors.
   - Independent CLI inspection: `pi-role --identify <role>` prints the resolved file path and complete role frontmatter.
   - Native workflow preparation adapter (`registerRolePreparationHook`) decoupling roles from the workflow core.
+
+### Host Agent Roster (`list_agents`)
+- **Role:** Live discovery of effective Agent definitions available to the current controller.
+- **Capability contract:** Use the roster result to select Agents by effective capabilities; a configured definition is not proof that it is runnable.
+- **Failure contract:** If roster validation fails, report `BLOCKED` with the exact definition path and field error. Do not simulate delegation or infer availability from filenames. The current host reported: `/root/.pi/agent/agents/gentle-ai-verify.md` has an invalid `tools` field because it must be an array of non-empty strings.
 
 ### Gentle AI Suite & Engram
 - **Role:** Harness discipline, durable memory, and review authority.
@@ -433,7 +439,7 @@ node scripts/init-repo.mjs --dir /path/to/my-repo --apply --codegraph --sqz
 This command automatically configures:
 - **Git Baseline:** Ensures repository initialization on `main` and creates `.worktrees/`.
 - **Gitignore Rules:** Appends `.worktrees/`, `.codegraph/`, and `.atl/` to `.gitignore`.
-- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`, preserving existing workflow settings so default runs use sibling panes in the caller's current tab.
+- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`, preserving existing workflow settings while enabling fully inspectable workflow panes.
 - **Engram Memory Identity:** Generates `.git/engram-project-identity.json` for isolated, persistent repository memory.
 - **Guardian Angel (GGA):** Creates `.gga` quality-gate configuration and baseline `AGENTS.md` guidelines.
 - **Semantic Code Navigation:** Deploys Serena project configuration for LSP symbol analysis.
@@ -471,6 +477,18 @@ orch_graph_step     # apply one validated advance/start/complete/wait/poll/pause
 
 The schema is [`schemas/repo-orchestrator-graph-v1.json`](schemas/repo-orchestrator-graph-v1.json). These controls never merge, publish, or replace PiWorkflow as the execution authority.
 
+### Optional Rust Graph Core
+
+The repository includes an optional dependency-free Rust implementation of the graph supervisor's deterministic `waits-for` planning step. It is deliberately limited to pure graph planning: Pi extension loading, Herdr transport, mailbox liveness and filesystem locking remain JavaScript host boundaries.
+
+```bash
+npm run check:rust
+npm run test:rust
+npm run graph:plan:rust < graph.json
+```
+
+The JavaScript graph supervisor remains the authoritative runtime. See [`docs/rust-core.md`](docs/rust-core.md) for the protocol, rationale and fallback behavior.
+
 ### Mailbox & Supervision Commands
 
 Supervise distributed worker sessions and inspect the shared mailbox:
@@ -489,10 +507,11 @@ npm test
 
 The report inspects:
 - Core prerequisites: Node.js, Git, and Skill definitions.
-- Agent runtimes: Pi, PiWorkflow, Gentle AI / Engram, Guardian Angel (GGA), and Herdr.
+- Agent runtimes: Pi, PiWorkflow, the host Agent roster (`list_agents`), Gentle AI / Engram, Guardian Angel (GGA), and Herdr.
 - Supporting CLIs: GitHub CLI (`gh`), Docker, and Docker Compose.
 - Installed skill suites: Engineering Excellence, Matt Pocock, and Gentle AI.
 - Context tooling: Wizard-AI, Serena, graphifyy, RTK, and sqz.
+- Optional Rust graph core: Cargo, rustc, and the repository-local planner manifest.
 - Active Pi compaction owner.
 
 ### Compaction & Overlap Rules

@@ -163,10 +163,10 @@ test("sqz receives the constrained Claude hook arguments when --sqz is requested
   }
 });
 
-test("PiWorkflow preserves formatted settings when current-tab transport is already configured", () => {
+test("PiWorkflow preserves formatted settings when fully inspectable transport is already configured", () => {
   const fixture = setup();
   const settingsPath = join(fixture.dir, ".pi", "pi-extensible-workflows", "settings.json");
-  const settings = `{\n  "unrelated": { "keep": true },\n  "extensionSettings": {\n    "other": { "value": 7 },\n    "herdr": { "enableFullyInspectableMode": false, "local": "preserve" }\n  }\n}\n`;
+  const settings = `{\n  "unrelated": { "keep": true },\n  "extensionSettings": {\n    "other": { "value": 7 },\n    "herdr": { "enableFullyInspectableMode": true, "local": "preserve" }\n  }\n}\n`;
   try {
     mkdirSync(join(fixture.dir, ".pi", "pi-extensible-workflows"), { recursive: true });
     writeFileSync(settingsPath, settings);
@@ -174,7 +174,22 @@ test("PiWorkflow preserves formatted settings when current-tab transport is alre
     assert.equal(result.status, 0, result.stderr);
     assert.equal(readFileSync(settingsPath, "utf8"), settings);
     assert.doesNotMatch(result.stdout, /WROTE .*settings\.json/);
-    assert.match(result.stdout, /CONFIGURED\s+pi-workflow-herdr.*current-tab sibling-pane/);
+    assert.match(result.stdout, /CONFIGURED\s+pi-workflow-herdr.*fully inspectable/);
+  } finally {
+    cleanup(fixture.dir);
+  }
+});
+
+test("PiWorkflow upgrades legacy non-inspectable settings", () => {
+  const fixture = setup();
+  const settingsPath = join(fixture.dir, ".pi", "pi-extensible-workflows", "settings.json");
+  try {
+    mkdirSync(join(fixture.dir, ".pi", "pi-extensible-workflows"), { recursive: true });
+    writeFileSync(settingsPath, JSON.stringify({ extensionSettings: { herdr: { enableFullyInspectableMode: false } } }));
+    const result = runInit(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(readFileSync(settingsPath, "utf8")).extensionSettings.herdr.enableFullyInspectableMode, true);
+    assert.match(result.stdout, /WROTE .*settings\.json/);
   } finally {
     cleanup(fixture.dir);
   }
