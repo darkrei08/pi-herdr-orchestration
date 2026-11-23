@@ -1,3 +1,3 @@
-T1 | S1-S4 | Inventory workflow, pi-ext-roles, Rust and Fast Anything seams from repository evidence | status: completed | commit: 635401e
-T2 | S2-S5 | Add only a verified capability/reporting or Rust change, with regression tests | status: in_progress | commit: pending
-T3 | S1-S5 | Run focused/full checks and report unavailable runtime evidence | status: pending | commit: pending
+T1 | S1-S4 | Inventory workflow, pi-ext-roles, Rust and Fast Anything seams from repository evidence | status: completed | commit: dee4e71
+T2 | S2-S5 | Add only a verified capability/reporting or Rust change, with regression tests | status: completed | commit: dee4e71
+T3 | S1-S5 | Run focused/full checks and report unavailable runtime evidence | status: completed | commit: dee4e71

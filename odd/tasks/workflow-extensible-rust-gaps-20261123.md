@@ -16,10 +16,9 @@ S5. "Aggiungi alla lista dei stack anche list agents\n✗ /root/.pi/agent/agents
 
 ## Tasks
 
-- T1 | S1-S4 | Inventory workflow, pi-ext-roles, Rust and Fast Anything seams from repository evidence | commit: pending
-- T2 | S2-S5 | Add only a verified capability/reporting or Rust change, with regression tests | commit: pending
-- T3 | S1-S5 | Run focused/full checks and report unavailable runtime evidence | commit: pending
-
+- T1 | S1-S4 | Inventory workflow, pi-ext-roles, Rust and Fast Anything seams from repository evidence | commit: dee4e71
+- T2 | S2-S5 | Add only a verified capability/reporting or Rust change, with regression tests | commit: dee4e71
+- T3 | S1-S5 | Run focused/full checks and report unavailable runtime evidence | commit: dee4e71
 ## Log
 
 L1. Prosegui cn oo svkippo analizando le psrti mancanti dinpinherdernorchetatartne di pi worjflow extensible e po ext roles pe imomentare opportumanere weioni incodide in rusta con fast anything
@@ -31,3 +30,5 @@ L3. The reported `list_agents` failure is treated as a host capability/configura
 L4. Repository evidence: PiWorkflow and `@piewf/pi-ext-roles` already own workflow execution, role preparation, MCP loadouts, timeouts, and worktree routing in JavaScript. Fast Anything exists as `scripts/fast-anything.mjs` plus tests/report on its feature branch and has no Rust/Cargo source. The only justified Rust seam is the previously verified pure waits-for graph planner, integrated here from local commit `635401e` without replacing JavaScript host boundaries.
 
 L5. Added the `list_agents` host roster to the documented stack and audit contract. A malformed Agent definition remains `BLOCKED`; no external agent-definition file was changed.
+
+L6. Verification: `npm test` passed 75/75; `npm run check`, `npm run check:strict`, `npm run check:rust`, `npm run test:rust`, `node --check scripts/graph-plan-rust.mjs`, `cargo clippy --manifest-path rust/orchestrator-core/Cargo.toml --all-targets -- -D warnings`, `npm pack --dry-run`, and `git diff --check` passed. The final post-commit npm test also passed 75/75. The host `list_agents` error remains BLOCKED and was not changed.
