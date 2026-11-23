@@ -41,7 +41,7 @@ Act as the control session for the current repository. Respect the user's actual
 
 ## Runtime dispatch contract
 
-When PiWorkflow is available, invoke a named workflow (`name` plus `script`) and keep delegation in direct `agent(...)` or `agent.create(...)` calls. When a task uses Anthropic's Small Business plugin, load `anthropic-small-business-pi` together with the selected upstream skill; it is the Pi compatibility contract for Claude-specific routing, approval, memory, artifact, and connector assumptions. Every call must select a `pi-ext-roles` role, the MCP-capable extensions, a bounded `timeoutMs`, and a report-back contract:
+When PiWorkflow is available, invoke a named workflow (`name` plus `script`) with `foreground: true` and no budget, and keep delegation in direct `agent(...)` or `agent.create(...)` calls. When a task uses Anthropic's Small Business plugin, load `anthropic-small-business-pi` together with the selected upstream skill; it is the Pi compatibility contract for Claude-specific routing, approval, memory, artifact, and connector assumptions. Every call must select a `pi-ext-roles` role, the MCP-capable extensions, no preset timeout (`timeoutMs` omitted), and a report-back contract:
 
 ```javascript
 const mcpExtensions = ["builtin:codemode", "builtin:tool-search", "builtin:mcp"];
@@ -49,9 +49,8 @@ const results = await parallel("dispatch", {
   scout: () => agent("Map the repository and return evidence.", {
     role: "scout",
     label: "[CHIEF/SCOUT] Discovery",
-    skills: ["pi-herdr-orchestrator", "engineering-excellence"],
+    skills: ["pi-herdr-orchestrator", "engineering-excellence", "diagnosing-bugs"],
     extensions: mcpExtensions,
-    timeoutMs: 600_000,
     worktree: "scout",
   }),
   build: () => agent("Implement the bounded task and verify it.", {
@@ -59,7 +58,6 @@ const results = await parallel("dispatch", {
     label: "[CHIEF/BUILD] Implementation",
     skills: ["pi-herdr-orchestrator", "engineering-excellence", "tdd"],
     extensions: mcpExtensions,
-    timeoutMs: 600_000,
     worktree: "build",
   }),
 });
@@ -67,10 +65,10 @@ return results;
 ```
 
 - Use a non-empty workflow `name` and `parallel("<operation>", { ... })` for independent work. Use `pipeline("<operation>", items, stages)` when every item must pass the same ordered stages. Never replace these with `Promise.all`/`map` agent fan-out, aliases, or native `subagents_run`; native subagents are forbidden for orchestrated delegation.
-- Give every direct agent call a `pi-ext-roles` `role`, stable `label`, explicit `skills` selectors, the three required MCP extensions, a bounded `timeoutMs`, and a named isolated `worktree` for writes. `builtin:codemode` is the stable bridge to MCP tools; `builtin:tool-search` and `builtin:mcp` must remain available in every workflow role session.
+- Give every direct agent call a `pi-ext-roles` `role`, stable `label`, explicit `skills` selectors, the three required MCP extensions, no preset timeout (`timeoutMs` omitted), and a named isolated `worktree` for writes. `builtin:codemode` is the stable bridge to MCP tools; `builtin:tool-search` and `builtin:mcp` must remain available in every workflow role session.
 - Verify each requested skill, role, and extension in the live capability report first; an unavailable required capability is `BLOCKED`, not silently omitted. For Anthropic Small Business routes, also verify the official 44-skill inventory and the Pi adapter with `node scripts/check-anthropic-small-business.mjs --json` before dispatch. Hosts without PiWorkflow use only the documented single-session/direct-worktree fallback and report it as `NOT APPLICABLE`.
-- The `parallel` object order is the dispatch order. With fully inspectable Herdr transport enabled, `@piewf/herdr` launches each workflow agent in a visible workspace/tab and pane while preserving the workflow session and worktree context. One named workflow run remains inspectable in the workflow tree; do not shell out to Herdr or manually duplicate panes.
-- The trusted project settings written by repository initialization set `extensionSettings.herdr.enableFullyInspectableMode` to `true`. This is the supported `pi-extensible-workflows` transport for visible workflow panes; this repository must not shell out to `pi` or reimplement Herdr pane creation.
+- The `parallel` object order is the dispatch order. The default Herdr transport splits `herdr pane split <caller-pane> --direction right|down --no-focus`, then runs the agent in `herdr pane run <new-pane>` with a cd-prefixed command. The returned `.result.pane.pane_id` identifies the sibling pane, which keeps the caller's `tab_id`; nested agents split their own pane. One named workflow run therefore owns one pane tree in one tab, and pane zoom is `herdr pane zoom --on|--off` on the focused pane.
+- The trusted project settings written by repository initialization set `extensionSettings.herdr.enableFullyInspectableMode` to `false`. This is the supported `pi-extensible-workflows` transport; a new workspace, tab, or cwd is created only when the user explicitly requests that topology or location. This repository must not shell out to `pi` or reimplement Herdr pane creation.
 - If Pi is not running inside Herdr, or PiWorkflow/@piewf/herdr is unavailable, use the documented single-session or direct-worktree fallback and report `NOT APPLICABLE`/`BLOCKED`. Never claim panes, tabs, parallel sessions, or skill execution that did not occur.
 - Route worker reports/questions through the mailbox first. Use `ORCH_MASTER` only as a distinct Herdr agent name for a best-effort wake-up; never pass the current Pi session id or the worker's own identity. If peer discovery is empty or ambiguous, skip the wake-up and let the master consume `orch_status`/`orch_reply` state.
 

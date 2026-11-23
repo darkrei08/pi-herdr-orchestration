@@ -7,8 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-22
+
+### Added
+- **Zero-Dependency Linter (`scripts/lint.mjs`)**: Added `npm run lint` and `npm run lint:json` with syntax checks and source rules for whitespace, line endings, duplicate lines, multiple statements, work markers and loose equality. CI now runs the linter on every validation matrix row.
+- **Linter Tests (`scripts/lint.test.mjs`)**: Added focused tests for clean sources, every rule, file-level suppression and finding locations.
+
+### Fixed
+- **Statement Layout (`scripts/flow-glossary.mjs`, `skills/pi-herdr-orchestrator/scripts/mailbox.mjs`)**: Split two multiple-statement lines without changing behavior.
+
+## [1.4.0] - 2026-11-22
+
+### Added
+- **Context Window Policy (`config/context-window.json`, `scripts/check-context-window.mjs`)**: Enforced a 300000-token ceiling with a 276000-token compaction trigger for the orchestrator and workflow children, mirrored into dotenv and PiWorkflow role policy.
+- **Worktree Factory (`scripts/worktree-factory.mjs`)**: Added deterministic creation and audit commands for isolated worktrees derived from `origin/main`, plus cleanup rules and evidence.
+- **Workflow Context Directive (`extensions/workflow-autostart.mjs`)**: Appended pi-vcc compaction, vcc_recall, Engram, codemode, and context-ceiling guidance to parent and child prompts.
+- **Extension Startup Integrity (`model-preflight.mjs`)**: Warns at `session_start` on missing local extensions and unresolved critical modules without blocking routing.
+
 ### Changed
 - **Herdr Workflow Topology:** Documented the default current-tab sibling-pane tree, nested pane ownership, focused-pane zoom control, and explicit-only workspace, tab, or cwd changes; isolated writer worktrees remain unchanged.
+
+### Fixed
+- **TypeBox Peer Fallback (`extensions/workflow-autostart.mjs`)**: Registry resolution now falls back to the local PiWorkflow fork when the npm registry cannot import its `typebox` peer, so `agentPreparationHooks` still register.
+
+## [1.3.1] - 2026-11-22
+
+### Fixed
+- **Review Evidence Contract (`references/state-protocol.md`)**: Documented the digest formula actually used by the mailbox and added a guard test so the published package cannot ship the stale `.gga` description.
+- **Portable Provider Binding (`scripts/mailbox.mjs`)**: Config digests now bind committed `AGENTS.md` plus repository-tracked `skills/pi-herdr-orchestrator/reviewer-profile.gga`, restoring provider-configuration binding without a machine-local `.gga` dependency.
+- **Evidence Verification Call Sites (`scripts/mailbox.mjs`)**: Terminal report and replay paths now share `verifyBindingChain`, which performs shape, stored-evidence, and real provider checks instead of trusting shape-only validation.
+- **Stale Lock Reclaim (`scripts/lock.mjs`)**: Re-reads and compares owner identity before removing a stale lock, closing a TOCTOU that could delete a freshly published owner.
 
 ## [1.3.0] - 2026-11-22
 

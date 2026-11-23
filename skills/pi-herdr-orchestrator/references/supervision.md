@@ -27,7 +27,7 @@ No matching live agent keeps the existing absent/`GONE` handling.
 
 ## Workflow timeout and MCP evidence
 
-Every workflow-owned role session uses a finite `timeoutMs` and reports timeout/failure evidence instead of silently retrying or switching delegation mechanisms. A timeout is a failed attempt, not proof that PiWorkflow is unavailable. Before dispatch and during smoke verification, run the read-only registry checker:
+Do not set a preset `timeoutMs` on workflow-owned role sessions: omit `timeoutMs` and use no budget; launch the named workflow with `foreground: true` and let foreground delivery detach if the parent turn ends. If an explicit timeout is supplied by an external caller and fails, report it as a failed attempt, not proof that PiWorkflow is unavailable. Before dispatch and during smoke verification, run the read-only registry checker:
 
 ```sh
 node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000

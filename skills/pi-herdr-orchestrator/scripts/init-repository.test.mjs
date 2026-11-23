@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { test } from "node:test";
 
 const root = join(import.meta.dirname, "../../..");
 const script = join(root, "skills/pi-herdr-orchestrator/scripts/init-repository.mjs");
+const shimSkip = process.platform === "win32" ? "Windows cannot spawn an extensionless /bin/sh PATH shim" : false;
 
 function setup() {
   const dir = mkdtempSync(join(tmpdir(), "orch-init-"));
@@ -42,10 +43,16 @@ function runInit({ dir, binDir, logPath, sqzLogPath }, extraArgs = [], options =
   if (options.codegraph) args.push("--codegraph");
   if (options.sqz) args.push("--sqz");
   args.push(...extraArgs);
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.toLowerCase() === "path") delete env[key];
+  }
+  env.PATH = process.platform === "win32"
+    ? [binDir, process.env.Path ?? process.env.PATH].filter(Boolean).join(delimiter)
+    : `${binDir}:/usr/bin:/bin`;
   return spawnSync(process.execPath, args, {
     env: {
-      ...process.env,
-      PATH: `${binDir}:/usr/bin:/bin`,
+      ...env,
       CODEGRAPH_LOG: logPath,
       SQZ_LOG: sqzLogPath,
     },
@@ -65,7 +72,7 @@ function invocations(logPath) {
   }
 }
 
-test("CodeGraph indexes a worktree only when --codegraph is requested", () => {
+test("CodeGraph indexes a worktree only when --codegraph is requested", { skip: shimSkip }, () => {
   const fixture = setup();
   try {
     installFakeCodegraph(fixture.binDir);
@@ -151,7 +158,7 @@ test("sqz skips an existing Claude hook even when --sqz is requested", () => {
   }
 });
 
-test("sqz receives the constrained Claude hook arguments when --sqz is requested", () => {
+test("sqz receives the constrained Claude hook arguments when --sqz is requested", { skip: shimSkip }, () => {
   const fixture = setup();
   try {
     installFakeSqz(fixture.binDir);
@@ -163,10 +170,10 @@ test("sqz receives the constrained Claude hook arguments when --sqz is requested
   }
 });
 
-test("PiWorkflow preserves formatted settings when fully inspectable transport is already configured", () => {
+test("PiWorkflow preserves formatted settings when current-tab transport is already configured", () => {
   const fixture = setup();
   const settingsPath = join(fixture.dir, ".pi", "pi-extensible-workflows", "settings.json");
-  const settings = `{\n  "unrelated": { "keep": true },\n  "extensionSettings": {\n    "other": { "value": 7 },\n    "herdr": { "enableFullyInspectableMode": true, "local": "preserve" }\n  }\n}\n`;
+  const settings = `{\n  "unrelated": { "keep": true },\n  "extensionSettings": {\n    "other": { "value": 7 },\n    "herdr": { "enableFullyInspectableMode": false, "local": "preserve" }\n  }\n}\n`;
   try {
     mkdirSync(join(fixture.dir, ".pi", "pi-extensible-workflows"), { recursive: true });
     writeFileSync(settingsPath, settings);
@@ -174,22 +181,7 @@ test("PiWorkflow preserves formatted settings when fully inspectable transport i
     assert.equal(result.status, 0, result.stderr);
     assert.equal(readFileSync(settingsPath, "utf8"), settings);
     assert.doesNotMatch(result.stdout, /WROTE .*settings\.json/);
-    assert.match(result.stdout, /CONFIGURED\s+pi-workflow-herdr.*fully inspectable/);
-  } finally {
-    cleanup(fixture.dir);
-  }
-});
-
-test("PiWorkflow upgrades legacy non-inspectable settings", () => {
-  const fixture = setup();
-  const settingsPath = join(fixture.dir, ".pi", "pi-extensible-workflows", "settings.json");
-  try {
-    mkdirSync(join(fixture.dir, ".pi", "pi-extensible-workflows"), { recursive: true });
-    writeFileSync(settingsPath, JSON.stringify({ extensionSettings: { herdr: { enableFullyInspectableMode: false } } }));
-    const result = runInit(fixture);
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(JSON.parse(readFileSync(settingsPath, "utf8")).extensionSettings.herdr.enableFullyInspectableMode, true);
-    assert.match(result.stdout, /WROTE .*settings\.json/);
+    assert.match(result.stdout, /CONFIGURED\s+pi-workflow-herdr.*current-tab sibling-pane/);
   } finally {
     cleanup(fixture.dir);
   }

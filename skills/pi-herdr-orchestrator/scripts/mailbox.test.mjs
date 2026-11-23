@@ -40,15 +40,20 @@ const sessionPath = "/root/.pi/agent/sessions/x--/2026-10-31T15-47-02-621Z_01a19
 const recorded = { pane: "w7D:p1", session: "01a192a4-975c-7524-b395-6fc6e737f235" };
 const liveAgent = (agent_status, pane_id, session) => ({ agent_status, pane_id, agent_session: { value: session } });
 const candidateAtHead = () => spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).stdout.trim();
-const candidateReview = (task, candidate, version = "2.10.1") => {
-  const parents = spawnSync("git", ["rev-list", "--parents", "-n", "1", candidate], { encoding: "utf8" });
+const configDigest = (rules, profile, profilePath = "skills/pi-herdr-orchestrator/reviewer-profile.gga") => createHash("sha256")
+  .update("AGENTS.md\\0").update(rules)
+  .update(`${profilePath}\\0`).update(profile)
+  .digest("hex");
+const candidateReview = (task, candidate, version = "2.10.1", cwd) => {
+  const git = (args, encoding = "utf8") => spawnSync("git", args, { cwd, encoding });
+  const parents = git(["rev-list", "--parents", "-n", "1", candidate]);
   const parentIds = parents.status === 0 ? parents.stdout.trim().split(/\s+/).slice(1) : [];
   const changedCommands = parentIds.length
     ? parentIds.map((parent) => ["diff", "--name-only", "-z", parent, candidate])
     : [["diff-tree", "--root", "--no-commit-id", "--name-only", "-z", "-r", candidate]];
   const changedPaths = new Set();
   for (const args of changedCommands) {
-    const changed = spawnSync("git", args, { encoding: "utf8" });
+    const changed = git(args);
     if (changed.status === 0) {
       for (const path of changed.stdout.split("\0").filter(Boolean)) {
         changedPaths.add(path);
@@ -56,15 +61,25 @@ const candidateReview = (task, candidate, version = "2.10.1") => {
     }
   }
   const file_hashes = {};
+  const deleted_files = [];
   for (const path of changedPaths) {
-    const file = spawnSync("git", ["show", `${candidate}:${path}`], { encoding: null }).stdout;
-    file_hashes[path] = createHash("sha256").update(file).digest("hex");
+    const present = git(["cat-file", "-e", `${candidate}:${path}`]);
+    if (present.status === 0) {
+      const file = git(["show", `${candidate}:${path}`], null).stdout;
+      file_hashes[path] = createHash("sha256").update(file).digest("hex");
+      continue;
+    }
+    const deletion = parentIds
+      .map((parentId) => git(["diff", "--binary", parentId, candidate, "--", path], null))
+      .find((result) => result.status === 0 && result.stdout?.length > 0);
+    if (!deletion) throw new Error(`cannot describe deletion of ${path}`);
+    deleted_files.push({ path, diff_hash: createHash("sha256").update(deletion.stdout).digest("hex") });
   }
-  const rules = spawnSync("git", ["show", `${candidate}:AGENTS.md`], { encoding: null }).stdout;
-  const config_digest = createHash("sha256")
-    .update("AGENTS.md\\0").update(rules)
-    .digest("hex");
-  return { task, run: "run-test", candidate, provider: "gga", status: "PASS", version, config_digest, output_digest: "0".repeat(64), file_hashes, deleted_files: [] };
+  const rules = git(["show", `${candidate}:AGENTS.md`], null).stdout;
+  const profilePath = "skills/pi-herdr-orchestrator/reviewer-profile.gga";
+  const profile = git(["show", `${candidate}:${profilePath}`], null).stdout;
+  const config_digest = configDigest(rules, profile, profilePath);
+  return { task, run: "run-test", candidate, provider: "gga", status: "PASS", version, config_digest, output_digest: "0".repeat(64), file_hashes, deleted_files };
 };
 const memoryEvidence = (dir, task, candidate, observation = "obs-test") => {
   const memory = { task, run: "run-test", candidate, provider: "engram", status: "PERSISTED", ref: `engram:${observation}` };
@@ -407,6 +422,13 @@ test("report retries the same blocked terminal message when provider verificatio
     let available = false;
     const review = candidateReview("I#109", candidate, "4.6.0");
     const reviewRef = storeEvidence(dir, JSON.stringify(review));
+    const binding = {
+      task: "I#109",
+      run: "run-test",
+      candidate,
+      review: { ...review, ref: reviewRef },
+      memory: memoryEvidence(dir, "I#109", candidate, "obs-109")
+    };
     const result = report({
       dir,
       run: "run-test",
@@ -416,13 +438,7 @@ test("report retries the same blocked terminal message when provider verificatio
       summary: "Provider returned no result",
       checks: ["unit=PASS"],
       required_checks: ["unit"],
-      evidence_binding: {
-        task: "I#109",
-        run: "run-test",
-        candidate,
-        review: { ...review, ref: reviewRef },
-        memory: memoryEvidence(dir, "I#109", candidate, "obs-109")
-      },
+      evidence_binding: binding,
       providerVerifier: () => available ? ({ status: "verified" }) : undefined,
       silent: true,
       nonBlocking: true
@@ -441,13 +457,7 @@ test("report retries the same blocked terminal message when provider verificatio
       summary: "Provider returned no result",
       checks: ["unit=PASS"],
       required_checks: ["unit"],
-      evidence_binding: {
-        task: "I#109",
-        run: "run-test",
-        candidate,
-        review: { ...review, ref: reviewRef },
-        memory: memoryEvidence(dir, "I#109", candidate, "obs-109")
-      },
+      evidence_binding: binding,
       providerVerifier: () => ({ status: "verified" }),
       silent: true,
       nonBlocking: true
@@ -471,6 +481,8 @@ test("report verifies merge candidates with complete changed-file coverage", () 
     runGit(["config", "user.name", "Test"]);
     writeFileSync(join(root, "AGENTS.md"), "# Test rules\\n");
     writeFileSync(join(root, ".gga"), "provider: test\\n");
+    mkdirSync(join(root, "skills", "pi-herdr-orchestrator"), { recursive: true });
+    writeFileSync(join(root, "skills", "pi-herdr-orchestrator", "reviewer-profile.gga"), "PROVIDER=\"kilo:reviewer-model\"\\n");
     writeFileSync(join(root, "base.txt"), "base\\n");
     runGit(["add", "."]);
     runGit(["commit", "-m", "base"]);
@@ -487,16 +499,7 @@ test("report verifies merge candidates with complete changed-file coverage", () 
     const parentResult = runGit(["rev-list", "--parents", "-n", "1", candidate]);
     const parents = parentResult.stdout.trim().split(/\s+/).slice(1);
     assert.equal(parents.length, 2);
-    const changed = parents.flatMap((parent) => runGit(["diff", "--name-only", "-z", parent, candidate]).stdout.split("\0").filter(Boolean));
-    const deleted_files = [];
-    const file_hashes = {};
-    for (const path of [...new Set(changed)]) {
-      file_hashes[path] = createHash("sha256").update(runGit(["show", `${candidate}:${path}`]).stdout).digest("hex");
-    }
-    const config_digest = createHash("sha256")
-      .update("AGENTS.md\\0").update(readFileSync(join(root, "AGENTS.md")))
-      .digest("hex");
-    const review = { task: "I#merge", run: "run-test", candidate, provider: "gga", status: "PASS", version: "2.10.1", config_digest, output_digest: "0".repeat(64), file_hashes, deleted_files };
+    const review = candidateReview("I#merge", candidate, "2.10.1", root);
     const reviewRef = storeEvidence(evidenceDir, JSON.stringify(review));
     process.chdir(root);
     const result = report({
@@ -1086,7 +1089,7 @@ test("reply rejects an out-of-order answer for a replaced question", () => {
   }
 });
 
-test("notifyAgent sends the exact argv without creating a prompt file and rejects self-targets", () => {
+test("notifyAgent sends the exact argv without creating a prompt file and rejects self-targets", { skip: process.platform === "win32" ? "a .cmd shim cannot spawn with exact argv on Windows" : false }, () => {
   const root = mkdtempSync(join(tmpdir(), "orch-notify-"));
   const bin = join(root, "bin");
   const capture = join(root, "argv.json");
@@ -1097,13 +1100,9 @@ test("notifyAgent sends the exact argv without creating a prompt file and reject
   writeFileSync(script, `import { writeFileSync } from "node:fs";
 writeFileSync(process.env.ORCH_NOTIFY_CAPTURE, JSON.stringify(process.argv.slice(2)));
 `);
-  if (process.platform === "win32") {
-    writeFileSync(join(bin, "herdr.cmd"), `@node "%~dp0herdr.mjs" %*\r\n`);
-  } else {
-    const herdr = join(bin, "herdr");
-    writeFileSync(herdr, `#!/usr/bin/env node\nimport "./herdr.mjs";\n`);
-    chmodSync(herdr, 0o755);
-  }
+  const herdr = join(bin, "herdr");
+  writeFileSync(herdr, `#!/usr/bin/env node\nimport "./herdr.mjs";\n`);
+  chmodSync(herdr, 0o755);
   process.env.PATH = `${bin}${process.platform === "win32" ? ";" : ":"}${dirname(process.execPath)}`;
   process.env.ORCH_NOTIFY_CAPTURE = capture;
   try {
@@ -1180,7 +1179,14 @@ process.stdout.write(readFileSync(process.env.HERDR_FIXTURE));
   }
 }
 
-test("extension orch_status preserves liveness state and reason in JSON", async () => {
+test("extension orch_status reports NO_HERDR when herdr is unavailable", async () => {
+  const missingHerdr = await runExtensionStatus({ missingHerdr: true });
+  assert.equal(missingHerdr.flag, "NO_HERDR");
+  assert.equal(missingHerdr.liveness, "unverified");
+  assert.equal(missingHerdr.reason, "Herdr liveness unavailable; mailbox and Git evidence decide");
+});
+
+test("extension orch_status preserves liveness state and reason in JSON", { skip: process.platform === "win32" ? "an extensionless /usr/bin/env node shim cannot spawn on Windows" : false }, async () => {
   const matching = await runExtensionStatus({
     identity: recorded,
     agent: { agent_status: "working", pane_id: "w7D:p1", agent_session: { value: sessionPath } },
@@ -1212,10 +1218,6 @@ test("extension orch_status preserves liveness state and reason in JSON", async 
   assert.equal(legacy.liveness, "unverified");
   assert.match(legacy.reason, /legacy record/);
 
-  const missingHerdr = await runExtensionStatus({ missingHerdr: true });
-  assert.equal(missingHerdr.flag, "NO_HERDR");
-  assert.equal(missingHerdr.liveness, "unverified");
-  assert.equal(missingHerdr.reason, "Herdr liveness unavailable; mailbox and Git evidence decide");
 });
 
 test("extension tools integrate with mailbox and support evidence reading", async () => {
