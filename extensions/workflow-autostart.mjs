@@ -28,7 +28,13 @@ export default async function registerWorkflowAutostart(pi, options = {}) {
   const importModule = options.importModule ?? ((url) => import(url));
   let registry;
   for (const candidate of candidates) try { registry = await importModule(candidate); break; } catch (error) { warn(`registry import failed for ${candidate}: ${error.message}`); }
-  if (!registry) { warn("registry unavailable; auto-start hooks were not registered"); return; }
-  if (!registry.registerWorkflowExtension) { warn("registry does not expose registerWorkflowExtension"); return; }
+  if (!registry) {
+    warn("registry unavailable; auto-start hooks were not registered");
+    return;
+  }
+  if (!registry.registerWorkflowExtension) {
+    warn("registry does not expose registerWorkflowExtension");
+    return;
+  }
   registry.registerWorkflowExtension({ version: JSON.parse((options.readPackage ?? (() => readFileSync(new URL("../package.json", import.meta.url), "utf8")))()).version, headline: "Pi Herdr workflow auto-start", source: import.meta.url, agentPreparationHooks: { herdrWorkflowLoadout: { priority: Number.MAX_SAFE_INTEGER - 1, prepare: (configuration) => { configuration.systemPromptAppend = withDirective(configuration.systemPromptAppend ?? ""); } } } });
 }
