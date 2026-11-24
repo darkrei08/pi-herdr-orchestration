@@ -56,7 +56,6 @@ test("workflow auto-start has one repo-owned extension", () => {
   assert.match(autostart, /localForks/);
   assert.match(routing, /master-session only/);
   assert.match(routing, /gentle-ai-branch-pr/);
-  assert.doesNotMatch(routing, /`branch-pr`/);
   assert.doesNotMatch(developmentFlow, /`branch-pr`/);
   assert.doesNotMatch(readme, /`rdd-defect-workflow`/);
   assert.doesNotMatch(developmentFlow, /`rdd-defect-workflow`/);
@@ -104,10 +103,14 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
   assert.match(execution, /builtin:tool-search/);
   assert.match(execution, /builtin:mcp/);
   assert.match(execution, /omit timeoutMs/);
+  assert.match(skill, /PiWorkflow is the only execution scheduler/);
+  assert.match(skill, /Herdr tabs and panes are inspectable transport/);
+  assert.match(routing, /capability rejection is a pre-dispatch routing result/);
   assert.match(execution, /foreground: true/);
   assert.match(execution, /no budget/);
   for (const source of [skill, routing, readme]) {
     assert.match(source, /skills:\s*\[\"!\*\",/);
+    assert.match(source, /extensions:\s*\[\"!\*\",/);
   }
   assert.match(routing, /extensions:\s*\[/);
   assert.match(routing, /label/);

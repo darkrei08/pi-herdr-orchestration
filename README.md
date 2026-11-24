@@ -247,6 +247,8 @@ The master categorizes completed work based on empirical evidence:
 
 Before merging individual green branches into `main`, the master executes an **Integration Pass** on the combined branch. Independent tasks that pass in isolation can still conflict when combined; the integration pass prevents broken main branches. A successful pass does not authorize delivery: commit, merge, and publish still require explicit operator authorization.
 
+When a change reaches beta, staging, production, or a live runtime claim, the master follows the ordered [production lifecycle](skills/pi-herdr-orchestrator/references/production-lifecycle.md): immutable artifact promotion with no rebuild between environments, a fresh temporary PiWorkflow/Herdr runtime smoke that observes the exact candidate, explicit approval gates, post-deploy health evidence, and a rollback decision. Documentation-only changes record the inapplicable stages explicitly.
+
 ---
 
 ## Skill Ecosystem Integrations
@@ -254,10 +256,10 @@ Before merging individual green branches into `main`, the master executes an **I
 Pi Herdr Orchestration dynamically bridges and routes between major AI coding agent skill ecosystems:
 
 ### PiWorkflow (`pi-extensible-workflows` v6.3.0)
-- **Role:** Execution engine substrate.
+- **Role:** Execution engine substrate. PiWorkflow is the single child scheduler: it owns workflow lifetime, waits for independent child results, and returns the normalized result to the Master Chief. Pi Herdr Orchestration owns scope, routing, supervision, integration, and cleanup; Herdr tabs and panes are inspectable transport and presentation only, never a second scheduler.
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
-  - **Explicit child loadouts:** Every routed child receives a named `@piewf/pi-ext-roles` `role`, stable `label`, verified `skills` selectors, `extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, no preset `timeoutMs` or budget, and an isolated `worktree` when it writes. `builtin:codemode` is the stable bridge to MCP tools.
+  - **Explicit child loadouts:** Every routed child receives a named `@piewf/pi-ext-roles` `role`, stable `label`, verified `skills` selectors reset with `!*`, `extensions` reset with `!*` and then set to `["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, no preset `timeoutMs` or budget, and an isolated `worktree` when it writes. `builtin:codemode` is the stable bridge to MCP tools. Resetting inherited selectors prevents an unrelated unavailable role default such as `design-taste` from blocking a non-visual task before dispatch.
   - **Pane-tree Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents split sibling panes in the caller's current tab; nested agents split their parent pane. A new workspace, tab, or cwd is created only on explicit request, while each write-capable agent keeps its isolated worktree.
   - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
   - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
@@ -272,14 +274,14 @@ const reports = await parallel("repository-audit", {
     role: "scout",
     label: "[CHIEF/SCOUT] Discovery",
     skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "diagnosing-bugs"],
-    extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
+    extensions: ["!*", "builtin:codemode", "builtin:tool-search", "builtin:mcp"],
     worktree: "scout",
   }),
   tests: () => agent("Define and run focused checks.", {
     role: "tests-expert",
     label: "[CHIEF/QUALITY] Tests",
     skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "tdd"],
-    extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
+    extensions: ["!*", "builtin:codemode", "builtin:tool-search", "builtin:mcp"],
     worktree: "tests",
   }),
 });
@@ -358,6 +360,7 @@ The orchestrator dynamically routes tasks to the minimal sufficient skill set ba
 | **Defined feature implementation** | Matt Pocock `implement` (`tdd` $\rightarrow$ review $\rightarrow$ operator-authorized commit); EE `sdd` + `tdd` |
 | **Refactoring** | Behavior-preservation tests first (`tdd`); Matt Pocock `codebase-design` |
 | **Infrastructure / Containers / CI** | Engineering Excellence `docker`, `ci`, `production-readiness`; `container-test-matrix` |
+| **Production delivery or live runtime verification** | Pi Herdr Orchestration `production-lifecycle`; Engineering Excellence `production-readiness`, `ci-cd-and-publishing` |
 | **Security or Performance Audit** | Engineering Excellence `security`, `performance` |
 | **Candidate Code Review** | Matt Pocock `code-review`; Gentle AI `judgment-day` (dual review); Guardian Angel before `READY` |
 | **Commit Creation & Pull Request** | Gentle AI `gentle-ai-work-unit-commits` or `work-unit-commits`, `gentle-ai-chained-pr` or `chained-pr` (>400 lines), `gentle-ai-branch-pr`; Matt Pocock `pr` |

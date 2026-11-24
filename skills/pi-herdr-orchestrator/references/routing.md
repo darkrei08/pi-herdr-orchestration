@@ -11,7 +11,7 @@ agent(taskPrompt, {
   role: "reviewer",
   label: "[CHIEF/QUALITY] Verification",
   skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "tdd"],
-  extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
+  extensions: ["!*", "builtin:codemode", "builtin:tool-search", "builtin:mcp"],
   worktree: "quality",
 });
 ```
@@ -20,9 +20,10 @@ agent(taskPrompt, {
 - `builtin:codemode` is the stable bridge to MCP tools. `builtin:tool-search` and `builtin:mcp` are required alongside it for every workflow-owned role session, even when the role file's own selectors are narrower. Omit `timeoutMs` entirely; in Vekexasia's runner omitted or null means no timer is armed. Launch the named workflow with `foreground: true` and no budget; a foreground run can detach and deliver later.
 - Default child loadout is `skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence"]` plus one installed task skill (`tdd`, `code-review`, `diagnosing-bugs`, `pr`, `container-test-matrix`, `work-unit-commits`, `chained-pr`, `judgment-day`, `gentle-ai-branch-pr`). `issue-ops` is root-only. Matt `wayfinder`, `to-spec`, `to-tickets`, `handoff`, `retro`, `grilling` and `grill-with-docs` are master-session only; most carry `disable-model-invocation: true`, so a child must be told to run `/skill:<name>` if it genuinely needs one.
 - Use `parallel("<operation>", { ... })` for independent agents and `pipeline("<operation>", items, stages)` for repeated ordered stages. The object insertion order is the intended launch order; default Herdr transport creates sibling panes in the caller's current tab, with nested agents splitting their parent pane. Labels remain semantic presentation only, and a new workspace, tab, or cwd requires an explicit user request.
-- Native `subagents_run` is forbidden for orchestration. A host without PiWorkflow uses the documented direct fallback only when PiWorkflow is genuinely unavailable; do not silently downgrade an available workflow runtime.
+- Native `subagents_run` is forbidden for orchestration. A host without PiWorkflow uses the documented direct fallback only when PiWorkflow is genuinely unavailable; do not silently downgrade an available workflow runtime. A capability rejection is a pre-dispatch routing result, not a child timeout: record `BLOCKED`, correct the loadout or surface the missing capability, and do not create duplicate Herdr panes.
 - The common Engineering Excellence loadout is `skills: ["!*", "engineering-excellence"]`; add `tdd`, `code-review`, `testing`, `security`, `ci`, or `platform-testing` only when the capability report confirms those skill files exist and the task needs them. Add `gentle-ai`, `work-unit-commits`, or `judgment-day` only for their applicable lifecycle responsibilities.
 - A missing requested skill or extension is a routing failure. Record `BLOCKED` with the missing selector and do not silently launch a child with a weaker contract. A host without PiWorkflow or Herdr uses the documented direct-session fallback and reports `NOT APPLICABLE` for pane transport.
+- The Master Chief waits on the named workflow result, not on an arbitrary terminal pane. The worker reports through the mailbox/result envelope; Herdr liveness is supervision evidence only. Close a child only after its result is persisted, reconciled against Git, and the Master Chief records the decision.
 
 ## Ecosystems
 
