@@ -34,6 +34,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Dependency Bootstrap (System Runtimes & Skill Suites)](#dependency-bootstrap-system-runtimes--skill-suites)
   - [Mandatory Per-Repository Initialization](#mandatory-per-repository-initialization)
   - [Environment Verification](#environment-verification)
+  - [Docker Compatibility Matrix](#docker-compatibility-matrix)
   - [Persisted Graph Supervisor](#persisted-graph-supervisor)
   - [Optional Rust Graph Core](#optional-rust-graph-core)
   - [Mailbox & Supervision Commands](#mailbox--supervision-commands)
@@ -460,6 +461,45 @@ node scripts/check.mjs --json
 node scripts/check.mjs --strict
 # or: npm run check:strict
 ```
+
+### Docker Compatibility Matrix
+
+`scripts/docker-matrix.mjs` verifies the cross-platform claims of `fast-anything` v0.8.5 and `optimaizr` v0.14.0 against pinned Linux families. It never pulls images and never treats a missing image or runtime as success.
+
+| # | Row | Image |
+|---|---|---|
+| 1 | `debian-13` | `debian:13` |
+| 2 | `ubuntu-24-04` | `ubuntu:24.04` |
+| 3 | `fedora-42` | `fedora:42` |
+| 4 | `archlinux` | `archlinux:latest` |
+| 5 | `opensuse-tumbleweed` | `opensuse/tumbleweed` |
+| 6 | `alpine-3-22` | `alpine:3.22` |
+| 7 | `node-24` | `node:24-bookworm-slim` |
+
+```bash
+npm run docker:matrix:list   # deterministic row listing, no Docker daemon contact
+npm run docker:matrix        # sequential run, local images only
+```
+
+Every container is started with `--rm --pull=never --network none --cap-drop=ALL --security-opt=no-new-privileges --read-only`, bounded CPU/memory/PIDs, the repository mounted read-only at `/repo`, a writable bind mount at `/state` used as `HOME`, and a `tmpfs` at `/tmp`. Only `HOME=/state` is injected; no secret or host environment variable reaches the container.
+
+Statuses and exit codes:
+
+| Status | Meaning |
+|---|---|
+| `PASS` | Image present, `node scripts/lint.mjs` and `npm test` passed inside the container |
+| `FAIL` | Image present and a repository check failed |
+| `BLOCKED` | Image absent locally (pulls are disabled) or `node`/`npm` unavailable in the row |
+| `NOT RUN` | Docker daemon unavailable, so no row was inspected or executed |
+
+Exit code is the highest observed rank: `0` all `PASS`, `1` any `NOT RUN`, `2` any `BLOCKED`, `3` any `FAIL`.
+
+Evidence requirements for a support claim:
+
+- Paste the full `npm run docker:matrix` output, including the `docker-server=` line, one line per row, and the `summary` line; record the command exit code.
+- A row counts only as `PASS` when its own line says `PASS`. Absent images and missing `node`/`npm` must be reported as `BLOCKED`, and a stopped Docker daemon as `NOT RUN`.
+- `rustc`, `cargo`, `fast-anything` and `optimaizr` are probed in every row and listed in `runtimes=`; a missing binary is a gap, never a pass.
+- A family without a `PASS` line is unverified and must be described as such; macOS and Windows rows are not covered by this matrix.
 
 ### Read-only profiling
 
