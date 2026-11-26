@@ -141,6 +141,23 @@ test("blocks a transition before exceeding the configured budget", () => {
   assert.equal(blocked.transition_count, 1);
 });
 
+test("fails an unreported branch and keeps the failure reason until a retry", () => {
+  const state = createGraphState({
+    runId: "run-fail",
+    nodes: [{ id: "task", type: "task", status: "running" }],
+  });
+  const failed = stepGraphState(state, { type: "fail", nodeId: "task", reason: "FANOUT_RETRY_BOUNDED" });
+  assert.equal(failed.nodes[0].status, "failed");
+  assert.equal(failed.nodes[0].failure_reason, "FANOUT_RETRY_BOUNDED");
+  assert.deepEqual(failed.transitions.at(-1).action, { type: "fail", nodeId: "task", reason: "FANOUT_RETRY_BOUNDED" });
+
+  const retried = stepGraphState(failed, { type: "retry", nodeId: "task" });
+  assert.equal(retried.nodes[0].status, "pending");
+  assert.equal(retried.nodes[0].retry_count, 1);
+  assert.equal(retried.nodes[0].failure_reason, undefined);
+  assert.throws(() => stepGraphState(stepGraphState(state, { type: "complete", nodeId: "task" }), { type: "fail", nodeId: "task" }), /cannot fail/);
+});
+
 test("persists transitions and recovers the same graph after restart", () => {
   const directory = mkdtempSync(join(tmpdir(), "graph-supervisor-"));
   try {

@@ -58,7 +58,7 @@ A model-preflight failure recorded before a restart or after a provider or workf
 
 ### Partial aggregate result
 
-A timed out branch must not suppress a completed sibling. The run result carries every branch that returned with its own `status` and evidence reference, plus each failed branch with its classification and `side_effects`; the aggregate reports `PARTIAL`, never `COMPLETED` and never an empty failure. Completed sibling results stay preserved as mailbox evidence, and integration covers only the completed branches after the master reconciles them against Git.
+A timed out branch must not suppress a completed sibling. The run result carries every branch that returned with its own `status` and evidence reference, plus each failed branch with its classification and `side_effects`; the aggregate reports `PARTIAL`, never `COMPLETED` and never an empty failure, and it reports `BLOCKED` once a branch reaches its retry bound. Completed sibling results stay preserved as mailbox evidence, and integration covers only the completed branches after the master reconciles them against Git.
 
 ### Idempotent recovery
 
@@ -67,7 +67,29 @@ Recovery is keyed by run id plus task id and starts from the persisted checkpoin
 1. Re-dispatch only a branch whose `side_effects` is `NONE`; never replay a completed branch and never re-run a branch whose tools may already have written outside it.
 2. `OBSERVED` or `UNKNOWN` effects block re-dispatch: read the worktree, Git state and the external systems first, then `FORBIDDEN` unless the operator authorizes otherwise.
 3. A retry keeps the same run, task and branch identity, so a duplicate report is ignored by `seq` instead of being applied twice.
-4. The bounded retry rule below still applies: at most 2 retries per branch, then `BLOCKED` with the envelope as evidence.
+4. The bounded retry rule below still applies: per branch at most `budget.maxRetries` retries (default one), then the branch is `failed` in the graph and the run is `BLOCKED` with the envelope as evidence. The supervision loop's separate nudge and restart budget of 2 is unchanged.
+
+### Fan-out resolution helper
+
+`skills/pi-herdr-orchestrator/scripts/fanout-retry.mjs` is the pure, injectable resolver for one fan-out observation. It reads the persisted graph for each branch's `retry_count` and `budget.maxRetries`, validates the envelope fields, and returns one decision per branch plus the graph actions that record it. The mailbox stays the lifecycle and identity source of truth and the graph stays the retry counter, so no second state file is introduced.
+
+| Input | Values |
+| --- | --- |
+| `outcome` | `COMPLETED`, `TIMEOUT`, `FAILED`, `NOT_STARTED` |
+| `side_effects` | `OBSERVED`, `NONE`, `UNKNOWN` (default, never retried) |
+| `cause` | `MODEL`, `CAPABILITY`, `HERDR`, `TIMEOUT`, `UNKNOWN` (default) |
+| `liveness` | mailbox flag observed for the branch, for example `STALE` |
+| `identity` | `pane` and `session` copied from the mailbox record |
+| `result_ref` / `evidence` | `ref:sha256:<hash>` for a completed result or for the failed attempt |
+
+| Decision | Reason code | Graph actions |
+| --- | --- | --- |
+| `ACCEPT` | `FANOUT_COMPLETED` | none; the completed sibling result stays in the aggregate |
+| `RETRY` | `FANOUT_RETRY_BOUNDED` | `fail` then `retry`, so the attempt classification stays in `events.jsonl` and `retry_count` increments |
+| `BLOCK` | `FANOUT_RETRY_EXHAUSTED` | `fail`; the run reports `BLOCKED` with the envelope |
+| `BLOCK` | `FANOUT_SIDE_EFFECTS_UNCERTAIN` | `fail`; `OBSERVED` or `UNKNOWN` effects are never replayed |
+
+A stale branch is a `TIMEOUT` outcome with `liveness: "STALE"` and a `TIMEOUT` cause. The resolver only schedules: apply its actions with `stepGraphState`, persist them with `persistGraphState`, then report `resolution.report.summary` through the mailbox so the dashboard shows the exact reason code, the branch identity and the evidence reference. It never launches an agent, merges or publishes, and no quota failover is implemented or claimed: a provider quota error stays `UNKNOWN` or `MODEL` evidence.
 
 ## Dispatch
 
