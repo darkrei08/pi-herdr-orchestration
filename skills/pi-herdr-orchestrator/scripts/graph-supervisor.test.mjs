@@ -114,12 +114,15 @@ test("advances dependencies, polls waits, and pauses and resumes without mutatin
   assert.equal(waiting.nodes.find((node) => node.id === "b").status, "waiting");
   const polled = stepGraphState(waiting, { type: "poll", nodeId: "b", satisfied: false }, { now: "2026-11-18T12:03:00.000Z" });
   assert.equal(polled.nodes.find((node) => node.id === "b").status, "waiting");
-  const paused = stepGraphState(polled, { type: "pause", reason: "human review" }, { now: "2026-11-18T12:04:00.000Z" });
+  const satisfied = stepGraphState(polled, { type: "poll", nodeId: "b", satisfied: true }, { now: "2026-11-18T12:03:30.000Z" });
+  assert.equal(satisfied.nodes.find((node) => node.id === "b").status, "completed");
+  assert.equal(satisfied.nodes.some((node) => node.type === "agent" || node.type === "run"), false);
+  const paused = stepGraphState(satisfied, { type: "pause", reason: "human review" }, { now: "2026-11-18T12:04:00.000Z" });
   assert.equal(paused.status, "paused");
   const resumed = stepGraphState(paused, { type: "resume" }, { now: "2026-11-18T12:05:00.000Z" });
   assert.equal(resumed.status, "running");
   assert.equal(state.transition_count, 0);
-  assert.equal(resumed.transition_count, 5);
+  assert.equal(resumed.transition_count, 6);
 });
 
 test("blocks a transition before exceeding the configured budget", () => {
@@ -173,4 +176,25 @@ test("projects lifecycle labels without requiring Herdr availability", () => {
     herdr: null,
   }]);
   assert.equal(projectHerdrState(state, [{ name: "worker-one", agent_status: "working" }])[0].herdr.agent_status, "working");
+});
+
+test("keeps persisted graph state when a Herdr pane is lost or unavailable", () => {
+  const directory = mkdtempSync(join(tmpdir(), "graph-supervisor-pane-loss-"));
+  try {
+    const state = createGraphState({
+      runId: "run-pane-loss",
+      nodes: [{ id: "task", type: "task", title: "Build", status: "running", agent: "worker-one" }],
+    });
+    persistGraphState(directory, state);
+    assert.equal(projectHerdrState(state, [{ name: "worker-one" }])[0].herdr.name, "worker-one");
+
+    const lost = projectHerdrState(state, [{ name: "someone-else" }]);
+    assert.equal(lost[0].herdr, null);
+    assert.equal(lost[0].lifecycle, "running");
+    assert.equal(projectHerdrState(state, undefined)[0].herdr, null);
+
+    assert.deepEqual(loadGraphState(directory), state);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
