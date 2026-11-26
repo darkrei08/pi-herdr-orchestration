@@ -72,7 +72,7 @@ Recovery is keyed by run id plus task id and starts from the persisted checkpoin
 ## Dispatch
 
 1. Pick a run id (`ORCH_RUN`, for example `repo-20261009`) and a unique agent name per task matching `[a-z][a-z0-9_-]{0,31}` (`issue84`, `pr127`).
-2. For the default topology, split a sibling pane in the caller's current tab with `herdr pane split <caller-pane> --direction right|down --no-focus`, then run `herdr pane run <new-pane>` with a cd-prefixed command. The split result's `.result.pane.pane_id` is the new pane, which keeps the caller's `tab_id`; nested agents split their own parent pane. Use a separate workspace, tab, or cwd only when the user explicitly requests it. The named workflow run owns the panes it launches; use the agent and pane label from [coordination.md](coordination.md).
+2. With the trusted project setting enabled, the named workflow launches each agent as its own numbered, labeled tab in the workflow workspace, in admission order; each write-capable agent keeps its isolated worktree. Do not shell out to `pi` or create tabs manually. If the runtime reports sibling panes or a local session instead, keep that identity and do not claim ordered tabs; use the agent label from [coordination.md](coordination.md).
 3. Register the task (task id, agent name, pane, worktree, branch) and write the first report: `node mailbox.mjs report --run R --task I#84 --agent issue84 --state ASSIGNED [--pane <pane>] [--session <session>]`.
 4. Send the brief with `herdr agent prompt <name> "<brief>"` without `--wait` for parallel work. Every brief ends with the report-back clause below.
 

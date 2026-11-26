@@ -32,8 +32,8 @@ Every repository managed by Pi Herdr Orchestrator must be initialized using `ini
 - **Guardian Angel Gate:** Generates `.gga` configuration and baseline repository `AGENTS.md` guidelines.
 - **CodeGraph:** Optionally creates a worktree-local `.codegraph` index when explicitly requested.
 - **Token Compression:** Deploys local `sqz` and `rtk` hooks to compress terminal and tool outputs.
-- **Herdr Workspace:** Registers a named Herdr workspace pointing to the repository path for explicit workspace workflows; default workflow runs remain in the caller's current tab.
-- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`, preserving existing settings so workflow agents use sibling panes in the caller's current tab. Nested agents split their parent pane; `herdr pane zoom --on|--off` collapses or expands the focused pane.
+- **Herdr Workspace:** Registers a named Herdr workspace pointing to the repository path and uses it for ordered workflow dispatch when fully inspectable mode is active.
+- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`, preserving existing settings so workflow agents launch as ordered numbered tabs. A runtime that reports sibling panes or local sessions keeps that identity and makes no ordering claim.
 - **Skill Registry:** Renders `.atl/skill-registry.md` to catalog all accessible agent skills.
 
 ## Ownership and managers

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { basename, delimiter, join } from "node:path";
 import { test } from "node:test";
 
 const root = join(import.meta.dirname, "../../..");
@@ -14,9 +14,11 @@ function setup() {
   const binDir = join(dir, "bin");
   const logPath = join(dir, "codegraph.log");
   const sqzLogPath = join(dir, "sqz.log");
+  const herdrLogPath = join(dir, "herdr.log");
+  const herdrListPath = join(dir, "herdr-list.json");
   mkdirSync(join(dir, ".git"), { recursive: true });
   mkdirSync(binDir);
-  return { dir, binDir, logPath, sqzLogPath };
+  return { dir, binDir, logPath, sqzLogPath, herdrLogPath, herdrListPath };
 }
 
 function installFakeCodegraph(binDir) {
@@ -38,7 +40,17 @@ printf '%s\\n' "$*" >> "$SQZ_LOG"
   chmodSync(binary, 0o755);
 }
 
-function runInit({ dir, binDir, logPath, sqzLogPath }, extraArgs = [], options = {}) {
+function installFakeHerdr(binDir) {
+  const binary = join(binDir, "herdr");
+  writeFileSync(binary, `#!/bin/sh
+if [ "$1" = "--version" ]; then exit 0; fi
+printf '%s\\n' "$*" >> "$HERDR_LOG"
+if [ "$1" = "workspace" ] && [ "$2" = "list" ]; then cat "$HERDR_LIST"; fi
+`);
+  chmodSync(binary, 0o755);
+}
+
+function runInit({ dir, binDir, logPath, sqzLogPath, herdrLogPath, herdrListPath }, extraArgs = [], options = {}) {
   const args = [script, "--apply", "--dir", dir];
   if (options.codegraph) args.push("--codegraph");
   if (options.sqz) args.push("--sqz");
@@ -55,6 +67,8 @@ function runInit({ dir, binDir, logPath, sqzLogPath }, extraArgs = [], options =
       ...env,
       CODEGRAPH_LOG: logPath,
       SQZ_LOG: sqzLogPath,
+      HERDR_LOG: herdrLogPath,
+      HERDR_LIST: herdrListPath,
     },
     encoding: "utf8",
   });
@@ -181,7 +195,22 @@ test("sqz receives the constrained Claude hook arguments when --sqz is requested
   }
 });
 
-test("PiWorkflow preserves formatted settings when current-tab transport is already configured", () => {
+test("PiWorkflow writes fully inspectable Herdr mode when no project settings exist", () => {
+  const fixture = setup();
+  const settingsPath = join(fixture.dir, ".pi", "pi-extensible-workflows", "settings.json");
+  try {
+    const result = runInit(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
+    assert.equal(settings.extensionSettings.herdr.enableFullyInspectableMode, true);
+    assert.match(result.stdout, /WROTE .*settings\.json/);
+    assert.match(result.stdout, /PENDING\s+pi-workflow-herdr.*fully inspectable Herdr transport/);
+  } finally {
+    cleanup(fixture.dir);
+  }
+});
+
+test("PiWorkflow upgrades current-tab transport and preserves unrelated settings", () => {
   const fixture = setup();
   const settingsPath = join(fixture.dir, ".pi", "pi-extensible-workflows", "settings.json");
   const settings = `{\n  "unrelated": { "keep": true },\n  "extensionSettings": {\n    "other": { "value": 7 },\n    "herdr": { "enableFullyInspectableMode": false, "local": "preserve" }\n  }\n}\n`;
@@ -190,9 +219,77 @@ test("PiWorkflow preserves formatted settings when current-tab transport is alre
     writeFileSync(settingsPath, settings);
     const result = runInit(fixture);
     assert.equal(result.status, 0, result.stderr);
+    const updated = JSON.parse(readFileSync(settingsPath, "utf8"));
+    assert.equal(updated.extensionSettings.herdr.enableFullyInspectableMode, true);
+    assert.equal(updated.extensionSettings.herdr.local, "preserve");
+    assert.deepEqual(updated.extensionSettings.other, { value: 7 });
+    assert.deepEqual(updated.unrelated, { keep: true });
+    assert.match(result.stdout, /WROTE .*settings\.json/);
+  } finally {
+    cleanup(fixture.dir);
+  }
+});
+
+test("PiWorkflow preserves fully inspectable settings byte for byte", () => {
+  const fixture = setup();
+  const settingsPath = join(fixture.dir, ".pi", "pi-extensible-workflows", "settings.json");
+  const settings = `{\n  "extensionSettings": {\n    "herdr": {\n      "enableFullyInspectableMode": true\n    }\n  },\n  "retention": { "olderThanDays": 14 }\n}\n`;
+  try {
+    mkdirSync(join(fixture.dir, ".pi", "pi-extensible-workflows"), { recursive: true });
+    writeFileSync(settingsPath, settings);
+    const result = runInit(fixture);
+    assert.equal(result.status, 0, result.stderr);
     assert.equal(readFileSync(settingsPath, "utf8"), settings);
     assert.doesNotMatch(result.stdout, /WROTE .*settings\.json/);
-    assert.match(result.stdout, /CONFIGURED\s+pi-workflow-herdr.*current-tab sibling-pane/);
+    assert.match(result.stdout, /CONFIGURED\s+pi-workflow-herdr.*fully inspectable Herdr transport/);
+  } finally {
+    cleanup(fixture.dir);
+  }
+});
+
+test("PiWorkflow reports misconfigured project settings without rewriting them", () => {
+  const fixture = setup();
+  const settingsPath = join(fixture.dir, ".pi", "pi-extensible-workflows", "settings.json");
+  const settings = "{ not json";
+  try {
+    mkdirSync(join(fixture.dir, ".pi", "pi-extensible-workflows"), { recursive: true });
+    writeFileSync(settingsPath, settings);
+    const result = runInit(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /MISCONFIGURED\s+pi-workflow-herdr/);
+    assert.equal(readFileSync(settingsPath, "utf8"), settings);
+  } finally {
+    cleanup(fixture.dir);
+  }
+});
+
+test("Herdr workspace creation is deterministic and precedes workflow dispatch", { skip: shimSkip }, () => {
+  const fixture = setup();
+  try {
+    installFakeHerdr(fixture.binDir);
+    writeFileSync(fixture.herdrListPath, '{"result":{"workspaces":[]}}\n');
+    const result = runInit(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(invocations(fixture.herdrLogPath), [
+      "workspace list",
+      `workspace create --cwd ${fixture.dir} --label ${basename(fixture.dir)} --no-focus`,
+    ]);
+    assert.match(result.stdout, /PENDING\s+herdr.*create Herdr workspace/);
+  } finally {
+    cleanup(fixture.dir);
+  }
+});
+
+test("Herdr workspace registration is skipped when the workspace already exists", { skip: shimSkip }, () => {
+  const fixture = setup();
+  try {
+    installFakeHerdr(fixture.binDir);
+    const existing = { result: { workspaces: [{ label: basename(fixture.dir), workspace_id: "ws_1" }] } };
+    writeFileSync(fixture.herdrListPath, `${JSON.stringify(existing)}\n`);
+    const result = runInit(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(invocations(fixture.herdrLogPath), ["workspace list"]);
+    assert.match(result.stdout, /CONFIGURED\s+herdr/);
   } finally {
     cleanup(fixture.dir);
   }

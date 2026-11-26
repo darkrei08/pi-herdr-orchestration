@@ -7,10 +7,47 @@ import { inspectRegistry } from "./check-mcp.mjs";
 const root = join(import.meta.dirname, "../../..");
 const read = (path) => readFileSync(join(root, path), "utf8");
 
-test("trusted project settings select the pane topology for Herdr workflow agents", () => {
+test("trusted project settings enable fully inspectable ordered Herdr tabs", () => {
   const settings = JSON.parse(read(".pi/pi-extensible-workflows/settings.json"));
-  assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, false);
+  assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, true);
   assert.deepEqual(settings.retention, { olderThanDays: 14, maxTerminalRuns: 100 });
+});
+
+test("workflow dispatch labels are stable, numbered and ascending in dispatch order", () => {
+  const skill = read("skills/pi-herdr-orchestrator/SKILL.md");
+  const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
+  const execution = read("skills/pi-herdr-orchestrator/references/execution.md");
+  const readme = read("README.md");
+
+  for (const source of [skill, routing, readme]) {
+    const labels = [...source.matchAll(/label:\s*"([^"]+)"/g)].map((match) => match[1]);
+    assert.ok(labels.length > 0, "source documents no agent label");
+    for (const label of labels) assert.match(label, /^#\d+ \[[A-Z]/);
+  }
+
+  const numbers = [...skill.matchAll(/label:\s*"#(\d+) /g)].map((match) => Number(match[1]));
+  assert.deepEqual(numbers, numbers.map((_, index) => index + 1));
+  assert.match(skill, /1-based dispatch position/);
+  assert.match(skill, /parallel\("<operation>", \{ \.\.\. \}\)/);
+  assert.match(skill, /pipeline\("<operation>", items, stages\)/);
+  assert.match(execution, /numbered/);
+});
+
+test("dispatch contract documents fallback and failure states for missing runtime capabilities", () => {
+  const skill = read("skills/pi-herdr-orchestrator/SKILL.md");
+  const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
+  const execution = read("skills/pi-herdr-orchestrator/references/execution.md");
+
+  assert.match(skill, /## Dispatch failure states/);
+  assert.match(skill, /Herdr unavailable/);
+  assert.match(skill, /PiWorkflow unavailable/);
+  assert.match(skill, /requested skill unavailable/);
+  assert.match(skill, /`NOT APPLICABLE`/);
+  assert.match(skill, /`BLOCKED`/);
+  assert.match(skill, /enableFullyInspectableMode` to `true`/);
+  assert.match(routing, /Herdr unavailable/);
+  assert.match(routing, /PiWorkflow unavailable/);
+  assert.match(execution, /Herdr unavailable/);
 });
 
 test("workflow auto-start has one repo-owned extension", () => {
@@ -106,8 +143,8 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
 
   assert.match(skill, /named workflow/);
   assert.match(skill, /parallel\(/);
-  assert.match(skill, /herdr pane split/);
-  assert.match(skill, /herdr pane zoom/);
+  assert.match(skill, /numbered/);
+  assert.match(skill, /tab/);
   assert.match(skill, /subagents_run/);
   assert.match(skill, /forbidden/);
   for (const source of [skill, routing, readme]) {
@@ -136,7 +173,7 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
   }
   assert.match(routing, /extensions:\s*\[/);
   assert.match(routing, /label/);
-  assert.match(execution, /pane tree/);
+  assert.match(execution, /numbered/);
   assert.match(execution, /worktree/);
   assert.match(dispatch, /### Directive envelope/);
   assert.match(dispatch, /canonical source remains a validated JSON/);

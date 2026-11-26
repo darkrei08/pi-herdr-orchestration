@@ -48,9 +48,9 @@ Keep a small registry in the master context or an authorized workflow artifact:
 | `[CHIEF/BUILD]` | department chief | implementation queue | control | chief worktree | active |
 | `[I#42]` | implementation | Config loading | `fix/42-config-loading` | `.worktrees/issue-42-config-loading` | working |
 
-Keep pane and agent labels stable and understandable; close a child pane only after its session memory, report and master decision have been recorded. One named workflow run keeps one tab and forms a sibling-pane tree: nested agents split their parent pane. Use `herdr pane zoom --on|--off` on the focused pane to collapse or expand it, and create a new workspace, tab, or cwd only on explicit user request.
+Keep tab and agent labels stable, numbered in dispatch order and understandable; close a child tab only after its session memory, report and master decision have been recorded. One named workflow run owns one Herdr workspace whose tabs are created in admission order, one tab per agent. Create a new workspace or cwd only on explicit user request.
 
-PiWorkflow and `@piewf/herdr` provide the runtime implementation for workflow-owned panes. The default transport splits a sibling pane in the caller's current tab; the new pane keeps the caller's `tab_id`, and the split result exposes `.result.pane.pane_id`. Keep the `parallel` object keys and labels stable for deterministic launch order, but never treat a label or pane position as authority. The trusted project setting is created by `init-repository.mjs`; a manual global setting is not required for initialized repositories.
+PiWorkflow and `@piewf/herdr` provide the runtime implementation for workflow-owned tabs. The trusted project setting created by `init-repository.mjs` enables fully inspectable mode, so each agent gets its own workspace tab in admission order; a runtime that instead reports a sibling pane or local session transport keeps that identity and makes no ordering claim. Keep the `parallel` object keys and labels stable for deterministic launch order, but never treat a label, its number or a tab position as authority. A manual global setting is not required for initialized repositories.
 
 ## Unavailable upstream capabilities
 
