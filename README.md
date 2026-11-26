@@ -35,6 +35,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Dependency Bootstrap (System Runtimes & Skill Suites)](#dependency-bootstrap-system-runtimes--skill-suites)
   - [Mandatory Per-Repository Initialization](#mandatory-per-repository-initialization)
   - [Environment Verification](#environment-verification)
+  - [Local Factory Run](#local-factory-run)
   - [Persisted Graph Supervisor](#persisted-graph-supervisor)
   - [PR-Following Workflow](#pr-following-workflow)
   - [Optional Rust Graph Core](#optional-rust-graph-core)
@@ -491,6 +492,17 @@ node scripts/check.mjs --json
 node scripts/check.mjs --strict
 # or: npm run check:strict
 ```
+
+### Local Factory Run
+
+`npm run factory` executes the repository-owned deterministic gates in one read-only pass and reports each one separately as `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`: capability preflight (`node scripts/check.mjs --strict`), host roster status (`node scripts/agent-roster-diagnostic.mjs`), bounded fan-out and timeout handling (`npm run test:fanout`), the isolated commit gate (`npm run test:fixture`), then `git diff --check`, `npm run lint` and `npm test`.
+
+```bash
+npm run factory
+npm run factory -- --json
+```
+
+Live Herdr pane fan-out and live PiWorkflow agent dispatch are always reported as `NOT RUN`, because the runner starts no session, writes no mailbox record, and creates no worktree or process. Gate order, status meanings, cleanup checks and the report template are in [`docs/local-factory-run.md`](docs/local-factory-run.md).
 
 ### Read-only profiling
 

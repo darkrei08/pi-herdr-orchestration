@@ -16,7 +16,7 @@ Organic-Driven Development (ODD) is the primary development workflow of this orc
 | 4 | **Classify** | Size the task: **Small** (understood, contained risk, resumable from diff) ➔ inline, no feature document or ceremony; **Large** (multi-session, external waits, deliverables separated) ➔ tracked ODD path. |
 | 5 | **Track** | For large work, automatically create `odd/tasks/<feature>.md` and its Engram mirror `odd/<feature>/tasks` before the first write. Sync the visible `todo` list. |
 | 6 | **Implement** | Test-first development by default (RED ➔ GREEN ➔ REFACTOR). Bounded subagents receive tasks by reference (`Spec: odd/tasks/<feature>.md, T#, S#`) and report covered `S#`. Prepare reviewable slices of ≤ ~400 authored lines; commit only when explicitly authorized by the operator. |
-| 7 | **Close** | Verify observable criteria for every `S#` across public interfaces. Report verified outcomes, skipped checks, and next actions. |
+| 7 | **Close** | Verify observable criteria for every `S#` across public interfaces. Report verified outcomes, skipped checks, and next actions. A close proof is `npm run factory`: it runs the deterministic gates and reports each as `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`, with live Herdr and PiWorkflow dispatch always `NOT RUN` unless a session actually ran. |
 
 ## Feature Document Structure (`odd/tasks/<feature>.md`)
 
