@@ -3,5 +3,9 @@
     "herdr": {
       "enableFullyInspectableMode": false
     }
+  },
+  "retention": {
+    "olderThanDays": 14,
+    "maxTerminalRuns": 100
   }
 }

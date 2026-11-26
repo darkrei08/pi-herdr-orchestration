@@ -10,6 +10,7 @@ const read = (path) => readFileSync(join(root, path), "utf8");
 test("trusted project settings select the pane topology for Herdr workflow agents", () => {
   const settings = JSON.parse(read(".pi/pi-extensible-workflows/settings.json"));
   assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, false);
+  assert.deepEqual(settings.retention, { olderThanDays: 14, maxTerminalRuns: 100 });
 });
 
 test("workflow auto-start has one repo-owned extension", () => {
@@ -71,6 +72,9 @@ test("routing names only installed selectors and keeps issue routes viable", () 
   assert.match(routing, /`gentle-ai-issue-creation`/);
   assert.match(routing, /`gentle-ai-rdd-defect-workflow`/);
   assert.match(routing, /`issue-ops` in the root session/);
+  assert.match(routing, /`web_search` is a host tool/);
+  assert.match(routing, /Never synthesize `mcp__web_search`/);
+  assert.match(routing, /explicitly receive the resolved search tool/);
 });
 
 test("dispatch contract names deterministic workflow fan-out and explicit role loadout", () => {

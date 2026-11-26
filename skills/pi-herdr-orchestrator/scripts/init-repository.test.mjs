@@ -123,6 +123,17 @@ test("CodeGraph does not run by default", () => {
   }
 });
 
+test("repository initialization does not install or configure retired semantic tooling", () => {
+  const fixture = setup();
+  try {
+    const result = runInit(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stdout, /Serena|serena/);
+  } finally {
+    cleanup(fixture.dir);
+  }
+});
+
 test("initial repository detection finds a target nested inside a parent repository", () => {
   const fixture = setup();
   const nestedDir = join(fixture.dir, "nested");

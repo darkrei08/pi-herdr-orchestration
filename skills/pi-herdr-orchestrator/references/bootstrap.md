@@ -30,7 +30,7 @@ Every repository managed by Pi Herdr Orchestrator must be initialized using `ini
 - **Gitignore Policies:** Ensures `.worktrees/`, `.codegraph/`, and `.atl/` are excluded from Git.
 - **Engram Memory Identity:** Establishes `.git/engram-project-identity.json` with a dedicated UUID and project name so memories are strictly scoped.
 - **Guardian Angel Gate:** Generates `.gga` configuration and baseline repository `AGENTS.md` guidelines.
-- **Semantic Code Navigation:** Creates `.serena` project configuration for language-server symbol exploration.
+- **CodeGraph:** Optionally creates a worktree-local `.codegraph` index when explicitly requested.
 - **Token Compression:** Deploys local `sqz` and `rtk` hooks to compress terminal and tool outputs.
 - **Herdr Workspace:** Registers a named Herdr workspace pointing to the repository path for explicit workspace workflows; default workflow runs remain in the caller's current tab.
 - **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`, preserving existing settings so workflow agents use sibling panes in the caller's current tab. Nested agents split their parent pane; `herdr pane zoom --on|--off` collapses or expands the focused pane.
@@ -64,7 +64,7 @@ curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/mai
 gentle-ai install --agent pi
 ```
 
-An existing Gentle owner is manager-owned; the bootstrap does not add a duplicate memory/workflow stack. No official compatible Windows installer is documented for this row, so Windows is reported as `BLOCKED`. The Vekexasia dotenv rule remains unchanged: `pi-codex-context` owns compaction and Pi VCC is never installed.
+An existing Gentle owner is manager-owned; the bootstrap does not add a duplicate memory/workflow stack. No official compatible Windows installer is documented for this row, so Windows is reported as `BLOCKED`. After updating `gentle-pi`, restart every Pi session and Herdr pane; a `package-local-binary-missing` warning naming an older Gentle AI version indicates stale in-memory code, not a missing current install. The Vekexasia dotenv rule remains unchanged: `pi-codex-context` owns compaction and Pi VCC is never installed.
 
 ## Guardian Angel and Herdr
 
@@ -96,7 +96,7 @@ Missing `curl`, `sh`, `bash`, `git`, `mktemp` or PowerShell prerequisites are re
 
 ## Official standalone installers
 
-RTK, sqz and Serena remain independently verifiable. Run only missing rows:
+RTK and sqz remain independently verifiable. Run only missing rows:
 
 ```bash
 # POSIX
@@ -104,8 +104,6 @@ curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh
 rtk init --global
 curl -fsSL https://raw.githubusercontent.com/ojuschugh1/sqz/main/install.sh | sh
 sqz init --global
-uv tool install -p 3.13 serena-agent
-serena init
 ```
 
 ```powershell
@@ -114,8 +112,6 @@ winget install rtk-ai.rtk
 rtk init -g
 irm https://raw.githubusercontent.com/ojuschugh1/sqz/main/install.ps1 | iex
 sqz init --global
-uv tool install -p 3.13 serena-agent
-serena init
 ```
 
 On Windows the bootstrap uses PowerShell for the documented pipelines and reports `BLOCKED` when PowerShell or WinGet is unavailable. On POSIX it reports `BLOCKED` when `curl` or `sh` is unavailable. It does not silently substitute another installer.
@@ -129,4 +125,4 @@ node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --json
 node skills/pi-herdr-orchestrator/scripts/check-environment.mjs --strict
 ```
 
-It checks Pi, PiWorkflow, Gentle/Engram, the GitHub CLI, Docker and Docker Compose, the Engineering Excellence, Matt Pocock and Gentle AI skill families, Wizard-AI, TOON/LEA, graphify/graphifyy, LLMLingua, RTK, sqz, Serena, Guardian Angel, Herdr, skill roots, the Vekexasia `pi-codex-context` package path, and the active compaction owner. Missing optional tools select documented fallbacks; overlapping owners are `incompatible`.
+It checks Pi, PiWorkflow, Gentle/Engram, the GitHub CLI, Docker and Docker Compose, the Engineering Excellence, Matt Pocock and Gentle AI skill families, Wizard-AI, TOON/LEA, graphify/graphifyy, LLMLingua, CodeGraph, RTK, sqz, Guardian Angel, Herdr, skill roots, the Vekexasia `pi-codex-context` package path, and the active compaction owner. Missing optional tools select documented fallbacks; overlapping owners are `incompatible`.

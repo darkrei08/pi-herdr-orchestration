@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { inspectLiveAgentCapabilities } from "./capability-preflight.mjs";
+import { assertLiveAgentCapabilities, inspectLiveAgentCapabilities } from "./capability-preflight.mjs";
 
 function context(overrides = {}) {
   return {
@@ -65,4 +65,27 @@ test("blocks a requested role when the pi-ext-roles hook is not live", () => {
 
   assert.deepEqual(report.missing, [{ kind: "role", name: "developer" }]);
   assert.equal(report.live.role.status, "unavailable");
+});
+
+test("fails closed when design-taste is requested but unavailable live", () => {
+  const input = {
+    context: context({ options: { role: "developer" } }),
+    configuration: {
+      skills: ["!*", "design-taste"],
+      extensions: ["!*", "builtin:codemode"],
+    },
+    roleHookAvailable: true,
+  };
+
+  const report = inspectLiveAgentCapabilities(input);
+  assert.deepEqual(report.live.skills, {
+    requested: ["design-taste"],
+    status: "unavailable",
+    missing: ["design-taste"],
+  });
+  assert.deepEqual(report.missing, [{ kind: "skill", name: "design-taste" }]);
+  assert.throws(
+    () => assertLiveAgentCapabilities(input),
+    /Live agent capabilities unavailable before dispatch: skill=design-taste\./,
+  );
 });
