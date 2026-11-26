@@ -29,6 +29,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Guardian Angel (GGA)](#guardian-angel-gga)
   - [Context Reduction & Semantic Navigation Stack](#context-reduction--semantic-navigation-stack)
   - [Dynamic Routing Table](#dynamic-routing-table)
+  - [Model-Fit Evidence Envelope](#model-fit-evidence-envelope)
 - [Installation & Dependency Management](#installation--dependency-management)
   - [Install the Skill via Vercel Skills CLI](#install-the-skill-via-vercel-skills-cli)
   - [Dependency Bootstrap (System Runtimes & Skill Suites)](#dependency-bootstrap-system-runtimes--skill-suites)
@@ -369,6 +370,26 @@ The orchestrator dynamically routes tasks to the minimal sufficient skill set ba
 | **Candidate Code Review** | Matt Pocock `code-review`; Gentle AI `judgment-day` (dual review); Guardian Angel before `READY` |
 | **Commit Creation & Pull Request** | Gentle AI `gentle-ai-work-unit-commits` or `work-unit-commits`, `gentle-ai-chained-pr` or `chained-pr` (>400 lines), `gentle-ai-branch-pr`; Matt Pocock `pr` |
 | **Context Pressure & Session Handoff** | Gentle Engram handoff; Matt Pocock `handoff`; EE `context-budget` |
+
+### Model-Fit Evidence Envelope
+
+The canonical matrix above states configuration, not availability. Model access, entitlement and quota evidence is owned by `pi-model-fit` and reaches the orchestrator only through a versioned, read-only envelope consumed by [`skills/pi-herdr-orchestrator/scripts/model-fit-evidence.mjs`](skills/pi-herdr-orchestrator/scripts/model-fit-evidence.mjs):
+
+```json
+{
+  "schema": "pi-model-fit-evidence/1",
+  "source": "pi-model-fit",
+  "generatedAt": "2026-11-26T11:30:00.000Z",
+  "evidenceRef": "pi-model-fit/reports/2026-11-26.md#role-matrix",
+  "routes": [{ "route": "cliproxyapi/claude-opus-5-5:high", "outcome": "PASS" }]
+}
+```
+
+`readModelFitEvidence(envelope, { now, freshnessMs })` accepts only explicit `PASS`, `UNKNOWN`, `BLOCKED`, and `NOT RUN` outcomes, preserves `evidenceRef`, and fails closed: a malformed, foreign-source, stale (default 24 h), future-dated, or unavailable envelope returns `BLOCKED` or `UNKNOWN` instead of a route decision. Mixed route outcomes collapse to the worst one (`BLOCKED` > `UNKNOWN` > `NOT RUN` > `PASS`), the clock and freshness window are injectable for deterministic tests, and `routing` is always reported as `unchanged`. The reader writes nothing, never infers entitlement, quota or availability from a static matrix, and never invokes SkillOpt.
+
+```bash
+npm run test:model-fit
+```
 
 ---
 

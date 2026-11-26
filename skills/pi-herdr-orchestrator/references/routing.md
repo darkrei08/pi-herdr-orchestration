@@ -84,6 +84,38 @@ When configuring or routing Pi workflow roles (`pi-ext-roles`) with CLIProxyAPI 
 
 Use `pi-ha status` and `pi-ha group <name> <models...>` to verify and switch active failover groups.
 
+### Model-fit evidence envelope
+
+Rows in that matrix are configuration, never availability evidence: a listed route does not prove entitlement, inference, or quota. Consume `pi-model-fit` output only through `skills/pi-herdr-orchestrator/scripts/model-fit-evidence.mjs`, which is read-only and fail-closed:
+
+```javascript
+import { readModelFitEvidence } from "../scripts/model-fit-evidence.mjs";
+
+const evidence = readModelFitEvidence(envelope, { now: Date.now() });
+// evidence.outcome: PASS | UNKNOWN | BLOCKED | NOT RUN
+// evidence.evidenceRef: the pi-model-fit report reference, preserved
+// evidence.routing: always "unchanged"
+```
+
+The accepted envelope, version `pi-model-fit-evidence/1`:
+
+```json
+{
+  "schema": "pi-model-fit-evidence/1",
+  "source": "pi-model-fit",
+  "generatedAt": "2026-11-26T11:30:00.000Z",
+  "evidenceRef": "pi-model-fit/reports/2026-11-26.md#role-matrix",
+  "routes": [
+    { "route": "cliproxyapi/claude-opus-5-5:high", "outcome": "PASS" }
+  ]
+}
+```
+
+- Only the four explicit outcomes are accepted. Anything else, a foreign `source`, a static catalog or model matrix, a missing `evidenceRef`, an unparseable or future `generatedAt`, and an empty or malformed `routes` list return `BLOCKED`.
+- A missing envelope returns `UNKNOWN`; an envelope older than the 24-hour freshness window (`DEFAULT_FRESHNESS_MS`, injectable through `freshnessMs`) returns `UNKNOWN` with its `evidenceRef` preserved for diagnosis.
+- Mixed route outcomes collapse to the worst one, in the order `BLOCKED`, `UNKNOWN`, `NOT RUN`, `PASS`. `NOT RUN` and `UNKNOWN` are never passing.
+- The reader never selects, replaces, or reorders a route, writes no state, and never runs SkillOpt harvest, run, or adopt: `pi-model-fit` remains the owner of catalogs, entitlement, and quota evidence. Missing or unverifiable evidence is reported as `UNKNOWN` or `BLOCKED` to the Master Chief, not filled in from a matrix or a default.
+
 ## Conflict rules
 
 - Precedence: user and repository instructions, then host harness rules, then skill defaults.
