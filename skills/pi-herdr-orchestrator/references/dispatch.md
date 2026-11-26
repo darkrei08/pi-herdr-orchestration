@@ -92,7 +92,7 @@ Keep one registry (master context or authorized artifact): `task_id`, repo, issu
 
 ## Multiple repositories
 
-Keep repository workspace registration separate from workflow topology. A default workflow run stays in the caller's current tab as a sibling-pane tree; use a new workspace, tab, or cwd only when the user explicitly requests it. Map ownership and API/schema contracts first, decide merge order, and prefer: backward-compatible provider change, then consumer adoption, then removal of the compatibility layer. Avoid simultaneous tightly coupled changes.
+Keep repository workspace registration distinct from workflow topology. With the trusted project setting enabled, a workflow run launches agents as ordered numbered tabs in the workflow workspace; a runtime that cannot provide that transport keeps its actual sibling-pane or local-session identity and makes no ordering claim. Map ownership and API/schema contracts first, decide merge order, and prefer: backward-compatible provider change, then consumer adoption, then removal of the compatibility layer. Avoid simultaneous tightly coupled changes.
 
 ## Merge queue
 

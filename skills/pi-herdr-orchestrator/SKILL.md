@@ -26,7 +26,7 @@ Act as the control session for the current repository. Respect the user's actual
    - Guardian Angel (`.gga`) configuration and repository `AGENTS.md` rules.
    - Optional worktree-local CodeGraph indexing when `--codegraph` is requested.
    - Context and output reduction hooks via `sqz` and `rtk`.
-   - Herdr workspace registration (`herdr workspace create`) for explicit workspace workflows; default workflow runs stay in the caller's current tab.
+   - Herdr workspace registration (`herdr workspace create`) as the ordered host for numbered, labeled workflow agent tabs.
    - Skill registry indexing (`.atl/skill-registry.md`).
 5. If Wizard-AI is installed or the repository exposes it, discover its context stack and compatibility layer. See [wizard-ai.md](references/wizard-ai.md).
 6. If installed, use Guardian Angel (GGA) as a provider-agnostic commit/PR quality gate after tests and before `READY`. See [guardian-angel.md](references/guardian-angel.md).
@@ -35,7 +35,7 @@ Act as the control session for the current repository. Respect the user's actual
 9. Select the smallest useful set of available skills, methods and roles; one owner per concern. See [routing.md](references/routing.md).
 10. Operate the session hierarchy: `[MASTER] Pi Herdr Orchestrator` coordinates department chiefs; chiefs coordinate issue, PR, feature, review and audit sessions. See [coordination.md](references/coordination.md).
 11. Pass compact structured state between workflow layers and sessions. Use JSON as the machine contract and Markdown as the human report generated from it. See [state-protocol.md](references/state-protocol.md).
-12. Execute in an isolated branch/worktree with sibling panes in the caller's current tab when the task merits it. Nested agents split their parent pane, so one named workflow run remains one collapsible pane tree in one tab; use `herdr pane zoom --on|--off` on the focused pane to collapse or expand it. Verify and review the result. See [execution.md](references/execution.md) and [quality.md](references/quality.md).
+12. Execute in an isolated branch/worktree and launch each workflow agent as its own numbered, labeled tab in the workflow's Herdr workspace when the task merits it. Labels carry their 1-based dispatch position, so the workspace reads in launch order; verify the transport evidence before claiming a tab. Verify and review the result. See [execution.md](references/execution.md) and [quality.md](references/quality.md).
 13. Decide destination from evidence: stable integration, preserved development branch, follow-up or blocked. When the change reaches beta, staging, production, or a live runtime claim, follow the ordered pipeline, immutable promotion, and fresh-runtime candidate identity in [production-lifecycle.md](references/production-lifecycle.md); a documentation-only change records the inapplicable stages explicitly. Persist durable knowledge, close child sessions and panes in order, report to the master, then rescan and audit. See [integration.md](references/integration.md) and [audit.md](references/audit.md).
 14. Close the cycle with the dashboard, evidence and final report. See [reporting.md](references/reporting.md).
 
@@ -48,14 +48,14 @@ const mcpExtensions = ["!*", "builtin:codemode", "builtin:tool-search", "builtin
 const results = await parallel("dispatch", {
   scout: () => agent("Map the repository and return evidence.", {
     role: "scout",
-    label: "[CHIEF/SCOUT] Discovery",
+    label: "#1 [CHIEF/SCOUT] Discovery",
     skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "diagnosing-bugs"],
     extensions: mcpExtensions,
     worktree: "scout",
   }),
   build: () => agent("Implement the bounded task and verify it.", {
     role: "developer",
-    label: "[CHIEF/BUILD] Implementation",
+    label: "#2 [CHIEF/BUILD] Implementation",
     skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "tdd"],
     extensions: mcpExtensions,
     worktree: "build",
@@ -65,13 +65,25 @@ return results;
 ```
 
 - Use a non-empty workflow `name` and `parallel("<operation>", { ... })` for independent work. Use `pipeline("<operation>", items, stages)` when every item must pass the same ordered stages. Never replace these with `Promise.all`/`map` agent fan-out, aliases, or native `subagents_run`; native subagents are forbidden for orchestrated delegation.
-- Give every direct agent call a `pi-ext-roles` `role`, stable `label`, explicit `skills` selectors, the three required MCP extensions, no preset timeout (`timeoutMs` omitted), and a named isolated `worktree` for writes. `builtin:codemode` is the stable bridge to MCP tools; `builtin:tool-search` and `builtin:mcp` must remain available in every workflow role session.
+- Give every direct agent call a `pi-ext-roles` `role`, a stable `label`, explicit `skills` selectors, the three required MCP extensions, no preset timeout (`timeoutMs` omitted), and a named isolated `worktree` for writes. `builtin:codemode` is the stable bridge to MCP tools; `builtin:tool-search` and `builtin:mcp` must remain available in every workflow role session.
+- Prefix every `label` with its 1-based dispatch position inside the workflow (`#1 [CHIEF/SCOUT] Discovery`, `#2 [CHIEF/BUILD] Implementation`). The number is presentation order, never authority, and it must match the `parallel`/`pipeline` position so the launch order is readable in Herdr and checkable in review.
 - Matt flow skills that declare `disable-model-invocation: true` (`wayfinder`, `to-spec`, `to-tickets`, `triage`, `implement`, `grill-me`, `grill-with-docs`, `handoff`, `retro`) cannot reach a child through a `skills` selector: the selector only narrows the child's skill list, while Pi 1.6.0 keeps flagged skills out of the system prompt (`formatSkillsForPrompt`). Verified against `/root/.agents/skills/*/SKILL.md`, Pi 1.6.0 and `pi-extensible-workflows` 6.4.0 (`skillsOverride`) on 2026-11-26. Reach a child only by passing the skill's absolute `SKILL.md` path in the task prompt and requiring a read first, or keep the method in the master session under operator `/skill:<name>`; a live child run of a flagged skill was NOT RUN. See [routing.md](references/routing.md).
 - Verify each requested skill, role, and extension in the live capability report first; an unavailable required capability is `BLOCKED`, not silently omitted. For Anthropic Small Business routes, also verify the official 44-skill inventory and the Pi adapter with `node scripts/check-anthropic-small-business.mjs --json` before dispatch. Hosts without PiWorkflow use only the documented single-session/direct-worktree fallback and report it as `NOT APPLICABLE`.
-- The `parallel` object order is the dispatch order. When the live Herdr transport is active, it splits `herdr pane split <caller-pane> --direction right|down --no-focus`, then runs the agent in `herdr pane run <new-pane>` with a cd-prefixed command. A returned `.result.pane.pane_id` identifies the sibling pane, which keeps the caller's `tab_id`; nested agents split their own pane. Some PiWorkflow versions use local session transport instead and return no pane metadata. In that case record only verified session and worktree identity, mark pane-tree acceptance `BLOCKED`, and never infer a child pane from the caller's pane or a label. One named workflow run owns one pane tree in one tab only when the runtime returns that transport evidence; pane zoom is `herdr pane zoom --on|--off` on the focused pane.
-- The trusted project settings written by repository initialization set `extensionSettings.herdr.enableFullyInspectableMode` to `false`. This is the supported `pi-extensible-workflows` transport; a new workspace, tab, or cwd is created only when the user explicitly requests that topology or location. This repository must not shell out to `pi` or reimplement Herdr pane creation.
+- The `parallel` object order is the dispatch order. With fully inspectable Herdr mode enabled by the trusted project setting, `@piewf/herdr` launches every agent into the workflow's Herdr workspace as its own tab titled with the numbered `label`, in admission order. A runtime that instead reports a sibling pane keeps the caller's `tab_id`; a runtime with local session transport returns no tab or pane metadata. Record only the transport identity the runtime actually returned, and mark tab acceptance `BLOCKED` when no tab evidence exists; never infer a tab from a label, a position or the caller's pane.
+- The trusted project settings written by repository initialization set `extensionSettings.herdr.enableFullyInspectableMode` to `true`. This repository must not shell out to `pi`, create Herdr tabs itself, or edit the global host settings; repository initialization owns the project override.
 - If Pi is not running inside Herdr, or PiWorkflow/@piewf/herdr is unavailable, use the documented single-session or direct-worktree fallback and report `NOT APPLICABLE`/`BLOCKED`. Never claim panes, tabs, parallel sessions, or skill execution that did not occur.
 - Route worker reports/questions through the mailbox first. Use `ORCH_MASTER` only as a distinct Herdr agent name for a best-effort wake-up; never pass the current Pi session id or the worker's own identity. If peer discovery is empty or ambiguous, skip the wake-up and let the master consume `orch_status`/`orch_reply` state.
+
+## Dispatch failure states
+
+Decide and record one state before dispatch; never upgrade it after the fact.
+
+| Condition | State | Required evidence |
+| --- | --- | --- |
+| Herdr unavailable (not inside a Herdr pane, no server answer) | `NOT APPLICABLE` for the tab transport; children still run in their session and worktree | capability report line and the absent tab claim |
+| `@piewf/herdr` unavailable or it returns no tab metadata | `BLOCKED` for tab acceptance, `NOT APPLICABLE` for ordering | the transport result, plus session and worktree identity |
+| PiWorkflow unavailable | `NOT APPLICABLE` for workflow transport; use the documented single-session/direct-worktree fallback | capability report line and an explicit fallback statement |
+| requested skill unavailable (or a missing role/extension) | `BLOCKED` before any child starts, never a weaker loadout | the missing selector from the capability report |
 
 ## Control rules
 

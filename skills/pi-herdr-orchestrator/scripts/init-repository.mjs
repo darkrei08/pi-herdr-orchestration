@@ -144,14 +144,14 @@ if (workflowSettingsValid) {
     ...workflowSettings,
     extensionSettings: {
       ...extensionSettings,
-      herdr: { ...herdrSettings, enableFullyInspectableMode: false },
+      herdr: { ...herdrSettings, enableFullyInspectableMode: true },
     },
   };
   const serializedSettings = `${JSON.stringify(configuredSettings, null, 2)}\n`;
-  if (herdrSettings.enableFullyInspectableMode === false) {
-    status("pi-workflow-herdr", "configured", "current-tab sibling-pane Herdr workflow transport enabled");
+  if (herdrSettings.enableFullyInspectableMode === true) {
+    status("pi-workflow-herdr", "configured", "fully inspectable Herdr transport enabled for ordered numbered tabs");
   } else {
-    status("pi-workflow-herdr", "pending", "enable current-tab sibling-pane workflow transport");
+    status("pi-workflow-herdr", "pending", "enable fully inspectable Herdr transport for ordered numbered tabs");
     if (apply) {
       mkdirSync(workflowSettingsDir, { recursive: true });
       writeFileSync(workflowSettingsPath, serializedSettings, "utf8");
