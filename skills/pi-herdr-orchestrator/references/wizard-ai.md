@@ -10,7 +10,7 @@ The `darkrei08/Wizard-AI` repository currently documents and packages:
 - five numbered loops: plan/spec, develop/TDD, debug/verify, refactor/token squeezing, release/memory sync;
 - `wz-ai-context` and `wz-ai-context-formats.js`: TOON conversion, LEA evidence aliases, Markdown tables, compression and token estimates;
 - `sqz`, `RTK`, `headroom` and optional `LLMLingua`: CLI/context reduction;
-- `Serena` and `graphify`: semantic code navigation and architecture graphing;
+- CodeGraph and `graphify`: semantic code navigation and architecture graphing;
 - `MarkItDown`, `repodocs` and wiki tooling: source-oriented context extraction;
 - `LiteLLM` and the Cockpit proxy: provider routing and quota rotation for Pi;
 - `Engram`, vector stores and knowledge-graph tools: optional durable/project memory;
@@ -35,7 +35,7 @@ At bootstrap, detect `WIZARD_AI_DIR`, `wz-ai`, `wizard-ai`, `wizard-ai-context`,
 
 ## Recommended flow
 
-1. Query `Serena`, `graphify`, the project wiki or RAG layer to locate relevant code and decisions.
+1. Query CodeGraph, `graphify`, the project wiki or RAG layer to locate relevant code and decisions.
 2. Filter command output through `RTK` or `sqz`; rank or prune evidence with the installed tool that fits the task.
 3. Build the canonical state envelope from [state-protocol.md](state-protocol.md).
 4. Encode regular evidence arrays as TOON for model input, or LEA when the main saving comes from repeated source and evidence labels. Keep canonical JSON for validation and storage.

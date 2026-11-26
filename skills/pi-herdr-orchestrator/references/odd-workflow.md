@@ -11,7 +11,7 @@ Organic-Driven Development (ODD) is the primary development workflow of this orc
 | Step | Phase | Key Action |
 | --- | --- | --- |
 | 1 | **Authorize** | Investigation, review, and proposals stay read-only. Clarify ambiguous intent once; stop and wait. Hedged delivery wording asks for resumable notes and separate commits, not a stop. |
-| 2 | **Explore** | Explore existing code, interfaces, and call paths first, proportionately to the request, within an evidence budget before writing code. |
+| 2 | **Explore** | Explore existing code, interfaces, and call paths first, proportionately to the request, within an evidence budget before writing code. The `gentle-pi.exploration-budget` notice is harness guidance, not a repository gate or proof of a child-workflow stall; record the lookup/byte counts and continue only with a configured explorer or an already-understood inline write. |
 | 3 | **Resolve Uncertainty** | Recommend optional research only for named uncertainties; ask one focused question only for open product decisions; run at most one scoped assumption challenge for high-consequence premises. |
 | 4 | **Classify** | Size the task: **Small** (understood, contained risk, resumable from diff) ➔ inline, no feature document or ceremony; **Large** (multi-session, external waits, deliverables separated) ➔ tracked ODD path. |
 | 5 | **Track** | For large work, automatically create `odd/tasks/<feature>.md` and its Engram mirror `odd/<feature>/tasks` before the first write. Sync the visible `todo` list. |
