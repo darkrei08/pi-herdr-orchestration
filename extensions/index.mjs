@@ -251,9 +251,11 @@ export default function (pi, deps = {}) {
         action: {
           type: "object",
           properties: {
-            type: { type: "string", enum: ["advance", "start", "complete", "wait", "poll", "pause", "resume", "retry"] },
+            type: { type: "string", enum: ["advance", "start", "complete", "wait", "poll", "pause", "resume", "fail", "retry"] },
             nodeId: { type: "string" },
+            // complete only; fail always records the failed status itself.
             status: { type: "string", enum: ["completed", "closed"] },
+            // fail and pause; fail defaults to "unreported" when omitted.
             reason: { type: "string", maxLength: 512 },
             satisfied: { type: "boolean" },
           },

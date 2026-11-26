@@ -239,7 +239,7 @@ The orchestration contract follows current upstream Herdsman (`boadij/pi-herdsma
 - **Capability-aware dispatch:** Select Agents by effective runtime capabilities, not filenames or configured child names. If no suitable child is available, investigate locally and record the capability gap instead of simulating delegation.
 - **Simulation before live smoke:** Prefer deterministic simulated smoke for covered Pi/Herdr boundary scenarios; use live-model smoke when model/provider behavior or instruction adherence is under test.
 - **Nonterminal execution failure:** Treat model execution failure as nonterminal evidence: do not retry automatically, replay tools, stop children, integrate partial work, or publish a successful handoff.
-- **Terminal failure envelope:** A dispatched branch that times out or aborts is classified as `MODEL`, `CAPABILITY`, `HERDR`, `TIMEOUT` or `UNKNOWN` from recorded evidence before anything is retried. A run with a timed out branch returns `PARTIAL` with every completed sibling result preserved, and recovery only re-dispatches branches without observed side effects. See [supervision.md](skills/pi-herdr-orchestrator/references/supervision.md).
+- **Terminal failure envelope:** A dispatched branch that times out or aborts is classified as `MODEL`, `CAPABILITY`, `HERDR`, `TIMEOUT` or `UNKNOWN` from recorded evidence before anything is retried. A run with a timed out branch returns `PARTIAL` with every completed sibling result preserved, and recovery only re-dispatches branches without observed side effects. `skills/pi-herdr-orchestrator/scripts/fanout-retry.mjs` resolves the observation into `FANOUT_COMPLETED`, `FANOUT_RETRY_BOUNDED`, `FANOUT_RETRY_EXHAUSTED` or `FANOUT_SIDE_EFFECTS_UNCERTAIN`, and the graph records a `fail` transition before any bounded `retry` so the exact attempt reason stays in `events.jsonl`. See [supervision.md](skills/pi-herdr-orchestrator/references/supervision.md).
 
 These points are aligned with upstream `boadij/pi-herdsman` v0.55.0 (2026-11-25, `main` at `5b5f2464`): nonblocking `notify_owner` that leaves assignment completion eligibility untouched and requires persisted owner receipt (`docs/concepts/lifecycle.md`), an assignment-centric public state projection where physical `unknown` fails closed, and role-scoped supervision authority (`docs/coordination-api.md`). The earlier alignment sources `0dc62d39`, `a422c804`, `c72acadf`, `44698e40`, `56bd0258` and `321114de` (October 2026) remain the reference for presentation-only labels and simulated-smoke-first verification. Upstream capabilities this repository does not implement are recorded in [coordination.md](skills/pi-herdr-orchestrator/references/coordination.md#unavailable-upstream-capabilities).
 
@@ -511,8 +511,10 @@ Inside Pi, use the bounded native controls:
 
 ```text
 orch_graph_status   # read graph plan, bounded nodes, and best-effort Herdr projection
-orch_graph_step     # apply one validated advance/start/complete/wait/poll/pause/resume/retry action
+orch_graph_step     # apply one validated advance/start/complete/wait/poll/pause/resume/fail/retry action
 ```
+
+The `fail` transition (`running`/`waiting`/`ready`/`pending` to `failed` with a bounded `failure_reason`, default `unreported`) is how a branch that ended without a terminal report reaches the graph before any retry. The `status` override belongs to `complete` only; `fail` always records `failed`.
 
 The schema is [`schemas/repo-orchestrator-graph-v1.json`](schemas/repo-orchestrator-graph-v1.json). These controls never merge, publish, or replace PiWorkflow as the execution authority.
 

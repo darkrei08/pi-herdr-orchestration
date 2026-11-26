@@ -310,6 +310,12 @@ export function stepGraphState(input, action, { now = new Date().toISOString() }
   } else if (action.type === "wait") {
     if (!["pending", "ready", "running"].includes(node.status)) throw new Error(`node cannot wait: ${node.id}`);
     to = "waiting";
+  } else if (action.type === "fail") {
+    // A branch that ended without a terminal report has a cause to record, so
+    // failure is a transition, not a missing mailbox entry.
+    if (!["pending", "ready", "running", "waiting"].includes(node.status)) throw new Error(`node cannot fail: ${node.id}`);
+    to = "failed";
+    nextNode.failure_reason = typeof action.reason === "string" ? action.reason.slice(0, 512) : "unreported";
   } else if (action.type === "poll") {
     if (node.status !== "waiting") throw new Error(`node is not waiting: ${node.id}`);
     to = action.satisfied ? "completed" : "waiting";
@@ -321,6 +327,7 @@ export function stepGraphState(input, action, { now = new Date().toISOString() }
     }
     to = "pending";
     nextNode.retry_count = retries + 1;
+    delete nextNode.failure_reason;
   } else {
     throw new Error(`unsupported graph action: ${action.type}`);
   }
