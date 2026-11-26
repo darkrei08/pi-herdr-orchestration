@@ -35,6 +35,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Mandatory Per-Repository Initialization](#mandatory-per-repository-initialization)
   - [Environment Verification](#environment-verification)
   - [Persisted Graph Supervisor](#persisted-graph-supervisor)
+  - [PR-Following Workflow](#pr-following-workflow)
   - [Optional Rust Graph Core](#optional-rust-graph-core)
   - [Mailbox & Supervision Commands](#mailbox--supervision-commands)
   - [Talking Pane Title](#talking-pane-title)
@@ -490,6 +491,10 @@ orch_graph_step     # apply one validated advance/start/complete/wait/poll/pause
 ```
 
 The schema is [`schemas/repo-orchestrator-graph-v1.json`](schemas/repo-orchestrator-graph-v1.json). These controls never merge, publish, or replace PiWorkflow as the execution authority.
+
+### PR-Following Workflow
+
+The registered PiWorkflow function `prFollow` follows exactly one issue or pull request from id validation to merge readiness. It takes `{ target: "issue" | "pr", id, merge? }`, rejects a mismatched or non-existent id before launching any agent, runs developer/reviewer cycles, forwards external bot findings verbatim to the next cycle (cap: 3 cycles, then `BLOCKED`), and polls CI, review and mergeability every 60 s up to 30 attempts without consuming a model call. A merge authorization asks through `orch_ask`, pauses the run, and resumes from the `orch_reply` answer without repeating completed work. Every transition reports through `orch_report`, so `orch_status` shows the current phase. The function registers through `pi.extensions` in `package.json`; the contract, reason codes and dry-run command are in [`docs/pr-follow-workflow.md`](docs/pr-follow-workflow.md).
 
 ### Optional Rust Graph Core
 
