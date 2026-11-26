@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-26
+
+### Added
+- **Deterministic PR Workflow (`workflows/pr-follow.mjs`)**: Registered PR-following workflow with zero-agent bounded waits, verbatim bot findings, cycle caps, mailbox transitions, and pause/resume.
+- **Run Budget Accounting (`skills/pi-herdr-orchestrator/scripts/mailbox.mjs`)**: Unknown-aware launch, wall-clock, token, and cost accounting with configurable per-run ceilings and `BLOCKED` transitions.
+- **Graph Supervisor Actions (`skills/pi-herdr-orchestrator/scripts/graph-supervisor.mjs`, `extensions/index.mjs`)**: Persisted fail/retry transitions and native `orch_graph_step` support for bounded fan-out recovery.
+- **Roster Diagnostic (`scripts/agent-roster-diagnostic.mjs`)**: Read-only validation of healthy, malformed, and unavailable Agent rosters with fail-closed delegation rules.
+- **Local Factory Runner (`scripts/local-factory.mjs`)**: One repeatable procedure reporting PASS, FAIL, BLOCKED, and NOT RUN per gate with exact commands and cleanup accounting.
+- **Model-Fit Evidence Boundary (`skills/pi-herdr-orchestrator/scripts/model-fit-evidence.mjs`)**: Versioned read-only envelope consumer that fails closed on stale, malformed, unavailable, or entitlement-unknown evidence.
+- **Docker Compatibility Matrix (`scripts/docker-matrix.mjs`)**: Deterministic pull-free runner for pinned Linux-family rows.
+
+### Changed
+- **Ordered Herdr Dispatch (`skills/pi-herdr-orchestrator/SKILL.md`, `.pi/pi-extensible-workflows/settings.json`)**: Project settings enable fully inspectable Herdr mode and dispatch contracts require stable numbered labels, explicit selectors, and isolated worktrees.
+- **Talking Pane Titles (`extensions/index.mjs`)**: `orch_report` updates pane labels from stored task id and derived lifecycle, with non-fatal skips.
+- **Terminal Evidence Gates (`skills/pi-herdr-orchestrator/scripts/mailbox.mjs`)**: `READY` and `CLOSED` both require fresh candidate-bound evidence; no step authorizes push, merge, PR, or publication.
+- **Supervision Guidance (`skills/pi-herdr-orchestrator/references/supervision.md`)**: Terminal failure envelopes, partial aggregate preservation, bounded research phases, and idempotent recovery rules.
+
+### Fixed
+- **Release Tag Validation (`.github/workflows/publish.yml`)**: Manual tags pass through `env` and strict `vMAJOR.MINOR.PATCH` validation before release outputs.
+- **External Agent Definitions (`README.md`)**: Documented YAML tool-array repair path; nine host definitions were repaired and `list_agents` validates the roster.
+- **Tool Naming (`skills/pi-herdr-orchestrator/references/routing.md`)**: Research dispatch never synthesizes `mcp__web_search` and records the exploration-budget advisory as non-blocking.
+- **PBS/PVE 9.3 Route (`odd/tasks/pbs-install-verification-20261126.md`)**: Current official community core supports PVE 9.3; PBS installation, datastore, storage, schedule, exclusions, and a CT 132 test backup were verified without a version-check bypass.
+
+### Tests
+- Added deterministic regression coverage for release tag validation, roster states, fan-out retry, isolated commit candidates, terminal evidence, local factory gates, model-fit evidence, pane labels, run budgets, Docker matrix fault paths, and PR-following workflow dry runs.
+- Repository checks: `npm test` 229/229, `npm run lint` 63 files clean, `npm run check:strict` required failures 0, `npm run flow:sources:check` PASS, `git diff --check` PASS, and CI matrix PASS on Ubuntu, macOS, and Windows.
+
 ## [1.5.2] - 2026-11-25
 
 ### Added
