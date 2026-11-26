@@ -199,3 +199,41 @@ test("native extension exposes bounded graph status and step controls", () => {
   assert.match(extension, /persistGraphState/);
   assert.match(extension, /projectHerdrState/);
 });
+
+test("terminal failure envelope classifies causes and preserves completed sibling results", () => {
+  const supervision = read("skills/pi-herdr-orchestrator/references/supervision.md");
+  const execution = read("skills/pi-herdr-orchestrator/references/execution.md");
+  const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
+  const odd = read("skills/pi-herdr-orchestrator/references/odd-workflow.md");
+  const readme = read("README.md");
+
+  assert.match(supervision, /## Terminal failure envelope/);
+  for (const cause of ["MODEL", "CAPABILITY", "HERDR", "TIMEOUT", "UNKNOWN"]) {
+    assert.match(supervision, new RegExp(`\`${cause}\``), `envelope does not name cause ${cause}`);
+  }
+  assert.match(supervision, /side_effects/);
+  assert.match(supervision, /`OBSERVED`\/`NONE`\/`UNKNOWN`/);
+  assert.match(supervision, /## Partial aggregate result/);
+  assert.match(supervision, /`PARTIAL`, never `COMPLETED`/);
+  assert.match(supervision, /## Idempotent recovery/);
+  assert.match(supervision, /never replay a completed branch/);
+  assert.match(supervision, /Restart Pi, re-run the preflight/);
+
+  assert.match(execution, /## Bounded research phases/);
+  assert.match(execution, /allowed paths/);
+  assert.match(execution, /compact report/);
+  assert.match(execution, /explicit `project`/);
+  assert.match(execution, /project_transition_conflict/);
+  assert.match(execution, /restart Pi before treating a model-preflight failure as a transport fault/);
+
+  assert.match(routing, /Research roles receive scope/);
+  assert.match(routing, /resolved tool names/);
+  assert.match(routing, /compact terminal result per phase/);
+
+  assert.match(odd, /Bounded scout phases/);
+  assert.match(odd, /\[supervision\.md\]\(supervision\.md\)/);
+
+  assert.match(readme, /Terminal failure envelope/);
+  assert.match(readme, /`PARTIAL`/);
+  assert.match(readme, /references\/supervision\.md/);
+});

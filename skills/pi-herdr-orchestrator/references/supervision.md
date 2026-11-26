@@ -35,6 +35,40 @@ node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000
 
 The checker reports configured server names, redacted transport reachability, and HTTP health status; it never prints command arguments, environment values, headers, or credentials. URL MCP `initialize` probes verify the HTTP MCP endpoint when a protocol response is returned; stdio executable probes do not start the server and remain `unverified`. Record its JSON output as evidence. `builtin:codemode` remains the stable MCP bridge, with `builtin:tool-search` and `builtin:mcp` required in every workflow role loadout. Native `subagents_run` is not an orchestration fallback.
 
+## Terminal failure envelope
+
+A dispatched branch that ends without a terminal report is a failed result, not a finished assignment, and one timed out branch never erases a sibling that completed. Classify the branch before retrying anything, and record the classification in the mailbox decision:
+
+| Field | Values |
+| --- | --- |
+| `cause` | `MODEL`, `CAPABILITY`, `HERDR`, `TIMEOUT`, `UNKNOWN` |
+| `evidence` | `ref:sha256:<hash>` for the run record, the child session JSONL and any pane read |
+| `branches[]` | per branch `status` `COMPLETED`/`TIMEOUT`/`FAILED`/`NOT_STARTED`, `result_ref` when completed, `side_effects` `OBSERVED`/`NONE`/`UNKNOWN` |
+| `recovery` | `NONE`, `SAFE` (re-dispatch allowed), `FORBIDDEN` (inspect uncertain effects first) |
+
+| `cause` | Proof required before using it | Not this |
+| --- | --- | --- |
+| `CAPABILITY` | Pre-dispatch capability report or child error naming the missing role, skill, extension, model or MCP server | A child that started and used tools |
+| `HERDR` | No live agent or pane for the name, or a transport error, with no child session progress after dispatch | A child session that kept issuing tool calls until the deadline |
+| `TIMEOUT` | The deadline elapsed while the child session JSONL shows model turns or tool progress | Proof that the task is impossible or that the transport is broken |
+| `MODEL` | Provider or model-preflight error on an unchanged loadout, reproduced after a Pi restart | Any failure recorded before a package or provider update |
+| `UNKNOWN` | Default when the evidence above is missing or ambiguous | Nothing: no retry, no new writer, escalate |
+
+A model-preflight failure recorded before a restart or after a provider or workflow package update is `UNKNOWN`, not `MODEL`: the running process still holds the previous modules and provider registry. Restart Pi, re-run the preflight, and classify from the new result.
+
+### Partial aggregate result
+
+A timed out branch must not suppress a completed sibling. The run result carries every branch that returned with its own `status` and evidence reference, plus each failed branch with its classification and `side_effects`; the aggregate reports `PARTIAL`, never `COMPLETED` and never an empty failure. Completed sibling results stay preserved as mailbox evidence, and integration covers only the completed branches after the master reconciles them against Git.
+
+### Idempotent recovery
+
+Recovery is keyed by run id plus task id and starts from the persisted checkpoint, so repeating it reproduces the same decision instead of creating a second writer:
+
+1. Re-dispatch only a branch whose `side_effects` is `NONE`; never replay a completed branch and never re-run a branch whose tools may already have written outside it.
+2. `OBSERVED` or `UNKNOWN` effects block re-dispatch: read the worktree, Git state and the external systems first, then `FORBIDDEN` unless the operator authorizes otherwise.
+3. A retry keeps the same run, task and branch identity, so a duplicate report is ignored by `seq` instead of being applied twice.
+4. The bounded retry rule below still applies: at most 2 retries per branch, then `BLOCKED` with the envelope as evidence.
+
 ## Dispatch
 
 1. Pick a run id (`ORCH_RUN`, for example `repo-20261009`) and a unique agent name per task matching `[a-z][a-z0-9_-]{0,31}` (`issue84`, `pr127`).
