@@ -249,6 +249,32 @@ test("validateEvidenceBinding accepts candidate deletion evidence separately fro
   assert.equal(result.status, "verified");
 });
 
+test("a passing review without candidate-bound hashes is blocked", () => {
+  const base = {
+    task: "I#125",
+    run: "run-test",
+    candidate: "commit-125",
+    provider: "gga",
+    status: "PASS",
+    ref: `ref:sha256:${"a".repeat(64)}`,
+    version: "2.10.1",
+    config_digest: "b".repeat(64),
+    output_digest: "c".repeat(64),
+    file_hashes: { "mailbox.mjs": "a".repeat(64) }
+  };
+  const memory = { task: "I#125", run: "run-test", candidate: "commit-125", provider: "engram", status: "PERSISTED", ref: "engram:obs-125", receipt: `ref:sha256:${"c".repeat(64)}` };
+  const expected = { task: "I#125", run: "run-test", candidate: "commit-125" };
+  for (const [field, review] of [
+    ["file_hashes", { ...base, file_hashes: undefined }],
+    ["version", { ...base, version: undefined }],
+    ["config_digest", { ...base, config_digest: undefined }],
+    ["output_digest", { ...base, output_digest: undefined }]
+  ]) {
+    const result = validateEvidenceBinding({ ...expected, review, memory }, expected);
+    assert.equal(result.status, "blocked", `${field} must be required`);
+  }
+});
+
 test("validateEvidenceBinding blocks evidence from another task or candidate", () => {
   const result = validateEvidenceBinding({
     task: "I#106",
@@ -828,6 +854,14 @@ test("CLOSED inherits a prior candidate when the master supplies fresh proof", (
       nonBlocking: true
     });
     assert.equal(closed.state, "CLOSED");
+    assert.throws(
+      () => report({ dir, run: "run-test", task: "I#118", state: "CLOSED", summary: "replace", checks: ["unit=PASS"], required_checks: ["unit"], silent: true, nonBlocking: true }),
+      /cannot update CLOSED task/
+    );
+    assert.throws(
+      () => report({ dir, run: "run-test", task: "I#118", state: "WORKING", summary: "reopen", silent: true, nonBlocking: true }),
+      /cannot reopen CLOSED task/
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -862,7 +896,7 @@ test("closed reports with failing checks stay blocked", () => {
   }
 });
 
-test("no-code CLOSED reports accept passing checks and cannot reopen", () => {
+test("CLOSED without a candidate and evidence binding stays blocked", () => {
   const dir = mkdtempSync(join(tmpdir(), "orch-closed-no-code-"));
   try {
     const result = report({
@@ -876,16 +910,129 @@ test("no-code CLOSED reports accept passing checks and cannot reopen", () => {
       silent: true,
       nonBlocking: true
     });
-    assert.equal(result.state, "CLOSED");
-    assert.equal(result.lifecycle, "closed");
-    assert.throws(
-      () => report({ dir, run: "run-test", task: "I#112", state: "CLOSED", summary: "replace", checks: ["unit=PASS"], required_checks: ["unit"], silent: true, nonBlocking: true }),
-      /cannot update CLOSED task/
-    );
-    assert.throws(
-      () => report({ dir, run: "run-test", task: "I#112", state: "WORKING", summary: "reopen", silent: true, nonBlocking: true }),
-      /cannot reopen CLOSED task/
-    );
+    assert.equal(result.state, "BLOCKED");
+    assert.equal(result.lifecycle, "blocked");
+    assert.equal(result.evidence_binding.status, "blocked");
+    assert.match(result.evidence_binding.reason, /fresh evidence binding/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a failed review never becomes READY or CLOSED", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-review-fail-"));
+  try {
+    const candidate = candidateAtHead();
+    const failed = { ...candidateReview("I#122", candidate), status: "FAIL" };
+    const reviewRef = storeEvidence(dir, JSON.stringify(failed));
+    const binding = {
+      task: "I#122",
+      run: "run-test",
+      candidate,
+      review: { ...failed, ref: reviewRef },
+      memory: memoryEvidence(dir, "I#122", candidate, "obs-122")
+    };
+    for (const state of ["READY", "CLOSED"]) {
+      const result = report({
+        dir,
+        run: "run-test",
+        task: "I#122",
+        candidate,
+        state,
+        summary: `Review failed before ${state}`,
+        checks: ["unit=PASS"],
+        required_checks: ["unit"],
+        evidence_binding: binding,
+        providerVerifier: () => ({ status: "verified" }),
+        silent: true,
+        nonBlocking: true
+      });
+      assert.equal(result.state, "BLOCKED");
+      assert.equal(result.evidence_binding.status, "blocked");
+      assert.match(result.evidence_binding.reason, /blocking outcome/);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("CLOSED rejects review evidence bound to another candidate", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-closed-cross-candidate-"));
+  try {
+    const candidate = candidateAtHead();
+    const review = { ...candidateReview("I#123", candidate), candidate: "f".repeat(40) };
+    const result = report({
+      dir,
+      run: "run-test",
+      task: "I#123",
+      candidate,
+      state: "CLOSED",
+      summary: "Review belongs to another candidate",
+      checks: ["unit=PASS"],
+      required_checks: ["unit"],
+      evidence_binding: {
+        task: "I#123",
+        run: "run-test",
+        candidate,
+        review: { ...review, ref: storeEvidence(dir, JSON.stringify(review)) },
+        memory: memoryEvidence(dir, "I#123", candidate, "obs-123")
+      },
+      providerVerifier: () => ({ status: "verified" }),
+      silent: true,
+      nonBlocking: true
+    });
+    assert.equal(result.state, "BLOCKED");
+    assert.match(result.evidence_binding.reason, /candidate does not match/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("verified READY and CLOSED never authorize or perform push or merge", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-terminal-no-delivery-"));
+  const git = (args) => spawnSync("git", args, { encoding: "utf8" });
+  const snapshot = () => ({
+    head: git(["rev-parse", "HEAD"]).stdout.trim(),
+    refs: git(["for-each-ref", "--format=%(refname) %(objectname)"]).stdout.trim(),
+    status: git(["status", "--porcelain"]).stdout
+  });
+  try {
+    const before = snapshot();
+    const candidate = before.head;
+    const binding = (observation) => {
+      const review = candidateReview("I#124", candidate);
+      return {
+        task: "I#124",
+        run: "run-test",
+        candidate,
+        review: { ...review, ref: storeEvidence(dir, JSON.stringify(review)) },
+        memory: memoryEvidence(dir, "I#124", candidate, observation)
+      };
+    };
+    const terminal = (state, observation) => report({
+      dir,
+      run: "run-test",
+      task: "I#124",
+      candidate,
+      state,
+      summary: `${state} for delivery review`,
+      checks: ["unit=PASS"],
+      required_checks: ["unit"],
+      evidence_binding: binding(observation),
+      providerVerifier: () => ({ status: "verified" }),
+      silent: true,
+      nonBlocking: true
+    });
+    const ready = terminal("READY", "obs-124-ready");
+    const closed = terminal("CLOSED", "obs-124-closed");
+    assert.equal(ready.state, "READY");
+    assert.equal(closed.state, "CLOSED");
+    assert.deepEqual(snapshot(), before);
+    for (const entry of [ready, closed]) {
+      assert.equal("push" in entry, false);
+      assert.equal("merge" in entry, false);
+      assert.equal("authorization" in entry, false);
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

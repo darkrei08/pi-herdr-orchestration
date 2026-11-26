@@ -868,8 +868,7 @@ export function report(opts) {
     }
     const currentChecks = [...checksByName].map(([name, status]) => ({ name, status }));
     const currentCheckStrings = currentChecks.map(({ name, status }) => `${name}=${status}`);
-    const requiresTerminalEvidence = opts.state === "READY"
-      || (opts.state === "CLOSED" && (isPresent(candidate) || Boolean(suppliedBinding) || Boolean(prev.evidence_binding)));
+    const requiresTerminalEvidence = terminalState;
     const requestedBinding = suppliedBinding ?? (terminalState ? undefined : prev.evidence_binding);
     const reportIdPayload = {
       task: opts.task,
