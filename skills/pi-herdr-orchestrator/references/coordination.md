@@ -61,6 +61,10 @@ Upstream Herdsman v0.55.0 exposes model-facing coordination tools and a federate
 - **Federated peer messaging.** There is no peer discovery, no cross-machine initiation or reply transport and no durable remote reply channel. Two orchestrator runs coordinate only through the local mailbox directory shared under `<git-common-dir>/orchestrator/<run>/`.
 - **Upstream terminal projections.** Upstream `settling` and `lost` assignment states have no local equivalent: a lost or unreadable terminal liveness state is reported as `DECIDE`/`unverified` and requires master reconciliation against the mailbox and Git.
 
+## Roster diagnosis
+
+Before delegating, validate the roster the current host exposes. [`scripts/agent-roster-diagnostic.mjs`](../../../scripts/agent-roster-diagnostic.mjs) is read-only and injectable: `inspectAgentRoster({ definitions, errors })` validates names (including duplicate shadowing), `tools` arrays and delegation fields (`mode`, `thinking`), and `readAgentRoster({ root, readdir, readFile })` adds the filesystem without writing to it. A `healthy` roster reports `usable` and its `usableAgents`; `malformed` and `unavailable` report `blocked` with the exact definition path, field and error, an empty `usableAgents`, and no delegation. Pass a definition the host rejected as an `errors` entry to preserve the path `list_agents` reported, and never replace a blocked roster with a filename guess or a simulated delegation. `npm run test:roster` covers the healthy, malformed and unavailable states.
+
 ## Capability fallback
 
 If PiWorkflow or Pi cannot create a real child session, preserve the hierarchy in one session with clearly labeled role sections and reports. When the host forbids nested subagents (for example the Gentle AI harness), the master dispatches task sessions directly and chiefs stay report roles. Do not simulate concurrent execution, pretend that panes were closed, or report a chief handoff that did not occur. The protocol describes coordination; the available tools determine which parts can be executed.
