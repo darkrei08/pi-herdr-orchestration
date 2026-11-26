@@ -37,6 +37,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Persisted Graph Supervisor](#persisted-graph-supervisor)
   - [Optional Rust Graph Core](#optional-rust-graph-core)
   - [Mailbox & Supervision Commands](#mailbox--supervision-commands)
+  - [Talking Pane Title](#talking-pane-title)
   - [Compaction & Overlap Rules](#compaction--overlap-rules)
 - [Release and npm Trusted Publishing](#release-and-npm-trusted-publishing)
 - [Sources & References](#sources--references)
@@ -525,6 +526,18 @@ The report inspects:
 - Installed skill suites: Engineering Excellence, Matt Pocock, and Gentle AI.
 - Context tooling: Wizard-AI, Serena, graphifyy, RTK, and sqz.
 - Active Pi compaction owner.
+
+### Talking Pane Title
+
+Every `orch_report` call renames the reporting agent's Herdr pane so the pane tree shows who is developing, waiting, or blocked without asking. The exact command issued is:
+
+```bash
+herdr pane rename <PANE_ID> <TASK> <LIFECYCLE>
+```
+
+`<PANE_ID>` is the pane identity already stored for the task, else the report's `pane` parameter, else `HERDR_PANE_ID`. `<LIFECYCLE>` is derived from the persisted mailbox state and upper-cased, so the label is deterministic and never contains caller free text such as the summary, phase, or branch: `ASSIGNED` gives `I#84 PENDING`, `WORKING` and `DEVELOPMENT` give `I#84 RUNNING`, `READY` gives `I#84 READY`, `BLOCKED` gives `I#84 BLOCKED`, `FAILED` gives `I#84 FAILED`, `CLOSED` gives `I#84 CLOSED`, and a `PR#127` report gives `PR#127 RUNNING`. A report downgraded on write is labelled with the stored state: `READY` without a candidate and evidence binding is persisted as `BLOCKED` and labelled `I#84 BLOCKED`.
+
+The rename is presentation only. When no pane identity is known, or Herdr is absent or rejects the command, the report is still persisted and the extension emits an `ORCH_PANE_LABEL_SKIPPED` warning instead of failing. Pane titles never replace mailbox or Git evidence.
 
 ### Compaction & Overlap Rules
 
