@@ -60,7 +60,7 @@ export default function (pi, deps = {}) {
         required_checks: {
           type: "array",
           items: { type: "string" },
-          description: "Check names that must be explicitly reported as PASS for READY or evidence-bound CLOSED"
+          description: "Check names that must be explicitly reported as PASS for READY or CLOSED"
         },
         evidence: { type: "string", description: "Large log, test output, or diff to save to disk as a semantic ref" },
         candidate: { type: "string", description: "Exact immutable candidate identity; Git candidates must be full commit IDs" },
