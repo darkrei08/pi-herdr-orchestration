@@ -620,6 +620,10 @@ test("deriveLifecycle maps legacy uppercase states and respects overrides", () =
   assert.equal(deriveLifecycle("FAILED"), "failed");
   assert.equal(deriveLifecycle("CLOSED"), "closed");
   assert.equal(deriveLifecycle("running"), "running");
+  // Upstream Herdsman public states: only `working` overlaps; unlisted ones fail closed.
+  assert.equal(deriveLifecycle("working"), "running");
+  assert.equal(deriveLifecycle("settling"), "unknown");
+  assert.equal(deriveLifecycle("lost"), "unknown");
   assert.equal(deriveLifecycle("unknown-state"), "unknown");
 });
 

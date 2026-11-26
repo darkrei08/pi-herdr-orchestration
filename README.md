@@ -226,9 +226,9 @@ Dispatched sessions that operate without supervision or feedback loops lead to s
 
 #### Current Herdsman alignment
 
-The orchestration contract follows the latest upstream Herdsman (`boadij/pi-herdsman`) supervision semantics:
+The orchestration contract follows current upstream Herdsman (`boadij/pi-herdsman`) supervision semantics:
 
-- **State compatibility & derived lifecycle:** Preserves existing canonical uppercase states (`ASSIGNED`, `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED`, `CLOSED`) while adding an optional derived lowercase lifecycle field (`pending`, `running`, `ready`, `blocked`, `failed`, `closed`) for full backward and upstream interoperability without wire migration.
+- **State compatibility & derived lifecycle:** Preserves the canonical uppercase states (`ASSIGNED`, `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED`, `CLOSED`) unchanged and derives an optional local lowercase lifecycle field (`pending`, `running`, `ready`, `blocked`, `failed`, `closed`) for consumers that want a normalized projection. The derived field is local, not a wire contract: no migration is required and legacy consumers keep reading uppercase `state`. Upstream Herdsman publishes a different, assignment-centric public set (`working`, `blocked`, `settling`, `unknown`, `lost`); values without a local mapping derive `unknown` and fail closed instead of being guessed.
 - **Deduplicated full SHA-256 evidence store:** Large logs and diffs are hashed to full 64-char SHA-256 content-addressed files under `evidence/<sha256>.txt` and referenced as `ref:sha256:<hash>`. Evidence is inspectable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into model prompts.
 - **Non-blocking notifications:** Notifications to master sessions (`herdr agent prompt`) run non-blockingly (`spawn` unref) so delivery issues or unavailable Herdr runtimes cannot block mailbox report persistence or turn a completed task into a false failure.
 - **Fail-closed supervision:** Terminal agent states that report `unknown` liveness fail closed to `DECIDE`, mandating that the master reconcile with Git and CI before proceeding rather than assuming tasks are healthy.
@@ -237,7 +237,7 @@ The orchestration contract follows the latest upstream Herdsman (`boadij/pi-herd
 - **Simulation before live smoke:** Prefer deterministic simulated smoke for covered Pi/Herdr boundary scenarios; use live-model smoke when model/provider behavior or instruction adherence is under test.
 - **Nonterminal execution failure:** Treat model execution failure as nonterminal evidence: do not retry automatically, replay tools, stop children, integrate partial work, or publish a successful handoff.
 
-These points are aligned with `boadij/pi-herdsman` commits `0dc62d39`, `a422c804`, `c72acadf`, `44698e40`, `56bd0258`, and `321114de` (October 2026).
+These points are aligned with upstream `boadij/pi-herdsman` v0.55.0 (2026-11-25, `main` at `5b5f2464`): nonblocking `notify_owner` that leaves assignment completion eligibility untouched and requires persisted owner receipt (`docs/concepts/lifecycle.md`), an assignment-centric public state projection where physical `unknown` fails closed, and role-scoped supervision authority (`docs/coordination-api.md`). The earlier alignment sources `0dc62d39`, `a422c804`, `c72acadf`, `44698e40`, `56bd0258` and `321114de` (October 2026) remain the reference for presentation-only labels and simulated-smoke-first verification. Upstream capabilities this repository does not implement are recorded in [coordination.md](skills/pi-herdr-orchestrator/references/coordination.md#unavailable-upstream-capabilities).
 
 ### 6. Two-Tier Integration & Merge Queue
 

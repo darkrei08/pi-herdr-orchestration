@@ -52,6 +52,15 @@ Keep pane and agent labels stable and understandable; close a child pane only af
 
 PiWorkflow and `@piewf/herdr` provide the runtime implementation for workflow-owned panes. The default transport splits a sibling pane in the caller's current tab; the new pane keeps the caller's `tab_id`, and the split result exposes `.result.pane.pane_id`. Keep the `parallel` object keys and labels stable for deterministic launch order, but never treat a label or pane position as authority. The trusted project setting is created by `init-repository.mjs`; a manual global setting is not required for initialized repositories.
 
+## Unavailable upstream capabilities
+
+Upstream Herdsman v0.55.0 exposes model-facing coordination tools and a federated peer transport that this repository does not implement. Do not cite, call or simulate them:
+
+- **Role-specific messaging tools.** `notify_owner`, `await_owner`, `reply_agent`, `message_staff`, `message_manager` and `message_chief` do not exist here. The only channel is the mailbox (`scripts/mailbox.mjs report|ask|reply|status`, `orch_report`/`orch_ask`/`orch_reply`) plus an opaque `herdr agent prompt` wake-up nudge that carries no structured contract.
+- **Manager project operations.** `delegate_work`, `resume_work`, `stop_lead`, `remove_worktree` and `integrate_branch` are not implemented. Branch based assignment, resume and integration remain master decisions executed through Git and explicit operator authorization; worktree removal stays manually confirmed.
+- **Federated peer messaging.** There is no peer discovery, no cross-machine initiation or reply transport and no durable remote reply channel. Two orchestrator runs coordinate only through the local mailbox directory shared under `<git-common-dir>/orchestrator/<run>/`.
+- **Upstream terminal projections.** Upstream `settling` and `lost` assignment states have no local equivalent: a lost or unreadable terminal liveness state is reported as `DECIDE`/`unverified` and requires master reconciliation against the mailbox and Git.
+
 ## Capability fallback
 
 If PiWorkflow or Pi cannot create a real child session, preserve the hierarchy in one session with clearly labeled role sections and reports. When the host forbids nested subagents (for example the Gentle AI harness), the master dispatches task sessions directly and chiefs stay report roles. Do not simulate concurrent execution, pretend that panes were closed, or report a chief handoff that did not occur. The protocol describes coordination; the available tools determine which parts can be executed.

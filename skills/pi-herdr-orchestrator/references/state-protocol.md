@@ -67,7 +67,7 @@ When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In bo
 
 Required fields are `v`, `kind`, `id`, `parent`, `sender`, `task`, `state`, `summary`, `checks`, `memory` and `next`. Add fields only when they carry decision value. Use stable IDs and references instead of embedding logs, diffs or transcript text. Allowed canonical states include `ASSIGNED`, `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED` and `CLOSED`; checks use `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`.
 
-For upstream Herdsman (`boadij/pi-herdsman`) compatibility, the envelope includes an optional derived `lifecycle` field:
+The envelope includes an optional derived `lifecycle` field, computed locally by `deriveLifecycle` in `mailbox.mjs`:
 - `ASSIGNED` $\rightarrow$ `pending`
 - `WORKING` $\rightarrow$ `running`
 - `READY` $\rightarrow$ `ready`
@@ -76,7 +76,7 @@ For upstream Herdsman (`boadij/pi-herdsman`) compatibility, the envelope include
 - `FAILED` $\rightarrow$ `failed`
 - `CLOSED` $\rightarrow$ `closed`
 
-Legacy consumers continue to consume uppercase `state` safely without a wire migration. Generic workflow evidence remains durable and authoritative over terminal coordination; an `unknown` or lost terminal liveness state fails closed into `DECIDE` to mandate master reconciliation before proceeding.
+The derived field is a local normalization for consumers that want lowercase values, not an upstream wire contract, so no migration is required. Current upstream Herdsman (v0.55.0) publishes an assignment-centric public set (`working`, `blocked`, `settling`, `unknown`, `lost`) in `docs/concepts/lifecycle.md` that does not map onto these values; any value without a local mapping derives `unknown` and fails closed. Legacy consumers continue to consume uppercase `state` safely without a wire migration. Generic workflow evidence remains durable and authoritative over terminal coordination; an `unknown` or lost terminal liveness state fails closed into `DECIDE` to mandate master reconciliation before proceeding.
 
 ## Persisted graph supervisor
 
