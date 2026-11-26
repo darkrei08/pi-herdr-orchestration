@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statfsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statfsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -195,6 +195,47 @@ function herdrJson(args) {
 
 function record(id, status, details = {}) {
   return { id, status, ...details };
+}
+
+function projectSkillDirs(start) {
+  const dirs = [];
+  let current = resolve(start);
+  while (true) {
+    const candidate = join(current, ".agents", "skills");
+    if (existsSync(candidate)) dirs.push(candidate);
+    if (existsSync(join(current, ".git"))) break;
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return dirs;
+}
+
+export function projectSkillCollisionCheck(
+  projectRoot = process.cwd(),
+  universalRoot = join(home, ".agents", "skills"),
+  { exists = existsSync, readDir = readdirSync, realPath = realpathSync } = {},
+) {
+  const collisions = [];
+  for (const root of projectSkillDirs(projectRoot)) {
+    for (const entry of readDir(root, { withFileTypes: true })) {
+      const name = entry.name;
+      const projectPath = join(root, name);
+      const universalPath = join(universalRoot, name);
+      if (!exists(join(projectPath, "SKILL.md")) || !exists(join(universalPath, "SKILL.md"))) continue;
+      let samePath = false;
+      try {
+        samePath = realPath(projectPath) === realPath(universalPath);
+      } catch {
+        samePath = false;
+      }
+      if (!samePath) collisions.push({ name, project_path: projectPath, universal_path: universalPath });
+    }
+  }
+  return record("project-skill-collisions", collisions.length ? "incompatible" : "installed", {
+    collisions,
+    required_for: ["deterministic project skill resolution"],
+  });
 }
 
 export function tempHeadroomCheck(path = tmpdir(), statfs = statfsSync) {
@@ -466,8 +507,9 @@ for (const [id, markers] of [
   checks.push(record(id, found.length ? "installed" : "missing", { skills: found, required_for: ["optional skill routing"] }));
 }
 
+checks.push(projectSkillCollisionCheck());
 checks.push(tempHeadroomCheck());
-const requiredIds = new Set(["skill", "node", "git", "pi-compaction-owner", "temp-headroom"]);
+const requiredIds = new Set(["skill", "node", "git", "pi-compaction-owner", "temp-headroom", "project-skill-collisions"]);
 const requiredFailures = checks.filter((check) => requiredIds.has(check.id) && check.status !== "installed");
 const result = {
   schema: "pi-herdr-orchestrator/capability-report-v1",
