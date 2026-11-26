@@ -10,6 +10,8 @@ import {
   runDir,
   storeEvidence,
   readEvidence,
+  paneLabel,
+  renamePane,
   report,
   ask,
   reply,
@@ -25,7 +27,7 @@ import {
   stepGraphState,
 } from "../skills/pi-herdr-orchestrator/scripts/graph-supervisor.mjs";
 
-export default function (pi) {
+export default function (pi, deps = {}) {
   // 1. Tool: orch_report
   pi.registerTool({
     name: "orch_report",
@@ -110,6 +112,9 @@ export default function (pi) {
     },
     async execute(_id, params) {
       const entry = report({ ...params, silent: true, nonBlocking: true });
+      // Talking label: presentation only, derived from the persisted task and
+      // state, never from caller free text. A skip is a warning, not a failure.
+      renamePane(entry.identity?.pane ?? params.pane ?? process.env.HERDR_PANE_ID, paneLabel(entry.task, entry.state), deps);
       const out = `${entry.task} ${entry.state} (seq=${entry.seq})${entry.evidence_ref ? ` [evidence ${entry.evidence_ref}]` : ""}`;
       return { content: [{ type: "text", text: out }] };
     }

@@ -41,6 +41,35 @@ export function deriveLifecycle(state) {
   return "unknown";
 }
 
+// Talking pane label: derived only from the stored task id and its lifecycle,
+// never from caller free text. Upper case keeps the title scannable.
+export function paneLabel(task, state) {
+  return `${task} ${deriveLifecycle(state).toUpperCase()}`;
+}
+
+// Presentation only, called by the orch_report tool after the mailbox write:
+// an unknown pane or an absent Herdr warns and returns null, it never fails
+// the report that is already persisted.
+export function renamePane(pane, label, { run = spawnSync, warn = (message) => process.emitWarning(message) } = {}) {
+  const target = String(pane ?? "").trim();
+  if (!target) {
+    warn(`[ORCH_PANE_LABEL_SKIPPED] no pane identity for label '${label}'; report is still persisted`);
+    return null;
+  }
+  try {
+    const result = run("herdr", ["pane", "rename", target, label], { encoding: "utf8" });
+    if (result?.error || (result?.status !== null && result?.status !== undefined && result.status !== 0)) {
+      const reason = result?.error?.message ?? result?.stderr?.trim() ?? `exit ${result?.status}`;
+      warn(`[ORCH_PANE_LABEL_SKIPPED] herdr pane rename ${target} failed: ${reason}; report is still persisted`);
+      return null;
+    }
+    return label;
+  } catch (error) {
+    warn(`[ORCH_PANE_LABEL_SKIPPED] herdr unavailable: ${error.message}; report is still persisted`);
+    return null;
+  }
+}
+
 const PENDING = new Set(["ASSIGNED", "WORKING"]);
 const CHECKS = new Set(["PASS", "FAIL", "BLOCKED", "NOT RUN"]);
 const HERDR_AGENT_NAME = /^[a-z][a-z0-9_-]{0,31}$/;
