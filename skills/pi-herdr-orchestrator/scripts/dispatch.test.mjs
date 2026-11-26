@@ -77,6 +77,24 @@ test("routing names only installed selectors and keeps issue routes viable", () 
   assert.match(routing, /explicitly receive the resolved search tool/);
 });
 
+test("routing records that disable-model-invocation skills cannot be reached by selector", () => {
+  const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
+  const skill = read("skills/pi-herdr-orchestrator/SKILL.md");
+  for (const source of [skill, routing]) {
+    assert.match(source, /disable-model-invocation: true/);
+    assert.match(source, /formatSkillsForPrompt/);
+    assert.match(source, /skillsOverride/);
+    assert.match(source, /absolute `SKILL\.md` path/);
+    assert.match(source, /NOT RUN/);
+  }
+  for (const name of ["wayfinder", "to-spec", "to-tickets", "triage", "implement", "grill-me", "grill-with-docs", "handoff", "retro"]) {
+    assert.match(routing, new RegExp(`\`${name}\``), `routing does not name flagged skill ${name}`);
+  }
+  assert.match(routing, /\(user-invoked\)/);
+  assert.match(routing, /not this flag/);
+  assert.doesNotMatch(routing, /child must be told to run `\/skill:/);
+});
+
 test("dispatch contract names deterministic workflow fan-out and explicit role loadout", () => {
   const skill = read("skills/pi-herdr-orchestrator/SKILL.md");
   const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
