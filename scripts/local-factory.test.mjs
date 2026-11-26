@@ -54,17 +54,18 @@ test("reports FAIL and BLOCKED separately from PASS and NOT RUN", () => {
 test("records the exact repository commands for every executed gate", () => {
   const { run } = recorder();
   const report = runLocalFactory({ run });
+  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 
   assert.deepEqual(
     report.gates.filter((gate) => gate.kind === "command").map((gate) => gate.command),
     [
       "node scripts/check.mjs --strict",
       "node scripts/agent-roster-diagnostic.mjs",
-      "npm run test:fanout",
-      "npm run test:fixture",
+      `${npm} run test:fanout`,
+      `${npm} run test:fixture`,
       "git diff --check",
-      "npm run lint",
-      "npm test",
+      `${npm} run lint`,
+      `${npm} test`,
     ],
   );
 });
