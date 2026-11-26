@@ -304,7 +304,8 @@ Launch named workflows with `foreground: true` and no budget; omit `timeoutMs` o
 ### Host Agent Roster (`list_agents`)
 - **Role:** Live discovery of effective Agent definitions available to the current controller.
 - **Capability contract:** Use the roster result to select Agents by effective capabilities; a configured definition is not proof that it is runnable.
-- **Failure contract:** If roster validation fails, report `BLOCKED` with the exact definition path and field error. Do not simulate delegation or infer availability from filenames. The current host reported: `/root/.pi/agent/agents/gentle-ai-verify.md` has an invalid `tools` field because it must be an array of non-empty strings.
+- **Failure contract:** If roster validation fails, report `BLOCKED` with the exact definition path and field error. Do not simulate delegation or infer availability from filenames.
+- **Supported repair path:** Back up the external definition, change only its YAML frontmatter so `tools` is an array of non-empty strings (for example `tools:\n  - read`), remove object entries such as `- "*": false`, then call `list_agents` again and record the refreshed roster. On 2026-11-26 this repaired nine host definitions and `list_agents` then reported a valid roster.
 
 ### Gentle AI Suite & Engram
 - **Role:** Harness discipline, durable memory, and review authority.
