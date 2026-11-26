@@ -49,7 +49,7 @@ agent(taskPrompt, {
 | Refactor | Behaviour-preservation tests first (`tdd`, EE `testing`); Matt `codebase-design` / `improve-codebase-architecture` for shape |
 | Technical or factual uncertainty | Matt `prototype` (throwaway) or `research` |
 | UI work | EE `interaction`, `accessibility`, `i18n`, `seo` as relevant; browser evidence; visual design skills only for visual design tasks |
-| Infrastructure, containers, CI | EE `docker`, `ci`, `production-readiness`; OS-specific behaviour: EE `platform-testing` or `container-test-matrix` |
+| Infrastructure, containers, CI | EE `docker`, `ci`, `production-readiness`; OS-specific behaviour: EE `platform-testing` or `container-test-matrix`; Proxmox host-node LXC/VM guests via `platform-testing` and `quality` for pre-production commit and task validation, not Docker Compose on the local Pi machine |
 | Security, performance | EE `security`, `performance`; matching reviewer role |
 | Candidate review | Independent context: Matt `code-review` (Standards and Spec vs a fixed point) or a reviewer role; Gentle `judgment-day` only when dual or adversarial review is requested; GGA before `READY` |
 | Commits and PR | Installed `gentle-ai-work-unit-commits` or `work-unit-commits`, `gentle-ai-chained-pr` or `chained-pr` for oversized diffs, `gentle-ai-branch-pr` (issue-first, each remote action separately authorized); Matt `pr` for the body; EE pull-request template |

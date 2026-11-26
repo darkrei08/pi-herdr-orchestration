@@ -16,6 +16,8 @@ For workflow dispatch, the minimum deterministic smoke checks are: validate the 
 
 When the project has Compose or equivalent runtime definitions and it is practical, validate integrated behavior: validate the config, check required env without exposing secrets, check port conflicts, never destroy persistent development data, start the smallest stack first, then verify startup, health, dependency resolution, logs, migrations, API connectivity and frontend/backend communication. Run it from a dedicated validation session and tear down disposable containers and volumes afterwards.
 
+For pre-production validation of commits and tasks, use disposable LXC or VM guests created on the Proxmox host node and run the checks inside those guests. Do not substitute Docker Compose on the local machine that runs Pi when the host-node guest route is available. Record the guest image, host, checks, and cleanup result as evidence.
+
 For frontend changes with a browser tool available, verify that the target route renders, console and network are clean, loading/empty/error states, responsive layouts, keyboard navigation and basic accessibility; capture screenshots as evidence when they help review. Report `NOT RUN` when tooling is absent.
 
 ### Non-destructive smoke test isolation
