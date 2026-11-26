@@ -7,6 +7,12 @@
 - Run the documented checks relevant to each change and report blocked checks honestly.
 - Do not commit, push, merge, or publish without explicit authorization.
 
+## Deferred publication
+
+Local commit creation and remote publication are separate phases. Create one clean isolated worktree per reviewable work unit, commit locally after that unit's checks pass, and defer push, pull request creation, merge, and issue closure until a later explicit publication decision.
+
+Record the branch, worktree path, commit, checks, and publication state for each work unit. Preserve unrelated dirty trees, worktrees, hooks, and local configuration. This inventory must support later review of commits, PRs, and issues without requiring immediate push or merge.
+
 <!-- BEGIN sqz-agents-guidance (auto-installed by sqz init; remove this block to disable) -->
 
 ## sqz — Token-Optimized CLI Output
