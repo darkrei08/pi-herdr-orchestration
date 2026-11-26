@@ -37,8 +37,8 @@ test("temporary filesystem headroom fails closed when statfs is unavailable", ()
 });
 
 test("package-local Gentle AI detection finds a versioned binary independently of package version", () => {
-  const packagePath = "/tmp/node_modules/gentle-pi/package.json";
-  const binaryPath = "/tmp/node_modules/gentle-pi/.gentle-ai/v4.6.0/gentle-ai";
+  const packagePath = join("/tmp", "node_modules", "gentle-pi", "package.json");
+  const binaryPath = join("/tmp", "node_modules", "gentle-pi", ".gentle-ai", "v4.6.0", "gentle-ai");
   const found = packageLocalGentleAiBinary(
     packagePath,
     () => ["v4.6.0"],
