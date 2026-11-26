@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-11-25
+
+### Added
+- **Proxmox Host-Node Validation Guidance (`skills/pi-herdr-orchestrator/references/quality.md`, `skills/pi-herdr-orchestrator/references/routing.md`)**: Prefer disposable LXC/VM guests on the Proxmox host node for pre-production commit and task validation, without replacing them with Docker Compose on the local Pi machine. Mirrors the Engineering Excellence `platform-testing.md` host matrix and Proxmox container/VM guidance applied to the installed global skills.
+
 ## [1.5.1] - 2026-11-23
 
 ### Fixed
