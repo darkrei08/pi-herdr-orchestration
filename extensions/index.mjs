@@ -13,6 +13,7 @@ import {
   paneLabel,
   renamePane,
   report,
+  usageSummary,
   ask,
   reply,
 } from "../skills/pi-herdr-orchestrator/scripts/mailbox.mjs";
@@ -106,6 +107,25 @@ export default function (pi, deps = {}) {
         },
         run: { type: "string", description: "Run identifier (defaults to ORCH_RUN env)" },
         agent: { type: "string", description: "Herdr agent name" },
+        usage: {
+          type: "object",
+          description: "Usage deltas since the previous report; omit any metric the runtime does not expose so it stays 'unknown' rather than zero",
+          properties: {
+            agent_launches: { type: "number", minimum: 0, description: "Child agent launches since the previous report" },
+            tokens: { type: "number", minimum: 0, description: "Tokens consumed since the previous report" },
+            cost_usd: { type: "number", minimum: 0, description: "Provider cost in USD since the previous report" }
+          }
+        },
+        budget: {
+          type: "object",
+          description: "Per-run ceiling for this report; defaults to ORCH_RUN_BUDGET as JSON. Any dimension over its limit blocks the transition",
+          properties: {
+            agent_launches: { type: "number", minimum: 0 },
+            wall_ms: { type: "number", minimum: 0 },
+            tokens: { type: "number", minimum: 0 },
+            cost_usd: { type: "number", minimum: 0 }
+          }
+        },
         notify: { type: "string", description: "Distinct Herdr agent name to nudge; never the current Pi session or sender" }
       },
       required: ["task", "state"]
@@ -115,7 +135,7 @@ export default function (pi, deps = {}) {
       // Talking label: presentation only, derived from the persisted task and
       // state, never from caller free text. A skip is a warning, not a failure.
       renamePane(entry.identity?.pane ?? params.pane ?? process.env.HERDR_PANE_ID, paneLabel(entry.task, entry.state), deps);
-      const out = `${entry.task} ${entry.state} (seq=${entry.seq})${entry.evidence_ref ? ` [evidence ${entry.evidence_ref}]` : ""}`;
+      const out = `${entry.task} ${entry.state} (seq=${entry.seq})${entry.evidence_ref ? ` [evidence ${entry.evidence_ref}]` : ""}${entry.budget_block ? ` [BUDGET ${entry.budget_block.dimension} ${entry.budget_block.observed}>${entry.budget_block.limit}]` : ""} [${usageSummary(entry.usage, entry.budget_block)}]`;
       return { content: [{ type: "text", text: out }] };
     }
   });
@@ -159,7 +179,10 @@ export default function (pi, deps = {}) {
           reason: assessment.reason,
           summary: e.summary.slice(0, 60),
           question_id: e.pending_ask?.message_id ?? null,
-          evidence: e.evidence_ref ?? "-"
+          evidence: e.evidence_ref ?? "-",
+          run_budget: e.run_budget ?? null,
+          budget_block: e.budget_block ?? null,
+          usage: usageSummary(e.usage, e.budget_block),
         };
       });
 
@@ -171,10 +194,10 @@ export default function (pi, deps = {}) {
         return { content: [{ type: "text", text: "No active or recorded tasks in this run." }] };
       }
 
-      const header = "Task       | Agent      | Herdr   | State       | Lifecycle   | Seq | Age(m) | Flag        | Liveness    | Question ID                         | Summary";
-      const sep    = "-----------+------------+---------+-------------+-------------+-----+--------+-------------+-------------+-------------------------------------+-----------------------------";
+      const header = "Task       | Agent      | Herdr   | State       | Lifecycle   | Seq | Age(m) | Flag        | Liveness    | Question ID                         | Usage                                                    | Summary";
+      const sep    = "-----------+------------+---------+-------------+-------------+-----+--------+-------------+-------------+-------------------------------------+----------------------------------------------------------+-----------------------------";
       const lines = rows.map((r) =>
-        `${(r.task || "").padEnd(10)} | ${(r.agent || "-").padEnd(10)} | ${(r.herdr || "-").padEnd(7)} | ${(r.state || "-").padEnd(11)} | ${(r.lifecycle || "-").padEnd(11)} | ${(String(r.seq) || "1").padStart(3)} | ${String(r.age_min).padStart(6)} | ${(r.flag || "OK").padEnd(11)} | ${(r.liveness || "-").padEnd(11)} | ${(r.question_id || "-").padEnd(35)} | ${r.summary} (${r.reason || "no reason"})`
+        `${(r.task || "").padEnd(10)} | ${(r.agent || "-").padEnd(10)} | ${(r.herdr || "-").padEnd(7)} | ${(r.state || "-").padEnd(11)} | ${(r.lifecycle || "-").padEnd(11)} | ${(String(r.seq) || "1").padStart(3)} | ${String(r.age_min).padStart(6)} | ${(r.flag || "OK").padEnd(11)} | ${(r.liveness || "-").padEnd(11)} | ${(r.question_id || "-").padEnd(35)} | ${(r.usage || "-").padEnd(56)} | ${r.summary} (${r.reason || "no reason"})`
       );
       const text = [header, sep, ...lines].join("\n");
       return { content: [{ type: "text", text }] };
