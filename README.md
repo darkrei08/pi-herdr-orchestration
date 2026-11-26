@@ -38,6 +38,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Optional Rust Graph Core](#optional-rust-graph-core)
   - [Mailbox & Supervision Commands](#mailbox--supervision-commands)
   - [Talking Pane Title](#talking-pane-title)
+  - [Run Budget & Usage Accounting](#run-budget--usage-accounting)
   - [Compaction & Overlap Rules](#compaction--overlap-rules)
 - [Release and npm Trusted Publishing](#release-and-npm-trusted-publishing)
 - [Sources & References](#sources--references)
@@ -538,6 +539,42 @@ herdr pane rename <PANE_ID> <TASK> <LIFECYCLE>
 `<PANE_ID>` is the pane identity already stored for the task, else the report's `pane` parameter, else `HERDR_PANE_ID`. `<LIFECYCLE>` is derived from the persisted mailbox state and upper-cased, so the label is deterministic and never contains caller free text such as the summary, phase, or branch: `ASSIGNED` gives `I#84 PENDING`, `WORKING` and `DEVELOPMENT` give `I#84 RUNNING`, `READY` gives `I#84 READY`, `BLOCKED` gives `I#84 BLOCKED`, `FAILED` gives `I#84 FAILED`, `CLOSED` gives `I#84 CLOSED`, and a `PR#127` report gives `PR#127 RUNNING`. A report downgraded on write is labelled with the stored state: `READY` without a candidate and evidence binding is persisted as `BLOCKED` and labelled `I#84 BLOCKED`.
 
 The rename is presentation only. When no pane identity is known, or Herdr is absent or rejects the command, the report is still persisted and the extension emits an `ORCH_PANE_LABEL_SKIPPED` warning instead of failing. Pane titles never replace mailbox or Git evidence.
+
+### Run Budget & Usage Accounting
+
+Every `orch_report` persists a run-level `usage` record next to the task, so the cost of a long loop is visible while it runs instead of after it ends:
+
+```json
+{
+  "usage": {
+    "agent_launches": 12,
+    "wall_ms": 1440000,
+    "tokens": 9200000,
+    "cost_usd": 41.5,
+    "phases": { "PLAN": 120000, "IMPLEMENT": 1320000 },
+    "last": { "agent_launches": 2, "tokens": 410000, "cost_usd": 1.9, "wall_ms": 240000, "phase": "IMPLEMENT" }
+  }
+}
+```
+
+`last` holds the deltas since the previous report; the top-level fields are the accumulated run totals. `wall_ms` is measured from the injected clock, so it is always known, and elapsed time is credited to the reporting `phase`; the first report of `PLAN` reads `phases.PLAN: 0`. `agent_launches`, `tokens`, and `cost_usd` are supplied by the runtime through `orch_report`'s `usage` parameter and are recorded as the string `unknown` whenever the runtime does not expose them. An unknown metric also makes the accumulated total unknown, because a partial sum cannot be reported as a total. Unknown is never coerced to zero.
+
+A per-run ceiling is configured per call with `orch_report`'s `budget` parameter, or once for a run with `ORCH_RUN_BUDGET` holding the same JSON object:
+
+```bash
+ORCH_RUN_BUDGET='{"tokens": 2000000, "cost_usd": 25, "wall_ms": 28800000, "agent_launches": 40}' \
+  node scripts/mailbox.mjs report --run <run-id> --task I#84 --state WORKING --summary "cycle 9"
+```
+
+The recognized dimensions are `agent_launches`, `wall_ms`, `tokens`, and `cost_usd`; any other key is rejected. The ceiling is checked on each state transition before the write. When an accumulated total passes its limit, that report is persisted as `BLOCKED` and the record carries the breached dimension:
+
+```json
+{ "budget_block": { "dimension": "tokens", "limit": 2000000, "observed": 2130000 } }
+```
+
+The `orch_report` result repeats it as `[BUDGET tokens 2130000>2000000]`. A `CLOSED` report is not downgraded, and an `unknown` dimension can never prove a breach, so it never blocks a run that exposes no metrics. To continue after raising the ceiling, re-report the transition with a new `id`, because an already-delivered message id is still treated as a replay.
+
+`orch_status` and `node scripts/mailbox.mjs status` show the accumulated usage next to every task in the `Usage` column (`launches=12 wall=24m tokens=unknown cost=unknown`), prefixed with the breached dimension when the task is blocked by the ceiling.
 
 ### Compaction & Overlap Rules
 
