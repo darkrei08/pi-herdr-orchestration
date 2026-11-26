@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
@@ -10,9 +12,46 @@ import {
   herdrPluginStatus,
   packageLocalGentleAiBinary,
   parsePluginList,
+  projectSkillCollisionCheck,
   schemaProtocol,
   tempHeadroomCheck,
 } from "./check-environment.mjs";
+
+test("project skill collision check rejects a physical project copy that shadows a universal skill", () => {
+  const root = mkdtempSync(join(tmpdir(), "orch-skill-collision-"));
+  const globalRoot = join(root, "global");
+  const projectRoot = join(root, "project");
+  mkdirSync(join(globalRoot, "to-spec"), { recursive: true });
+  mkdirSync(join(projectRoot, ".git"), { recursive: true });
+  mkdirSync(join(projectRoot, ".agents", "skills", "to-spec"), { recursive: true });
+  writeFileSync(join(globalRoot, "to-spec", "SKILL.md"), "name: to-spec\n");
+  writeFileSync(join(projectRoot, ".agents", "skills", "to-spec", "SKILL.md"), "name: to-spec\n");
+  try {
+    const check = projectSkillCollisionCheck(projectRoot, globalRoot);
+    assert.equal(check.status, "incompatible");
+    assert.deepEqual(check.collisions.map((entry) => entry.name), ["to-spec"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("project skill collision check accepts a link to the universal skill", () => {
+  const root = mkdtempSync(join(tmpdir(), "orch-skill-link-"));
+  const globalRoot = join(root, "global");
+  const projectRoot = join(root, "project");
+  mkdirSync(join(globalRoot, "to-spec"), { recursive: true });
+  mkdirSync(join(projectRoot, ".git"), { recursive: true });
+  mkdirSync(join(projectRoot, ".agents", "skills"), { recursive: true });
+  writeFileSync(join(globalRoot, "to-spec", "SKILL.md"), "name: to-spec\n");
+  symlinkSync(join(globalRoot, "to-spec"), join(projectRoot, ".agents", "skills", "to-spec"), "dir");
+  try {
+    const check = projectSkillCollisionCheck(projectRoot, globalRoot);
+    assert.equal(check.status, "installed");
+    assert.deepEqual(check.collisions, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("temporary filesystem headroom blocks dispatch below ten percent free", () => {
   const check = tempHeadroomCheck("/tmp", () => ({ bavail: 9, blocks: 100, bsize: 1 }));
