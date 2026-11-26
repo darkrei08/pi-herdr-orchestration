@@ -18,6 +18,11 @@ import { withLock } from "./lock.mjs";
 export const STATES = ["ASSIGNED", "WORKING", "READY", "DEVELOPMENT", "BLOCKED", "FAILED", "CLOSED"];
 export const LIFECYCLE_STATES = ["pending", "running", "ready", "blocked", "failed", "closed"];
 
+// A metric the runtime never exposed is unknown, never zero: zero would let a
+// run claim it stayed inside a ceiling it never measured.
+const UNKNOWN = "unknown";
+const RUN_BUDGET_DIMENSIONS = ["agent_launches", "wall_ms", "tokens", "cost_usd"];
+
 export const STATE_TO_LIFECYCLE = Object.freeze({
   ASSIGNED: "pending",
   WORKING: "running",
@@ -39,6 +44,35 @@ export function deriveLifecycle(state) {
     return lower;
   }
   return "unknown";
+}
+
+// Talking pane label: derived only from the stored task id and its lifecycle,
+// never from caller free text. Upper case keeps the title scannable.
+export function paneLabel(task, state) {
+  return `${task} ${deriveLifecycle(state).toUpperCase()}`;
+}
+
+// Presentation only, called by the orch_report tool after the mailbox write:
+// an unknown pane or an absent Herdr warns and returns null, it never fails
+// the report that is already persisted.
+export function renamePane(pane, label, { run = spawnSync, warn = (message) => process.emitWarning(message) } = {}) {
+  const target = String(pane ?? "").trim();
+  if (!target) {
+    warn(`[ORCH_PANE_LABEL_SKIPPED] no pane identity for label '${label}'; report is still persisted`);
+    return null;
+  }
+  try {
+    const result = run("herdr", ["pane", "rename", target, label], { encoding: "utf8" });
+    if (result?.error || (result?.status !== null && result?.status !== undefined && result.status !== 0)) {
+      const reason = result?.error?.message ?? result?.stderr?.trim() ?? `exit ${result?.status}`;
+      warn(`[ORCH_PANE_LABEL_SKIPPED] herdr pane rename ${target} failed: ${reason}; report is still persisted`);
+      return null;
+    }
+    return label;
+  } catch (error) {
+    warn(`[ORCH_PANE_LABEL_SKIPPED] herdr unavailable: ${error.message}; report is still persisted`);
+    return null;
+  }
 }
 
 const PENDING = new Set(["ASSIGNED", "WORKING"]);
@@ -530,6 +564,102 @@ export function classify(entry, agent, now, staleMs) {
   return classifyLiveness(entry, agent, now, staleMs).flag;
 }
 
+function normalizeRunBudget(budget) {
+  if (!isPresent(budget)) return null;
+  let value = budget;
+  if (typeof value === "string") {
+    try { value = JSON.parse(value); } catch { throw new Error("run budget must be a JSON object"); }
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("run budget must be a JSON object");
+  const normalized = {};
+  for (const [dimension, limit] of Object.entries(value)) {
+    if (!RUN_BUDGET_DIMENSIONS.includes(dimension)) throw new Error(`unknown run budget dimension: ${dimension}`);
+    if (typeof limit !== "number" || !Number.isFinite(limit) || limit < 0) {
+      throw new Error(`run budget ${dimension} must be a non-negative number`);
+    }
+    normalized[dimension] = limit;
+  }
+  return Object.keys(normalized).length ? normalized : null;
+}
+
+// Documented knobs, in order: the report's own budget, then ORCH_RUN_BUDGET as
+// JSON, then no ceiling at all.
+function resolveRunBudget(opts = {}) {
+  return normalizeRunBudget(opts.budget ?? process.env.ORCH_RUN_BUDGET);
+}
+
+function resolveNow(value) {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && Number.isFinite(Date.parse(value))) return Date.parse(value);
+  return Date.now();
+}
+
+function usageDelta(value, label) {
+  if (!isPresent(value)) return UNKNOWN;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative number`);
+  }
+  return value;
+}
+
+function addUsage(total, delta) {
+  return total === UNKNOWN || delta === UNKNOWN ? UNKNOWN : total + delta;
+}
+
+function accumulateUsage(prev, opts, nowMs) {
+  const prior = prev.usage ?? {};
+  const input = opts.usage ?? {};
+  const previousAt = Date.parse(prev.updated_at ?? "");
+  // Wall clock is measurable from the injected clock, so it starts at a true
+  // zero; elapsed time between reports is credited to the reporting phase.
+  const elapsed = Number.isFinite(previousAt) ? Math.max(0, nowMs - previousAt) : 0;
+  const phase = opts.phase ?? prev.phase ?? "unphased";
+  const deltas = {
+    agent_launches: usageDelta(input.agent_launches, "usage.agent_launches"),
+    tokens: usageDelta(input.tokens, "usage.tokens"),
+    cost_usd: usageDelta(input.cost_usd, "usage.cost_usd"),
+    wall_ms: elapsed,
+    phase,
+  };
+  const phases = { ...(prior.phases ?? {}) };
+  phases[phase] = (phases[phase] ?? 0) + elapsed;
+  // A metric absent from the prior record has no history yet, so its total is
+  // the new delta; a prior recorded as unknown keeps the total unknown.
+  const base = (metric) => (prior[metric] === undefined ? 0 : prior[metric]);
+  return {
+    agent_launches: addUsage(base("agent_launches"), deltas.agent_launches),
+    tokens: addUsage(base("tokens"), deltas.tokens),
+    cost_usd: addUsage(base("cost_usd"), deltas.cost_usd),
+    wall_ms: addUsage(base("wall_ms"), elapsed),
+    phases,
+    last: deltas,
+  };
+}
+
+function budgetExceeded(usage, budget) {
+  if (!budget) return null;
+  for (const dimension of RUN_BUDGET_DIMENSIONS) {
+    const limit = budget[dimension];
+    const observed = usage[dimension];
+    if (typeof limit === "number" && typeof observed === "number" && observed > limit) {
+      return { dimension, limit, observed };
+    }
+  }
+  return null;
+}
+
+const formatDuration = (ms) => (ms >= 60_000 ? `${Math.round(ms / 60_000)}m` : `${Math.round(ms / 1000)}s`);
+
+// Compact usage column reused by the status dashboards and the CLI.
+export function usageSummary(usage, budgetBlock = null) {
+  if (!usage) return "-";
+  const metric = (value) => (typeof value === "number" ? String(value) : UNKNOWN);
+  const wall = typeof usage.wall_ms === "number" ? formatDuration(usage.wall_ms) : UNKNOWN;
+  const prefix = budgetBlock ? `!${budgetBlock.dimension} ${budgetBlock.observed}>${budgetBlock.limit} ` : "";
+  return `${prefix}launches=${metric(usage.agent_launches)} wall=${wall} tokens=${metric(usage.tokens)} cost=${metric(usage.cost_usd)}`;
+}
+
 export function parse(argv) {
   const opts = { check: [], risk: [] };
   for (let i = 0; i < argv.length; i++) {
@@ -713,7 +843,8 @@ export function report(opts) {
     evidenceRef = storeEvidence(dir, opts.evidence);
   }
 
-  const now = new Date().toISOString();
+  const nowMs = resolveNow(opts.now);
+  const now = new Date(nowMs).toISOString();
   const terminalState = ["READY", "CLOSED"].includes(opts.state);
   const suppliedBinding = opts.evidence_binding ?? opts.evidenceBinding;
   let entry = null;
@@ -737,8 +868,7 @@ export function report(opts) {
     }
     const currentChecks = [...checksByName].map(([name, status]) => ({ name, status }));
     const currentCheckStrings = currentChecks.map(({ name, status }) => `${name}=${status}`);
-    const requiresTerminalEvidence = opts.state === "READY"
-      || (opts.state === "CLOSED" && (isPresent(candidate) || Boolean(suppliedBinding) || Boolean(prev.evidence_binding)));
+    const requiresTerminalEvidence = terminalState;
     const requestedBinding = suppliedBinding ?? (terminalState ? undefined : prev.evidence_binding);
     const reportIdPayload = {
       task: opts.task,
@@ -798,6 +928,7 @@ export function report(opts) {
             seq: (prev.seq ?? 0) + 1,
             message_id: heartbeatMessageId,
             message_ids: messageHistory(prev, heartbeatMessageId),
+            usage: accumulateUsage(prev, opts, nowMs),
             updated_at: now
           };
           persistEntry(dir, file, entry, { ...entry, heartbeat: true });
@@ -838,7 +969,12 @@ export function report(opts) {
       && bindingResult?.status === "verified"
       && providerResult?.status === "verified"
     );
-    const state = prev.pending_ask || !checksPass || !terminalProofPass
+    const usage = accumulateUsage(prev, opts, nowMs);
+    const runBudget = resolveRunBudget(opts);
+    // The ceiling stops a loop by refusing the requested transition; a CLOSED
+    // task stays terminal, and an unknown metric can never prove a breach.
+    const budgetBlock = opts.state === "CLOSED" ? null : budgetExceeded(usage, runBudget);
+    const state = prev.pending_ask || !checksPass || !terminalProofPass || budgetBlock
       ? "BLOCKED"
       : opts.state;
     entry = {
@@ -862,6 +998,9 @@ export function report(opts) {
         ? evidenceBindingRecord(evidenceBinding, bindingResult)
         : prev.evidence_binding ?? null,
       pending_ask: prev.pending_ask ?? null,
+      usage,
+      run_budget: runBudget,
+      budget_block: budgetBlock,
       risks: risksArray,
       next: opts.next ?? null,
       created_at: prev.created_at ?? now,
@@ -1043,7 +1182,10 @@ export function status(opts) {
       reason: assessment.reason,
       summary: e.summary.slice(0, 60),
       question_id: e.pending_ask?.message_id ?? null,
-      evidence: e.evidence_ref ?? "-"
+      evidence: e.evidence_ref ?? "-",
+      run_budget: e.run_budget ?? null,
+      budget_block: e.budget_block ?? null,
+      usage: usageSummary(e.usage, e.budget_block),
     };
   });
   if (opts.json === "true") {

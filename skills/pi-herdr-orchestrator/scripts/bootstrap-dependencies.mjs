@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { resolveCompactionOwner } from "./compaction-owner.mjs";
 
 const home = homedir();
 const wizardRoot = resolve(process.env.WIZARD_AI_DIR || join(home, ".wizard-ai"));
@@ -129,10 +130,9 @@ function detect() {
   const vccPackage = packagePath("@sting8k/pi-vcc") || packagePath("@adamjen/pi-vcc");
   const codexConfigured = sources.some((source) => source.includes("pi-codex-context"));
   const vccConfigured = sources.some((source) => source.includes("pi-vcc"));
-  const compactionOwner = codexConfigured || (!vccConfigured && codexPackage)
-    ? "pi-codex-context"
-    : "pi-core";
-  const compactionConflict = vccConfigured;
+  const compaction = resolveCompactionOwner({ configuredVcc: vccConfigured, configuredCodexContext: codexConfigured });
+  const compactionOwner = compaction.owner;
+  const compactionConflict = compaction.status === "incompatible";
   const wizardConfig = join(wizardRoot, ".wizard-ai.json");
   const contextPath = join(wizardRoot, "scripts", "wz-ai-context.js");
   const contextFormatsPath = join(wizardRoot, "scripts", "wz-ai-context-formats.js");
@@ -174,7 +174,6 @@ function detect() {
     llmlingua: imports.llmlingua === true,
     rtk: commandAvailable("rtk"),
     sqz: commandAvailable("sqz"),
-    serena: commandAvailable("serena"),
     imports,
   };
 }
@@ -302,7 +301,7 @@ if (state.compactionConflict) {
   process.exit();
 }
 status("pi-compaction-owner", "installed", `${state.compactionOwner} owns compaction`);
-status("pi-vcc", "skipped", "intentionally not installed; pi-codex-context is the Vekexasia dotenv owner");
+status("pi-vcc", state.compactionOwner === "pi-vcc" ? "installed" : "skipped", state.compactionOwner === "pi-vcc" ? "configured VCC owns compaction" : "intentionally not installed; pi-codex-context is the Vekexasia dotenv owner");
 
 ensureGentle();
 
@@ -457,25 +456,6 @@ function ensureSqz() {
   });
 }
 
-function ensureSerena() {
-  state = refresh();
-  if (state.serena) {
-    status("serena", "installed", "existing command detected; installer skipped");
-    return;
-  }
-  const installed = action("serena", "uv", ["tool", "install", "-p", "3.13", "serena-agent"], {
-    postcondition: () => refresh().serena,
-    onPlan: () => { state.serena = true; },
-  });
-  if (!installed) return;
-  recheck();
-  action("serena-init", "serena", ["init"], {
-    available: state.serena || !apply,
-    postcondition: () => refresh().serena,
-    onPlan: () => { state.serena = true; },
-  });
-}
-
 function ensureSkillsCli() {
   if (commandAvailable("skills")) {
     status("skills-cli", "installed", "existing skills command detected; installer skipped");
@@ -521,7 +501,6 @@ ensureGga();
 ensureHerdr();
 ensureRtk();
 ensureSqz();
-ensureSerena();
 ensureSkillsCli();
 ensureSkillSuites();
 

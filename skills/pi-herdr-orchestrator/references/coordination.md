@@ -48,9 +48,22 @@ Keep a small registry in the master context or an authorized workflow artifact:
 | `[CHIEF/BUILD]` | department chief | implementation queue | control | chief worktree | active |
 | `[I#42]` | implementation | Config loading | `fix/42-config-loading` | `.worktrees/issue-42-config-loading` | working |
 
-Keep pane and agent labels stable and understandable; close a child pane only after its session memory, report and master decision have been recorded. One named workflow run keeps one tab and forms a sibling-pane tree: nested agents split their parent pane. Use `herdr pane zoom --on|--off` on the focused pane to collapse or expand it, and create a new workspace, tab, or cwd only on explicit user request.
+Keep tab and agent labels stable, numbered in dispatch order and understandable; close a child tab only after its session memory, report and master decision have been recorded. One named workflow run owns one Herdr workspace whose tabs are created in admission order, one tab per agent. Create a new workspace or cwd only on explicit user request.
 
-PiWorkflow and `@piewf/herdr` provide the runtime implementation for workflow-owned panes. The default transport splits a sibling pane in the caller's current tab; the new pane keeps the caller's `tab_id`, and the split result exposes `.result.pane.pane_id`. Keep the `parallel` object keys and labels stable for deterministic launch order, but never treat a label or pane position as authority. The trusted project setting is created by `init-repository.mjs`; a manual global setting is not required for initialized repositories.
+PiWorkflow and `@piewf/herdr` provide the runtime implementation for workflow-owned tabs. The trusted project setting created by `init-repository.mjs` enables fully inspectable mode, so each agent gets its own workspace tab in admission order; a runtime that instead reports a sibling pane or local session transport keeps that identity and makes no ordering claim. Keep the `parallel` object keys and labels stable for deterministic launch order, but never treat a label, its number or a tab position as authority. A manual global setting is not required for initialized repositories.
+
+## Unavailable upstream capabilities
+
+Upstream Herdsman v0.55.0 exposes model-facing coordination tools and a federated peer transport that this repository does not implement. Do not cite, call or simulate them:
+
+- **Role-specific messaging tools.** `notify_owner`, `await_owner`, `reply_agent`, `message_staff`, `message_manager` and `message_chief` do not exist here. The only channel is the mailbox (`scripts/mailbox.mjs report|ask|reply|status`, `orch_report`/`orch_ask`/`orch_reply`) plus an opaque `herdr agent prompt` wake-up nudge that carries no structured contract.
+- **Manager project operations.** `delegate_work`, `resume_work`, `stop_lead`, `remove_worktree` and `integrate_branch` are not implemented. Branch based assignment, resume and integration remain master decisions executed through Git and explicit operator authorization; worktree removal stays manually confirmed.
+- **Federated peer messaging.** There is no peer discovery, no cross-machine initiation or reply transport and no durable remote reply channel. Two orchestrator runs coordinate only through the local mailbox directory shared under `<git-common-dir>/orchestrator/<run>/`.
+- **Upstream terminal projections.** Upstream `settling` and `lost` assignment states have no local equivalent: a lost or unreadable terminal liveness state is reported as `DECIDE`/`unverified` and requires master reconciliation against the mailbox and Git.
+
+## Roster diagnosis
+
+Before delegating, validate the roster the current host exposes. [`scripts/agent-roster-diagnostic.mjs`](../../../scripts/agent-roster-diagnostic.mjs) is read-only and injectable: `inspectAgentRoster({ definitions, errors })` validates names (including duplicate shadowing), `tools` arrays and delegation fields (`mode`, `thinking`), and `readAgentRoster({ root, readdir, readFile })` adds the filesystem without writing to it. A `healthy` roster reports `usable` and its `usableAgents`; `malformed` and `unavailable` report `blocked` with the exact definition path, field and error, an empty `usableAgents`, and no delegation. Pass a definition the host rejected as an `errors` entry to preserve the path `list_agents` reported, and never replace a blocked roster with a filename guess or a simulated delegation. `npm run test:roster` covers the healthy, malformed and unavailable states.
 
 ## Capability fallback
 

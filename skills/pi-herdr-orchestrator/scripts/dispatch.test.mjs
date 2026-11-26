@@ -7,9 +7,47 @@ import { inspectRegistry } from "./check-mcp.mjs";
 const root = join(import.meta.dirname, "../../..");
 const read = (path) => readFileSync(join(root, path), "utf8");
 
-test("trusted project settings select the pane topology for Herdr workflow agents", () => {
+test("trusted project settings enable fully inspectable ordered Herdr tabs", () => {
   const settings = JSON.parse(read(".pi/pi-extensible-workflows/settings.json"));
-  assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, false);
+  assert.equal(settings.extensionSettings?.herdr?.enableFullyInspectableMode, true);
+  assert.deepEqual(settings.retention, { olderThanDays: 14, maxTerminalRuns: 100 });
+});
+
+test("workflow dispatch labels are stable, numbered and ascending in dispatch order", () => {
+  const skill = read("skills/pi-herdr-orchestrator/SKILL.md");
+  const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
+  const execution = read("skills/pi-herdr-orchestrator/references/execution.md");
+  const readme = read("README.md");
+
+  for (const source of [skill, routing, readme]) {
+    const labels = [...source.matchAll(/label:\s*"([^"]+)"/g)].map((match) => match[1]);
+    assert.ok(labels.length > 0, "source documents no agent label");
+    for (const label of labels) assert.match(label, /^#\d+ \[[A-Z]/);
+  }
+
+  const numbers = [...skill.matchAll(/label:\s*"#(\d+) /g)].map((match) => Number(match[1]));
+  assert.deepEqual(numbers, numbers.map((_, index) => index + 1));
+  assert.match(skill, /1-based dispatch position/);
+  assert.match(skill, /parallel\("<operation>", \{ \.\.\. \}\)/);
+  assert.match(skill, /pipeline\("<operation>", items, stages\)/);
+  assert.match(execution, /numbered/);
+});
+
+test("dispatch contract documents fallback and failure states for missing runtime capabilities", () => {
+  const skill = read("skills/pi-herdr-orchestrator/SKILL.md");
+  const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
+  const execution = read("skills/pi-herdr-orchestrator/references/execution.md");
+
+  assert.match(skill, /## Dispatch failure states/);
+  assert.match(skill, /Herdr unavailable/);
+  assert.match(skill, /PiWorkflow unavailable/);
+  assert.match(skill, /requested skill unavailable/);
+  assert.match(skill, /`NOT APPLICABLE`/);
+  assert.match(skill, /`BLOCKED`/);
+  assert.match(skill, /enableFullyInspectableMode` to `true`/);
+  assert.match(routing, /Herdr unavailable/);
+  assert.match(routing, /PiWorkflow unavailable/);
+  assert.match(execution, /Herdr unavailable/);
 });
 
 test("workflow auto-start has one repo-owned extension", () => {
@@ -56,7 +94,6 @@ test("workflow auto-start has one repo-owned extension", () => {
   assert.match(autostart, /localForks/);
   assert.match(routing, /master-session only/);
   assert.match(routing, /gentle-ai-branch-pr/);
-  assert.doesNotMatch(routing, /`branch-pr`/);
   assert.doesNotMatch(developmentFlow, /`branch-pr`/);
   assert.doesNotMatch(readme, /`rdd-defect-workflow`/);
   assert.doesNotMatch(developmentFlow, /`rdd-defect-workflow`/);
@@ -72,6 +109,27 @@ test("routing names only installed selectors and keeps issue routes viable", () 
   assert.match(routing, /`gentle-ai-issue-creation`/);
   assert.match(routing, /`gentle-ai-rdd-defect-workflow`/);
   assert.match(routing, /`issue-ops` in the root session/);
+  assert.match(routing, /`web_search` is a host tool/);
+  assert.match(routing, /Never synthesize `mcp__web_search`/);
+  assert.match(routing, /explicitly receive the resolved search tool/);
+});
+
+test("routing records that disable-model-invocation skills cannot be reached by selector", () => {
+  const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
+  const skill = read("skills/pi-herdr-orchestrator/SKILL.md");
+  for (const source of [skill, routing]) {
+    assert.match(source, /disable-model-invocation: true/);
+    assert.match(source, /formatSkillsForPrompt/);
+    assert.match(source, /skillsOverride/);
+    assert.match(source, /absolute `SKILL\.md` path/);
+    assert.match(source, /NOT RUN/);
+  }
+  for (const name of ["wayfinder", "to-spec", "to-tickets", "triage", "implement", "grill-me", "grill-with-docs", "handoff", "retro"]) {
+    assert.match(routing, new RegExp(`\`${name}\``), `routing does not name flagged skill ${name}`);
+  }
+  assert.match(routing, /\(user-invoked\)/);
+  assert.match(routing, /not this flag/);
+  assert.doesNotMatch(routing, /child must be told to run `\/skill:/);
 });
 
 test("dispatch contract names deterministic workflow fan-out and explicit role loadout", () => {
@@ -85,8 +143,8 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
 
   assert.match(skill, /named workflow/);
   assert.match(skill, /parallel\(/);
-  assert.match(skill, /herdr pane split/);
-  assert.match(skill, /herdr pane zoom/);
+  assert.match(skill, /numbered/);
+  assert.match(skill, /tab/);
   assert.match(skill, /subagents_run/);
   assert.match(skill, /forbidden/);
   for (const source of [skill, routing, readme]) {
@@ -104,14 +162,18 @@ test("dispatch contract names deterministic workflow fan-out and explicit role l
   assert.match(execution, /builtin:tool-search/);
   assert.match(execution, /builtin:mcp/);
   assert.match(execution, /omit timeoutMs/);
+  assert.match(skill, /PiWorkflow is the only execution scheduler/);
+  assert.match(skill, /Herdr tabs and panes are inspectable transport/);
+  assert.match(routing, /capability rejection is a pre-dispatch routing result/);
   assert.match(execution, /foreground: true/);
   assert.match(execution, /no budget/);
   for (const source of [skill, routing, readme]) {
     assert.match(source, /skills:\s*\[\"!\*\",/);
+    assert.match(source, /extensions:\s*(?:\[\"!\*\",|mcpExtensions)/);
   }
   assert.match(routing, /extensions:\s*\[/);
   assert.match(routing, /label/);
-  assert.match(execution, /pane tree/);
+  assert.match(execution, /numbered/);
   assert.match(execution, /worktree/);
   assert.match(dispatch, /### Directive envelope/);
   assert.match(dispatch, /canonical source remains a validated JSON/);
@@ -173,4 +235,42 @@ test("native extension exposes bounded graph status and step controls", () => {
   assert.match(extension, /loadGraphState/);
   assert.match(extension, /persistGraphState/);
   assert.match(extension, /projectHerdrState/);
+});
+
+test("terminal failure envelope classifies causes and preserves completed sibling results", () => {
+  const supervision = read("skills/pi-herdr-orchestrator/references/supervision.md");
+  const execution = read("skills/pi-herdr-orchestrator/references/execution.md");
+  const routing = read("skills/pi-herdr-orchestrator/references/routing.md");
+  const odd = read("skills/pi-herdr-orchestrator/references/odd-workflow.md");
+  const readme = read("README.md");
+
+  assert.match(supervision, /## Terminal failure envelope/);
+  for (const cause of ["MODEL", "CAPABILITY", "HERDR", "TIMEOUT", "UNKNOWN"]) {
+    assert.match(supervision, new RegExp(`\`${cause}\``), `envelope does not name cause ${cause}`);
+  }
+  assert.match(supervision, /side_effects/);
+  assert.match(supervision, /`OBSERVED`\/`NONE`\/`UNKNOWN`/);
+  assert.match(supervision, /## Partial aggregate result/);
+  assert.match(supervision, /`PARTIAL`, never `COMPLETED`/);
+  assert.match(supervision, /## Idempotent recovery/);
+  assert.match(supervision, /never replay a completed branch/);
+  assert.match(supervision, /Restart Pi, re-run the preflight/);
+
+  assert.match(execution, /## Bounded research phases/);
+  assert.match(execution, /allowed paths/);
+  assert.match(execution, /compact report/);
+  assert.match(execution, /explicit `project`/);
+  assert.match(execution, /project_transition_conflict/);
+  assert.match(execution, /restart Pi before treating a model-preflight failure as a transport fault/);
+
+  assert.match(routing, /Research roles receive scope/);
+  assert.match(routing, /resolved tool names/);
+  assert.match(routing, /compact terminal result per phase/);
+
+  assert.match(odd, /Bounded scout phases/);
+  assert.match(odd, /\[supervision\.md\]\(supervision\.md\)/);
+
+  assert.match(readme, /Terminal failure envelope/);
+  assert.match(readme, /`PARTIAL`/);
+  assert.match(readme, /references\/supervision\.md/);
 });

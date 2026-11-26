@@ -25,4 +25,14 @@ After individual tasks pass, validate the combination before merge decisions: co
 
 ## Temporary resource cleanup
 
-Temporary worktrees and directories (for example under `/tmp`), local branches, Herdr panes, Pi sessions, test containers and disposable volumes are removed once their work is reconciled. First prove for each: its commits are pushed or merged (no unique unpushed commits, `git status` clean, or changes preserved in a recorded branch), then remove it and update the registry. If the proof fails, keep the resource and report it. In the final report list what was removed and what was retained and why.
+Temporary resources have three classes:
+
+- `disposable`: `$TMPDIR` output files and caches, removable only after the owning session is proven dead;
+- `evidence`: crash records, session transcripts and workflow runs cited by a task document or issue, retained until that evidence is no longer needed;
+- `registered`: Git worktrees and branch refs, removable only after their commits are pushed or merged and the registry is updated.
+
+The repository never deletes outside its own tree. `$TMPDIR` and `~/.pi/**` reclamation remains operator-authorized; repository checks only measure resource headroom. Never search a tree containing `$TMPDIR/pi-bash-*.log`: a bash command can match its own growing output log and recurse until the temporary filesystem is full. After a crash, remove only orphaned `pi-bash-*.log` files whose owning session is proven dead.
+
+Workflow run retention is configuration, not manual deletion. When enabled, use positive integer values in `.pi/pi-extensible-workflows/settings.json`, for example `{"retention":{"olderThanDays":14,"maxTerminalRuns":100}}`. Keep run or session identifiers cited by an open task or issue until that record is closed. Never hand-remove workflow run directories because leases, dependencies and borrowed worktrees must be evaluated by the workflow retention mechanism.
+
+Temporary worktrees, local branches, Herdr panes, Pi sessions, test containers and disposable volumes are removed once their work is reconciled. First prove for each: its commits are pushed or merged (no unique unpushed commits, `git status` clean, or changes preserved in a recorded branch), then remove it and update the registry. If the proof fails, keep the resource and report it. In the final report list what was removed and what was retained and why.

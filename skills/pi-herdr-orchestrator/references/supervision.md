@@ -35,10 +35,66 @@ node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000
 
 The checker reports configured server names, redacted transport reachability, and HTTP health status; it never prints command arguments, environment values, headers, or credentials. URL MCP `initialize` probes verify the HTTP MCP endpoint when a protocol response is returned; stdio executable probes do not start the server and remain `unverified`. Record its JSON output as evidence. `builtin:codemode` remains the stable MCP bridge, with `builtin:tool-search` and `builtin:mcp` required in every workflow role loadout. Native `subagents_run` is not an orchestration fallback.
 
+## Terminal failure envelope
+
+A dispatched branch that ends without a terminal report is a failed result, not a finished assignment, and one timed out branch never erases a sibling that completed. Classify the branch before retrying anything, and record the classification in the mailbox decision:
+
+| Field | Values |
+| --- | --- |
+| `cause` | `MODEL`, `CAPABILITY`, `HERDR`, `TIMEOUT`, `UNKNOWN` |
+| `evidence` | `ref:sha256:<hash>` for the run record, the child session JSONL and any pane read |
+| `branches[]` | per branch `status` `COMPLETED`/`TIMEOUT`/`FAILED`/`NOT_STARTED`, `result_ref` when completed, `side_effects` `OBSERVED`/`NONE`/`UNKNOWN` |
+| `recovery` | `NONE`, `SAFE` (re-dispatch allowed), `FORBIDDEN` (inspect uncertain effects first) |
+
+| `cause` | Proof required before using it | Not this |
+| --- | --- | --- |
+| `CAPABILITY` | Pre-dispatch capability report or child error naming the missing role, skill, extension, model or MCP server | A child that started and used tools |
+| `HERDR` | No live agent or pane for the name, or a transport error, with no child session progress after dispatch | A child session that kept issuing tool calls until the deadline |
+| `TIMEOUT` | The deadline elapsed while the child session JSONL shows model turns or tool progress | Proof that the task is impossible or that the transport is broken |
+| `MODEL` | Provider or model-preflight error on an unchanged loadout, reproduced after a Pi restart | Any failure recorded before a package or provider update |
+| `UNKNOWN` | Default when the evidence above is missing or ambiguous | Nothing: no retry, no new writer, escalate |
+
+A model-preflight failure recorded before a restart or after a provider or workflow package update is `UNKNOWN`, not `MODEL`: the running process still holds the previous modules and provider registry. Restart Pi, re-run the preflight, and classify from the new result.
+
+### Partial aggregate result
+
+A timed out branch must not suppress a completed sibling. The run result carries every branch that returned with its own `status` and evidence reference, plus each failed branch with its classification and `side_effects`; the aggregate reports `PARTIAL`, never `COMPLETED` and never an empty failure, and it reports `BLOCKED` once a branch reaches its retry bound. Completed sibling results stay preserved as mailbox evidence, and integration covers only the completed branches after the master reconciles them against Git.
+
+### Idempotent recovery
+
+Recovery is keyed by run id plus task id and starts from the persisted checkpoint, so repeating it reproduces the same decision instead of creating a second writer:
+
+1. Re-dispatch only a branch whose `side_effects` is `NONE`; never replay a completed branch and never re-run a branch whose tools may already have written outside it.
+2. `OBSERVED` or `UNKNOWN` effects block re-dispatch: read the worktree, Git state and the external systems first, then `FORBIDDEN` unless the operator authorizes otherwise.
+3. A retry keeps the same run, task and branch identity, so a duplicate report is ignored by `seq` instead of being applied twice.
+4. The bounded retry rule below still applies: per branch at most `budget.maxRetries` retries (default one), then the branch is `failed` in the graph and the run is `BLOCKED` with the envelope as evidence. The supervision loop's separate nudge and restart budget of 2 is unchanged.
+
+### Fan-out resolution helper
+
+`skills/pi-herdr-orchestrator/scripts/fanout-retry.mjs` is the pure, injectable resolver for one fan-out observation. It reads the persisted graph for each branch's `retry_count` and `budget.maxRetries`, validates the envelope fields, and returns one decision per branch plus the graph actions that record it. The mailbox stays the lifecycle and identity source of truth and the graph stays the retry counter, so no second state file is introduced.
+
+| Input | Values |
+| --- | --- |
+| `outcome` | `COMPLETED`, `TIMEOUT`, `FAILED`, `NOT_STARTED` |
+| `side_effects` | `OBSERVED`, `NONE`, `UNKNOWN` (default, never retried) |
+| `cause` | `MODEL`, `CAPABILITY`, `HERDR`, `TIMEOUT`, `UNKNOWN` (default) |
+| `liveness` | mailbox flag observed for the branch, for example `STALE` |
+| `identity` | `pane` and `session` copied from the mailbox record |
+| `result_ref` / `evidence` | `ref:sha256:<hash>` for a completed result or for the failed attempt |
+
+| Decision | Reason code | Graph actions |
+| --- | --- | --- |
+| `ACCEPT` | `FANOUT_COMPLETED` | none; the completed sibling result stays in the aggregate |
+| `RETRY` | `FANOUT_RETRY_BOUNDED` | `fail` then `retry`, so the attempt classification stays in `events.jsonl` and `retry_count` increments |
+| `BLOCK` | `FANOUT_RETRY_EXHAUSTED` | `fail`; the run reports `BLOCKED` with the envelope |
+| `BLOCK` | `FANOUT_SIDE_EFFECTS_UNCERTAIN` | `fail`; `OBSERVED` or `UNKNOWN` effects are never replayed |
+
+A stale branch is a `TIMEOUT` outcome with `liveness: "STALE"` and a `TIMEOUT` cause. The resolver only schedules: apply its actions with `stepGraphState`, persist them with `persistGraphState`, then report `resolution.report.summary` through the mailbox so the dashboard shows the exact reason code, the branch identity and the evidence reference. It never launches an agent, merges or publishes, and no quota failover is implemented or claimed: a provider quota error stays `UNKNOWN` or `MODEL` evidence.
+
 ## Dispatch
 
 1. Pick a run id (`ORCH_RUN`, for example `repo-20261009`) and a unique agent name per task matching `[a-z][a-z0-9_-]{0,31}` (`issue84`, `pr127`).
-2. For the default topology, split a sibling pane in the caller's current tab with `herdr pane split <caller-pane> --direction right|down --no-focus`, then run `herdr pane run <new-pane>` with a cd-prefixed command. The split result's `.result.pane.pane_id` is the new pane, which keeps the caller's `tab_id`; nested agents split their own parent pane. Use a separate workspace, tab, or cwd only when the user explicitly requests it. The named workflow run owns the panes it launches; use the agent and pane label from [coordination.md](coordination.md).
+2. With the trusted project setting enabled, the named workflow launches each agent as its own numbered, labeled tab in the workflow workspace, in admission order; each write-capable agent keeps its isolated worktree. Do not shell out to `pi` or create tabs manually. If the runtime reports sibling panes or a local session instead, keep that identity and do not claim ordered tabs; use the agent label from [coordination.md](coordination.md).
 3. Register the task (task id, agent name, pane, worktree, branch) and write the first report: `node mailbox.mjs report --run R --task I#84 --agent issue84 --state ASSIGNED [--pane <pane>] [--session <session>]`.
 4. Send the brief with `herdr agent prompt <name> "<brief>"` without `--wait` for parallel work. Every brief ends with the report-back clause below.
 

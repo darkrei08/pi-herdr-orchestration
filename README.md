@@ -11,7 +11,7 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
 - [Overview & Core Problems Solved](#overview--core-problems-solved)
 - [Architecture & Workflow Lifecycle](#architecture--workflow-lifecycle)
   - [The Command Hierarchy: Master, Chiefs, and Workers](#the-command-hierarchy-master-chiefs-and-workers)
-  - [Pane-tree Isolation with Herdr & Git Worktrees](#pane-tree-isolation-with-herdr--git-worktrees)
+  - [Tab Isolation with Herdr & Git Worktrees](#tab-isolation-with-herdr--git-worktrees)
 - [Cognitive Model & Decision Pipeline](#cognitive-model--decision-pipeline)
   - [1. Independence-First Dispatch & Task Graph](#1-independence-first-dispatch--task-graph)
   - [2. Progressive Disclosure & Bounded Contexts](#2-progressive-disclosure--bounded-contexts)
@@ -29,15 +29,20 @@ The skill runs on **Pi**, **Claude Code**, **OpenAI Codex**, and **Google Antigr
   - [Guardian Angel (GGA)](#guardian-angel-gga)
   - [Context Reduction & Semantic Navigation Stack](#context-reduction--semantic-navigation-stack)
   - [Dynamic Routing Table](#dynamic-routing-table)
+  - [Model-Fit Evidence Envelope](#model-fit-evidence-envelope)
 - [Installation & Dependency Management](#installation--dependency-management)
   - [Install the Skill via Vercel Skills CLI](#install-the-skill-via-vercel-skills-cli)
   - [Dependency Bootstrap (System Runtimes & Skill Suites)](#dependency-bootstrap-system-runtimes--skill-suites)
   - [Mandatory Per-Repository Initialization](#mandatory-per-repository-initialization)
   - [Environment Verification](#environment-verification)
   - [Docker Compatibility Matrix](#docker-compatibility-matrix)
+  - [Local Factory Run](#local-factory-run)
   - [Persisted Graph Supervisor](#persisted-graph-supervisor)
+  - [PR-Following Workflow](#pr-following-workflow)
   - [Optional Rust Graph Core](#optional-rust-graph-core)
   - [Mailbox & Supervision Commands](#mailbox--supervision-commands)
+  - [Talking Pane Title](#talking-pane-title)
+  - [Run Budget & Usage Accounting](#run-budget--usage-accounting)
   - [Compaction & Overlap Rules](#compaction--overlap-rules)
 - [Release and npm Trusted Publishing](#release-and-npm-trusted-publishing)
 - [Sources & References](#sources--references)
@@ -103,17 +108,16 @@ When the host supports multiple sessions or subagents, the master delegates oper
   $$\text{DISCOVER} \longrightarrow \text{UNDERSTAND} \longrightarrow \text{PLAN} \longrightarrow \text{IMPLEMENT} \longrightarrow \text{VERIFY} \longrightarrow \text{SELF-REVIEW} \longrightarrow \text{HANDOFF} \longrightarrow \text{READY}$$
 - Workers never declare themselves `READY` until all validation commands pass and evidence is logged.
 
-### Pane-tree Isolation with Herdr & Git Worktrees
+### Tab Isolation with Herdr & Git Worktrees
 
 The orchestrator guarantees clean workspace boundaries:
 
 - **1 Task = 1 Branch = 1 Git Worktree = 1 Dedicated Session/Pane**
 - **Single-Writer Rule:** Exactly one writer modifies a given worktree at any time.
 - **Herdr Terminal Multiplexing:**
-  - A workflow run stays in the caller's current tab: agents are sibling panes in one collapsible pane tree, and nested agents split their parent pane.
-  - The transport runs `herdr pane split <caller-pane> --direction right|down --no-focus`, then `herdr pane run <new-pane>` with a cd-prefixed command. The new pane keeps the caller's tab; use `herdr pane zoom --on|--off` on the focused pane to collapse or expand the tree.
-  - PiWorkflow agents are launched with explicit `label`, `skills`, `extensions`, and isolated `worktree` options. One named workflow run owns the panes it launches; a new workspace, tab, or cwd happens only when the user explicitly requests it.
-  - Terminal state and processes remain persistent and inspectable even during agent context switches; pane liveness never replaces mailbox or Git evidence.
+  - Each workflow agent launches in its own Herdr tab inside the workflow workspace, created in `parallel`/`pipeline` admission order and titled with a stable numbered label (`#1 [CHIEF/SCOUT] Discovery`, `#2 [CHIEF/BUILD] Implementation`).
+  - PiWorkflow agents are launched with explicit `label`, `skills`, `extensions`, and isolated `worktree` options. One named workflow run owns the tabs it launches; a new workspace or cwd happens only when the user explicitly requests it.
+  - Terminal state and processes remain persistent and inspectable even during agent context switches; tab liveness never replaces mailbox or Git evidence.
 
 ---
 
@@ -227,18 +231,20 @@ Dispatched sessions that operate without supervision or feedback loops lead to s
 
 #### Current Herdsman alignment
 
-The orchestration contract follows the latest upstream Herdsman (`boadij/pi-herdsman`) supervision semantics:
+The orchestration contract follows current upstream Herdsman (`boadij/pi-herdsman`) supervision semantics:
 
-- **State compatibility & derived lifecycle:** Preserves existing canonical uppercase states (`ASSIGNED`, `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED`, `CLOSED`) while adding an optional derived lowercase lifecycle field (`pending`, `running`, `ready`, `blocked`, `failed`, `closed`) for full backward and upstream interoperability without wire migration.
+- **State compatibility & derived lifecycle:** Preserves the canonical uppercase states (`ASSIGNED`, `WORKING`, `READY`, `DEVELOPMENT`, `BLOCKED`, `FAILED`, `CLOSED`) unchanged and derives an optional local lowercase lifecycle field (`pending`, `running`, `ready`, `blocked`, `failed`, `closed`) for consumers that want a normalized projection. The derived field is local, not a wire contract: no migration is required and legacy consumers keep reading uppercase `state`. Upstream Herdsman publishes a different, assignment-centric public set (`working`, `blocked`, `settling`, `unknown`, `lost`); values without a local mapping derive `unknown` and fail closed instead of being guessed.
 - **Deduplicated full SHA-256 evidence store:** Large logs and diffs are hashed to full 64-char SHA-256 content-addressed files under `evidence/<sha256>.txt` and referenced as `ref:sha256:<hash>`. Evidence is inspectable on demand via `readEvidence` / `orch_evidence` without copying raw payloads into model prompts.
+- **Candidate-bound terminal evidence:** `READY` and `CLOSED` are accepted only with the exact task, run and immutable candidate identity plus a passing review whose reviewed-file hashes and deletion hashes match the candidate tree and persisted Engram memory for the same identity. A missing, failed, stale or cross-candidate review is persisted as `BLOCKED`, including a `CLOSED` report for a task with no code change. Terminal states are coordination only: they never authorize push, merge, publication or worktree removal.
 - **Non-blocking notifications:** Notifications to master sessions (`herdr agent prompt`) run non-blockingly (`spawn` unref) so delivery issues or unavailable Herdr runtimes cannot block mailbox report persistence or turn a completed task into a false failure.
 - **Fail-closed supervision:** Terminal agent states that report `unknown` liveness fail closed to `DECIDE`, mandating that the master reconcile with Git and CI before proceeding rather than assuming tasks are healthy.
 - **Operational boundaries:** Role-derived Herdr pane and agent labels (`Lead`, `Managed Lead`, `Manager`, `Chief`) are presentation only. Chiefs coordinate and normalize reports within their bounded department; they never perform destructive worktree operations without explicit confirmation from the Master control plane.
 - **Capability-aware dispatch:** Select Agents by effective runtime capabilities, not filenames or configured child names. If no suitable child is available, investigate locally and record the capability gap instead of simulating delegation.
 - **Simulation before live smoke:** Prefer deterministic simulated smoke for covered Pi/Herdr boundary scenarios; use live-model smoke when model/provider behavior or instruction adherence is under test.
 - **Nonterminal execution failure:** Treat model execution failure as nonterminal evidence: do not retry automatically, replay tools, stop children, integrate partial work, or publish a successful handoff.
+- **Terminal failure envelope:** A dispatched branch that times out or aborts is classified as `MODEL`, `CAPABILITY`, `HERDR`, `TIMEOUT` or `UNKNOWN` from recorded evidence before anything is retried. A run with a timed out branch returns `PARTIAL` with every completed sibling result preserved, and recovery only re-dispatches branches without observed side effects. `skills/pi-herdr-orchestrator/scripts/fanout-retry.mjs` resolves the observation into `FANOUT_COMPLETED`, `FANOUT_RETRY_BOUNDED`, `FANOUT_RETRY_EXHAUSTED` or `FANOUT_SIDE_EFFECTS_UNCERTAIN`, and the graph records a `fail` transition before any bounded `retry` so the exact attempt reason stays in `events.jsonl`. See [supervision.md](skills/pi-herdr-orchestrator/references/supervision.md).
 
-These points are aligned with `boadij/pi-herdsman` commits `0dc62d39`, `a422c804`, `c72acadf`, `44698e40`, `56bd0258`, and `321114de` (October 2026).
+These points are aligned with upstream `boadij/pi-herdsman` v0.55.0 (2026-11-25, `main` at `5b5f2464`): nonblocking `notify_owner` that leaves assignment completion eligibility untouched and requires persisted owner receipt (`docs/concepts/lifecycle.md`), an assignment-centric public state projection where physical `unknown` fails closed, and role-scoped supervision authority (`docs/coordination-api.md`). The earlier alignment sources `0dc62d39`, `a422c804`, `c72acadf`, `44698e40`, `56bd0258` and `321114de` (October 2026) remain the reference for presentation-only labels and simulated-smoke-first verification. Upstream capabilities this repository does not implement are recorded in [coordination.md](skills/pi-herdr-orchestrator/references/coordination.md#unavailable-upstream-capabilities).
 
 ### 6. Two-Tier Integration & Merge Queue
 
@@ -248,6 +254,8 @@ The master categorizes completed work based on empirical evidence:
 
 Before merging individual green branches into `main`, the master executes an **Integration Pass** on the combined branch. Independent tasks that pass in isolation can still conflict when combined; the integration pass prevents broken main branches. A successful pass does not authorize delivery: commit, merge, and publish still require explicit operator authorization.
 
+When a change reaches beta, staging, production, or a live runtime claim, the master follows the ordered [production lifecycle](skills/pi-herdr-orchestrator/references/production-lifecycle.md): immutable artifact promotion with no rebuild between environments, a fresh temporary PiWorkflow/Herdr runtime smoke that observes the exact candidate, explicit approval gates, post-deploy health evidence, and a rollback decision. Documentation-only changes record the inapplicable stages explicitly.
+
 ---
 
 ## Skill Ecosystem Integrations
@@ -255,11 +263,11 @@ Before merging individual green branches into `main`, the master executes an **I
 Pi Herdr Orchestration dynamically bridges and routes between major AI coding agent skill ecosystems:
 
 ### PiWorkflow (`pi-extensible-workflows` v6.3.0)
-- **Role:** Execution engine substrate.
+- **Role:** Execution engine substrate. PiWorkflow is the single child scheduler: it owns workflow lifetime, waits for independent child results, and returns the normalized result to the Master Chief. Pi Herdr Orchestration owns scope, routing, supervision, integration, and cleanup; Herdr tabs and panes are inspectable transport and presentation only, never a second scheduler.
 - **Capabilities Used:**
   - Deterministic orchestration: `workflow`, `parallel(...)`, `pipeline(...)`, `withWorktree(...)`, `shell(...)`, and persistent `agent.create(...)` handles.
-  - **Explicit child loadouts:** Every routed child receives a named `@piewf/pi-ext-roles` `role`, stable `label`, verified `skills` selectors, `extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, no preset `timeoutMs` or budget, and an isolated `worktree` when it writes. `builtin:codemode` is the stable bridge to MCP tools.
-  - **Pane-tree Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, workflow agents split sibling panes in the caller's current tab; nested agents split their parent pane. A new workspace, tab, or cwd is created only on explicit request, while each write-capable agent keeps its isolated worktree.
+  - **Explicit child loadouts:** Every routed child receives a named `@piewf/pi-ext-roles` `role`, stable `label`, verified `skills` selectors reset with `!*`, `extensions` reset with `!*` and then set to `["builtin:codemode", "builtin:tool-search", "builtin:mcp"]`, no preset `timeoutMs` or budget, and an isolated `worktree` when it writes. `builtin:codemode` is the stable bridge to MCP tools. Resetting inherited selectors prevents an unrelated unavailable role default such as `design-taste` from blocking a non-visual task before dispatch.
+  - **Fully inspectable Herdr transport:** Repository initialization writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`. When Pi runs inside Herdr and `@piewf/herdr` is loaded, every workflow agent launches as its own numbered, labeled tab inside the workflow workspace, in admission order; each write-capable agent keeps its isolated worktree.
   - **Aggregated Telemetry (#318):** Automatic calculation of elapsed execution time and total token usage per phase and function, including nested child agents.
   - **Effort-Aware Model Resolution (#314):** Native parsing and propagation of namespaced and colon-bearing model strings (`cliproxyapi/claude-opus-5-5:high`, `cliproxyapi/gemini-3.8-flash-high`).
   - **Reliable Lock Ownership:** Records the owner PID and reclaims stale locks only when the recorded process is no longer alive, avoiding deletion of active locks.
@@ -271,23 +279,23 @@ Example dispatch inside a named workflow (`name: "repository-audit"`):
 const reports = await parallel("repository-audit", {
   scout: () => agent("Map the repository.", {
     role: "scout",
-    label: "[CHIEF/SCOUT] Discovery",
+    label: "#1 [CHIEF/SCOUT] Discovery",
     skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "diagnosing-bugs"],
-    extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
+    extensions: ["!*", "builtin:codemode", "builtin:tool-search", "builtin:mcp"],
     worktree: "scout",
   }),
   tests: () => agent("Define and run focused checks.", {
     role: "tests-expert",
-    label: "[CHIEF/QUALITY] Tests",
+    label: "#2 [CHIEF/QUALITY] Tests",
     skills: ["!*", "pi-herdr-orchestrator", "engineering-excellence", "tdd"],
-    extensions: ["builtin:codemode", "builtin:tool-search", "builtin:mcp"],
+    extensions: ["!*", "builtin:codemode", "builtin:tool-search", "builtin:mcp"],
     worktree: "tests",
   }),
 });
 return reports;
 ```
 
-Launch named workflows with `foreground: true` and no budget; omit `timeoutMs` on child agents because Vekexasia's runner treats omission as no timer. Use `pipeline(...)` for ordered stages. Native `subagents_run` is forbidden for orchestration. Do not use `Promise.all`/`map` agent fan-out, omit required roles or extensions, or claim Herdr panes when the runtime capability report says Herdr is unavailable. Run the read-only MCP smoke check with `node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000`; it reports redacted transport reachability and HTTP health status without printing credentials, arguments, or environment values. A URL MCP `initialize` probe verifies the HTTP MCP endpoint when it returns a protocol response; stdio executable probes remain `unverified` because they do not start the server.
+Launch named workflows with `foreground: true` and no budget; omit `timeoutMs` on child agents because Vekexasia's runner treats omission as no timer. Use `pipeline(...)` for ordered stages. Native `subagents_run` is forbidden for orchestration. Do not use `Promise.all`/`map` agent fan-out, omit required roles or extensions, or claim Herdr tabs when the runtime capability report says Herdr is unavailable; a missing requested skill is `BLOCKED` before dispatch, and an unavailable Herdr or PiWorkflow transport is reported as `NOT APPLICABLE` instead of being faked. Run the read-only MCP smoke check with `node skills/pi-herdr-orchestrator/scripts/check-mcp.mjs --json --timeout-ms 2000`; it reports redacted transport reachability and HTTP health status without printing credentials, arguments, or environment values. A URL MCP `initialize` probe verifies the HTTP MCP endpoint when it returns a protocol response; stdio executable probes remain `unverified` because they do not start the server.
 
 ### Pi Extensible Roles (`@piewf/pi-ext-roles` v0.2.0)
 - **Role:** Independent role authoring, configuration, and runtime preparation.
@@ -299,7 +307,10 @@ Launch named workflows with `foreground: true` and no budget; omit `timeoutMs` o
 ### Host Agent Roster (`list_agents`)
 - **Role:** Live discovery of effective Agent definitions available to the current controller.
 - **Capability contract:** Use the roster result to select Agents by effective capabilities; a configured definition is not proof that it is runnable.
-- **Failure contract:** If roster validation fails, report `BLOCKED` with the exact definition path and field error. Do not simulate delegation or infer availability from filenames. The current host reported: `/root/.pi/agent/agents/gentle-ai-verify.md` has an invalid `tools` field because it must be an array of non-empty strings.
+- **Failure contract:** If roster validation fails, report `BLOCKED` with the exact definition path and field error. Do not simulate delegation or infer availability from filenames.
+- **Roster diagnostic:** [`scripts/agent-roster-diagnostic.mjs`](scripts/agent-roster-diagnostic.mjs) validates a roster read-only. `inspectAgentRoster({ definitions, errors })` parses names, `tools` arrays and delegation fields (`mode`, `thinking`); `readAgentRoster({ root, readdir, readFile })` adds a filesystem that is injectable for deterministic tests. The report carries `state` (`healthy`, `malformed`, `unavailable`), `verdict` (`usable`, `blocked`), `usableAgents` (`name`, `path`, declared `tools`) or `problems` entries with the exact definition path, field and error. Object entries such as `- "*": false` are malformed tools. A malformed or unavailable roster reports `blocked`, an empty `usableAgents`, and never authorizes delegation; `assertUsableRoster(report)` throws before dispatch instead of simulating one.
+- **Roster command:** `npm run test:roster`; `node scripts/agent-roster-diagnostic.mjs --root ~/.pi/agent/agents` prints the JSON report and exits non-zero when the roster is blocked.
+- **Supported repair path:** Back up the external definition, change only its YAML frontmatter so `tools` is an array of non-empty strings (for example `tools:\n  - read`), remove object entries such as `- "*": false`, then call `list_agents` again and record the refreshed roster. On 2026-11-26 this repaired nine host definitions and `list_agents` then reported a valid roster.
 
 ### Gentle AI Suite & Engram
 - **Role:** Harness discipline, durable memory, and review authority.
@@ -359,10 +370,31 @@ The orchestrator dynamically routes tasks to the minimal sufficient skill set ba
 | **Defined feature implementation** | Matt Pocock `implement` (`tdd` $\rightarrow$ review $\rightarrow$ operator-authorized commit); EE `sdd` + `tdd` |
 | **Refactoring** | Behavior-preservation tests first (`tdd`); Matt Pocock `codebase-design` |
 | **Infrastructure / Containers / CI** | Engineering Excellence `docker`, `ci`, `production-readiness`; `container-test-matrix` |
+| **Production delivery or live runtime verification** | Pi Herdr Orchestration `production-lifecycle`; Engineering Excellence `production-readiness`, `ci-cd-and-publishing` |
 | **Security or Performance Audit** | Engineering Excellence `security`, `performance` |
 | **Candidate Code Review** | Matt Pocock `code-review`; Gentle AI `judgment-day` (dual review); Guardian Angel before `READY` |
 | **Commit Creation & Pull Request** | Gentle AI `gentle-ai-work-unit-commits` or `work-unit-commits`, `gentle-ai-chained-pr` or `chained-pr` (>400 lines), `gentle-ai-branch-pr`; Matt Pocock `pr` |
 | **Context Pressure & Session Handoff** | Gentle Engram handoff; Matt Pocock `handoff`; EE `context-budget` |
+
+### Model-Fit Evidence Envelope
+
+The canonical matrix above states configuration, not availability. Model access, entitlement and quota evidence is owned by `pi-model-fit` and reaches the orchestrator only through a versioned, read-only envelope consumed by [`skills/pi-herdr-orchestrator/scripts/model-fit-evidence.mjs`](skills/pi-herdr-orchestrator/scripts/model-fit-evidence.mjs):
+
+```json
+{
+  "schema": "pi-model-fit-evidence/1",
+  "source": "pi-model-fit",
+  "generatedAt": "2026-11-26T11:30:00.000Z",
+  "evidenceRef": "pi-model-fit/reports/2026-11-26.md#role-matrix",
+  "routes": [{ "route": "cliproxyapi/claude-opus-5-5:high", "outcome": "PASS" }]
+}
+```
+
+`readModelFitEvidence(envelope, { now, freshnessMs })` accepts only explicit `PASS`, `UNKNOWN`, `BLOCKED`, and `NOT RUN` outcomes, preserves `evidenceRef`, and fails closed: a malformed, foreign-source, stale (default 24 h), future-dated, or unavailable envelope returns `BLOCKED` or `UNKNOWN` instead of a route decision. Mixed route outcomes collapse to the worst one (`BLOCKED` > `UNKNOWN` > `NOT RUN` > `PASS`), the clock and freshness window are injectable for deterministic tests, and `routing` is always reported as `unchanged`. The reader writes nothing, never infers entitlement, quota or availability from a static matrix, and never invokes SkillOpt.
+
+```bash
+npm run test:model-fit
+```
 
 ---
 
@@ -439,13 +471,13 @@ node scripts/init-repo.mjs --dir /path/to/my-repo --apply --codegraph --sqz
 This command automatically configures:
 - **Git Baseline:** Ensures repository initialization on `main` and creates `.worktrees/`.
 - **Gitignore Rules:** Appends `.worktrees/`, `.codegraph/`, and `.atl/` to `.gitignore`.
-- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: false`, preserving existing workflow settings so default runs use sibling panes in the caller's current tab.
+- **PiWorkflow + Herdr transport:** Writes trusted `.pi/pi-extensible-workflows/settings.json` with `extensionSettings.herdr.enableFullyInspectableMode: true`, preserving existing workflow settings and unrelated keys so workflow agents launch as ordered numbered tabs.
 - **Engram Memory Identity:** Generates `.git/engram-project-identity.json` for isolated, persistent repository memory.
 - **Guardian Angel (GGA):** Creates `.gga` quality-gate configuration and baseline `AGENTS.md` guidelines.
 - **Semantic Code Navigation:** Deploys Serena project configuration for LSP symbol analysis.
 - **CodeGraph:** Optionally creates a worktree-local `.codegraph` index when requested with `--codegraph`; ephemeral test worktrees remain unindexed.
 - **Token Compression:** Installs the Claude project-local `sqz` hook only when explicitly requested with `--sqz`, skipping when `.claude/settings.local.json` already exists; detects global `rtk` for terminal and tool reduction.
-- **Herdr Workspace:** Registers a named Herdr workspace for explicit workspace workflows; default workflow runs remain in the caller's current tab.
+- **Herdr Workspace:** Registers the named Herdr workspace that hosts workflow agents as ordered, numbered tabs.
 - **Skill Registry:** Catalogs all available skills into `.atl/skill-registry.md`.
 
 ### Environment Verification
@@ -501,6 +533,17 @@ Evidence requirements for a support claim:
 - `rustc`, `cargo`, `fast-anything` and `optimaizr` are probed in every row and listed in `runtimes=`; a missing binary is a gap, never a pass.
 - A family without a `PASS` line is unverified and must be described as such; macOS and Windows rows are not covered by this matrix.
 
+### Local Factory Run
+
+`npm run factory` executes the repository-owned deterministic gates in one read-only pass and reports each one separately as `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`: capability preflight (`node scripts/check.mjs --strict`), host roster status (`node scripts/agent-roster-diagnostic.mjs`), bounded fan-out and timeout handling (`npm run test:fanout`), the isolated commit gate (`npm run test:fixture`), then `git diff --check`, `npm run lint` and `npm test`.
+
+```bash
+npm run factory
+npm run factory -- --json
+```
+
+Live Herdr pane fan-out and live PiWorkflow agent dispatch are always reported as `NOT RUN`, because the runner starts no session, writes no mailbox record, and creates no worktree or process. Gate order, status meanings, cleanup checks and the report template are in [`docs/local-factory-run.md`](docs/local-factory-run.md).
+
 ### Read-only profiling
 
 The `perf:scan` wrapper exposes only `doctor`, `scan`, and `list-candidates` from `fast-anything`. It runs an allowlisted repository script under the profiler and writes a bounded Markdown report to `reports/`; it never runs `port`, `verify`, `enable`, `disable`, or `bench`.
@@ -521,10 +564,16 @@ Inside Pi, use the bounded native controls:
 
 ```text
 orch_graph_status   # read graph plan, bounded nodes, and best-effort Herdr projection
-orch_graph_step     # apply one validated advance/start/complete/wait/poll/pause/resume/retry action
+orch_graph_step     # apply one validated advance/start/complete/wait/poll/pause/resume/fail/retry action
 ```
 
+The `fail` transition (`running`/`waiting`/`ready`/`pending` to `failed` with a bounded `failure_reason`, default `unreported`) is how a branch that ended without a terminal report reaches the graph before any retry. The `status` override belongs to `complete` only; `fail` always records `failed`.
+
 The schema is [`schemas/repo-orchestrator-graph-v1.json`](schemas/repo-orchestrator-graph-v1.json). These controls never merge, publish, or replace PiWorkflow as the execution authority.
+
+### PR-Following Workflow
+
+The registered PiWorkflow function `prFollow` follows exactly one issue or pull request from id validation to merge readiness. It takes `{ target: "issue" | "pr", id, merge? }`, rejects a mismatched or non-existent id before launching any agent, runs developer/reviewer cycles, forwards external bot findings verbatim to the next cycle (cap: 3 cycles, then `BLOCKED`), and polls CI, review and mergeability every 60 s up to 30 attempts without consuming a model call. A merge authorization asks through `orch_ask`, pauses the run, and resumes from the `orch_reply` answer without repeating completed work. Every transition reports through `orch_report`, so `orch_status` shows the current phase. The function registers through `pi.extensions` in `package.json`; the contract, reason codes and dry-run command are in [`docs/pr-follow-workflow.md`](docs/pr-follow-workflow.md).
 
 ### Optional Rust Graph Core
 
@@ -562,6 +611,54 @@ The report inspects:
 - Installed skill suites: Engineering Excellence, Matt Pocock, and Gentle AI.
 - Context tooling: Wizard-AI, Serena, graphifyy, RTK, and sqz.
 - Active Pi compaction owner.
+
+### Talking Pane Title
+
+Every `orch_report` call renames the reporting agent's Herdr pane so the tab shows who is developing, waiting, or blocked without asking. The exact command issued is:
+
+```bash
+herdr pane rename <PANE_ID> <TASK> <LIFECYCLE>
+```
+
+`<PANE_ID>` is the pane identity already stored for the task, else the report's `pane` parameter, else `HERDR_PANE_ID`. `<LIFECYCLE>` is derived from the persisted mailbox state and upper-cased, so the label is deterministic and never contains caller free text such as the summary, phase, or branch: `ASSIGNED` gives `I#84 PENDING`, `WORKING` and `DEVELOPMENT` give `I#84 RUNNING`, `READY` gives `I#84 READY`, `BLOCKED` gives `I#84 BLOCKED`, `FAILED` gives `I#84 FAILED`, `CLOSED` gives `I#84 CLOSED`, and a `PR#127` report gives `PR#127 RUNNING`. A report downgraded on write is labelled with the stored state: `READY` or `CLOSED` without a candidate and fresh evidence binding is persisted as `BLOCKED` and labelled `I#84 BLOCKED`.
+
+The rename is presentation only. When no pane identity is known, or Herdr is absent or rejects the command, the report is still persisted and the extension emits an `ORCH_PANE_LABEL_SKIPPED` warning instead of failing. Pane titles never replace mailbox or Git evidence.
+
+### Run Budget & Usage Accounting
+
+Every `orch_report` persists a run-level `usage` record next to the task, so the cost of a long loop is visible while it runs instead of after it ends:
+
+```json
+{
+  "usage": {
+    "agent_launches": 12,
+    "wall_ms": 1440000,
+    "tokens": 9200000,
+    "cost_usd": 41.5,
+    "phases": { "PLAN": 120000, "IMPLEMENT": 1320000 },
+    "last": { "agent_launches": 2, "tokens": 410000, "cost_usd": 1.9, "wall_ms": 240000, "phase": "IMPLEMENT" }
+  }
+}
+```
+
+`last` holds the deltas since the previous report; the top-level fields are the accumulated run totals. `wall_ms` is measured from the injected clock, so it is always known, and elapsed time is credited to the reporting `phase`; the first report of `PLAN` reads `phases.PLAN: 0`. `agent_launches`, `tokens`, and `cost_usd` are supplied by the runtime through `orch_report`'s `usage` parameter and are recorded as the string `unknown` whenever the runtime does not expose them. An unknown metric also makes the accumulated total unknown, because a partial sum cannot be reported as a total. Unknown is never coerced to zero.
+
+A per-run ceiling is configured per call with `orch_report`'s `budget` parameter, or once for a run with `ORCH_RUN_BUDGET` holding the same JSON object:
+
+```bash
+ORCH_RUN_BUDGET='{"tokens": 2000000, "cost_usd": 25, "wall_ms": 28800000, "agent_launches": 40}' \
+  node scripts/mailbox.mjs report --run <run-id> --task I#84 --state WORKING --summary "cycle 9"
+```
+
+The recognized dimensions are `agent_launches`, `wall_ms`, `tokens`, and `cost_usd`; any other key is rejected. The ceiling is checked on each state transition before the write. When an accumulated total passes its limit, that report is persisted as `BLOCKED` and the record carries the breached dimension:
+
+```json
+{ "budget_block": { "dimension": "tokens", "limit": 2000000, "observed": 2130000 } }
+```
+
+The `orch_report` result repeats it as `[BUDGET tokens 2130000>2000000]`. A `CLOSED` report is not downgraded, and an `unknown` dimension can never prove a breach, so it never blocks a run that exposes no metrics. To continue after raising the ceiling, re-report the transition with a new `id`, because an already-delivered message id is still treated as a replay.
+
+`orch_status` and `node scripts/mailbox.mjs status` show the accumulated usage next to every task in the `Usage` column (`launches=12 wall=24m tokens=unknown cost=unknown`), prefixed with the breached dimension when the task is blocked by the ceiling.
 
 ### Compaction & Overlap Rules
 

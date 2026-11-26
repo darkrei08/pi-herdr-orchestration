@@ -11,12 +11,12 @@ Organic-Driven Development (ODD) is the primary development workflow of this orc
 | Step | Phase | Key Action |
 | --- | --- | --- |
 | 1 | **Authorize** | Investigation, review, and proposals stay read-only. Clarify ambiguous intent once; stop and wait. Hedged delivery wording asks for resumable notes and separate commits, not a stop. |
-| 2 | **Explore** | Explore existing code, interfaces, and call paths first, proportionately to the request, within an evidence budget before writing code. |
+| 2 | **Explore** | Explore existing code, interfaces, and call paths first, proportionately to the request, within an evidence budget before writing code. The `gentle-pi.exploration-budget` notice is harness guidance, not a repository gate or proof of a child-workflow stall; record the lookup/byte counts and continue only with a configured explorer or an already-understood inline write. |
 | 3 | **Resolve Uncertainty** | Recommend optional research only for named uncertainties; ask one focused question only for open product decisions; run at most one scoped assumption challenge for high-consequence premises. |
 | 4 | **Classify** | Size the task: **Small** (understood, contained risk, resumable from diff) ➔ inline, no feature document or ceremony; **Large** (multi-session, external waits, deliverables separated) ➔ tracked ODD path. |
 | 5 | **Track** | For large work, automatically create `odd/tasks/<feature>.md` and its Engram mirror `odd/<feature>/tasks` before the first write. Sync the visible `todo` list. |
 | 6 | **Implement** | Test-first development by default (RED ➔ GREEN ➔ REFACTOR). Bounded subagents receive tasks by reference (`Spec: odd/tasks/<feature>.md, T#, S#`) and report covered `S#`. Prepare reviewable slices of ≤ ~400 authored lines; commit only when explicitly authorized by the operator. |
-| 7 | **Close** | Verify observable criteria for every `S#` across public interfaces. Report verified outcomes, skipped checks, and next actions. |
+| 7 | **Close** | Verify observable criteria for every `S#` across public interfaces. Report verified outcomes, skipped checks, and next actions. A close proof is `npm run factory`: it runs the deterministic gates and reports each as `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`, with live Herdr and PiWorkflow dispatch always `NOT RUN` unless a session actually ran. |
 
 ## Feature Document Structure (`odd/tasks/<feature>.md`)
 
@@ -35,3 +35,4 @@ Within Herdr terminal workspaces, ODD coordinates master, chief, and worker sess
 - **Mailbox Envelope**: Workers report progress via `scripts/mailbox.mjs report` or native tool `orch_report`. Large test traces, build outputs, and multi-file diffs are offloaded to disk via `storeEvidence` (`orch_evidence`) as full SHA-256 references (`ref:sha256:...`).
 - **Supervision & Liveness**: The master observes worker panes via `orch_status`, which joins mailbox state with live Herdr agent status. Unknown liveness fails closed to `DECIDE`.
 - **Reviewable Work Units**: Changes are organized into reviewable slices of ~400 authored changed lines, keeping tests and documentation alongside the behavior. Commits occur only upon explicit operator authorization. Slices are assessed with `gentle_review` `assess` (`committedOnly: true`); discrete slices remain under context budgets (`reviewDue: false`) and pass Guardian Angel validation.
+- **Bounded scout phases and terminal envelope**: read-only scouts run short bounded phases with explicit paths and resolved tool names, return a compact terminal result per phase, and omit memory calls or pass an explicit project and cwd. A phase that ends without a terminal report is classified with the failure envelope in [supervision.md](supervision.md); completed sibling results are preserved as a `PARTIAL` aggregate and recovery never replays uncertain side effects.

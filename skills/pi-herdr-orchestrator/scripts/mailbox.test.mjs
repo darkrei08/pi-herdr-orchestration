@@ -249,6 +249,32 @@ test("validateEvidenceBinding accepts candidate deletion evidence separately fro
   assert.equal(result.status, "verified");
 });
 
+test("a passing review without candidate-bound hashes is blocked", () => {
+  const base = {
+    task: "I#125",
+    run: "run-test",
+    candidate: "commit-125",
+    provider: "gga",
+    status: "PASS",
+    ref: `ref:sha256:${"a".repeat(64)}`,
+    version: "2.10.1",
+    config_digest: "b".repeat(64),
+    output_digest: "c".repeat(64),
+    file_hashes: { "mailbox.mjs": "a".repeat(64) }
+  };
+  const memory = { task: "I#125", run: "run-test", candidate: "commit-125", provider: "engram", status: "PERSISTED", ref: "engram:obs-125", receipt: `ref:sha256:${"c".repeat(64)}` };
+  const expected = { task: "I#125", run: "run-test", candidate: "commit-125" };
+  for (const [field, review] of [
+    ["file_hashes", { ...base, file_hashes: undefined }],
+    ["version", { ...base, version: undefined }],
+    ["config_digest", { ...base, config_digest: undefined }],
+    ["output_digest", { ...base, output_digest: undefined }]
+  ]) {
+    const result = validateEvidenceBinding({ ...expected, review, memory }, expected);
+    assert.equal(result.status, "blocked", `${field} must be required`);
+  }
+});
+
 test("validateEvidenceBinding blocks evidence from another task or candidate", () => {
   const result = validateEvidenceBinding({
     task: "I#106",
@@ -620,6 +646,10 @@ test("deriveLifecycle maps legacy uppercase states and respects overrides", () =
   assert.equal(deriveLifecycle("FAILED"), "failed");
   assert.equal(deriveLifecycle("CLOSED"), "closed");
   assert.equal(deriveLifecycle("running"), "running");
+  // Upstream Herdsman public states: only `working` overlaps; unlisted ones fail closed.
+  assert.equal(deriveLifecycle("working"), "running");
+  assert.equal(deriveLifecycle("settling"), "unknown");
+  assert.equal(deriveLifecycle("lost"), "unknown");
   assert.equal(deriveLifecycle("unknown-state"), "unknown");
 });
 
@@ -824,6 +854,14 @@ test("CLOSED inherits a prior candidate when the master supplies fresh proof", (
       nonBlocking: true
     });
     assert.equal(closed.state, "CLOSED");
+    assert.throws(
+      () => report({ dir, run: "run-test", task: "I#118", state: "CLOSED", summary: "replace", checks: ["unit=PASS"], required_checks: ["unit"], silent: true, nonBlocking: true }),
+      /cannot update CLOSED task/
+    );
+    assert.throws(
+      () => report({ dir, run: "run-test", task: "I#118", state: "WORKING", summary: "reopen", silent: true, nonBlocking: true }),
+      /cannot reopen CLOSED task/
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -858,7 +896,7 @@ test("closed reports with failing checks stay blocked", () => {
   }
 });
 
-test("no-code CLOSED reports accept passing checks and cannot reopen", () => {
+test("CLOSED without a candidate and evidence binding stays blocked", () => {
   const dir = mkdtempSync(join(tmpdir(), "orch-closed-no-code-"));
   try {
     const result = report({
@@ -872,16 +910,129 @@ test("no-code CLOSED reports accept passing checks and cannot reopen", () => {
       silent: true,
       nonBlocking: true
     });
-    assert.equal(result.state, "CLOSED");
-    assert.equal(result.lifecycle, "closed");
-    assert.throws(
-      () => report({ dir, run: "run-test", task: "I#112", state: "CLOSED", summary: "replace", checks: ["unit=PASS"], required_checks: ["unit"], silent: true, nonBlocking: true }),
-      /cannot update CLOSED task/
-    );
-    assert.throws(
-      () => report({ dir, run: "run-test", task: "I#112", state: "WORKING", summary: "reopen", silent: true, nonBlocking: true }),
-      /cannot reopen CLOSED task/
-    );
+    assert.equal(result.state, "BLOCKED");
+    assert.equal(result.lifecycle, "blocked");
+    assert.equal(result.evidence_binding.status, "blocked");
+    assert.match(result.evidence_binding.reason, /fresh evidence binding/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a failed review never becomes READY or CLOSED", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-review-fail-"));
+  try {
+    const candidate = candidateAtHead();
+    const failed = { ...candidateReview("I#122", candidate), status: "FAIL" };
+    const reviewRef = storeEvidence(dir, JSON.stringify(failed));
+    const binding = {
+      task: "I#122",
+      run: "run-test",
+      candidate,
+      review: { ...failed, ref: reviewRef },
+      memory: memoryEvidence(dir, "I#122", candidate, "obs-122")
+    };
+    for (const state of ["READY", "CLOSED"]) {
+      const result = report({
+        dir,
+        run: "run-test",
+        task: "I#122",
+        candidate,
+        state,
+        summary: `Review failed before ${state}`,
+        checks: ["unit=PASS"],
+        required_checks: ["unit"],
+        evidence_binding: binding,
+        providerVerifier: () => ({ status: "verified" }),
+        silent: true,
+        nonBlocking: true
+      });
+      assert.equal(result.state, "BLOCKED");
+      assert.equal(result.evidence_binding.status, "blocked");
+      assert.match(result.evidence_binding.reason, /blocking outcome/);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("CLOSED rejects review evidence bound to another candidate", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-closed-cross-candidate-"));
+  try {
+    const candidate = candidateAtHead();
+    const review = { ...candidateReview("I#123", candidate), candidate: "f".repeat(40) };
+    const result = report({
+      dir,
+      run: "run-test",
+      task: "I#123",
+      candidate,
+      state: "CLOSED",
+      summary: "Review belongs to another candidate",
+      checks: ["unit=PASS"],
+      required_checks: ["unit"],
+      evidence_binding: {
+        task: "I#123",
+        run: "run-test",
+        candidate,
+        review: { ...review, ref: storeEvidence(dir, JSON.stringify(review)) },
+        memory: memoryEvidence(dir, "I#123", candidate, "obs-123")
+      },
+      providerVerifier: () => ({ status: "verified" }),
+      silent: true,
+      nonBlocking: true
+    });
+    assert.equal(result.state, "BLOCKED");
+    assert.match(result.evidence_binding.reason, /candidate does not match/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("verified READY and CLOSED never authorize or perform push or merge", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-terminal-no-delivery-"));
+  const git = (args) => spawnSync("git", args, { encoding: "utf8" });
+  const snapshot = () => ({
+    head: git(["rev-parse", "HEAD"]).stdout.trim(),
+    refs: git(["for-each-ref", "--format=%(refname) %(objectname)"]).stdout.trim(),
+    status: git(["status", "--porcelain"]).stdout
+  });
+  try {
+    const before = snapshot();
+    const candidate = before.head;
+    const binding = (observation) => {
+      const review = candidateReview("I#124", candidate);
+      return {
+        task: "I#124",
+        run: "run-test",
+        candidate,
+        review: { ...review, ref: storeEvidence(dir, JSON.stringify(review)) },
+        memory: memoryEvidence(dir, "I#124", candidate, observation)
+      };
+    };
+    const terminal = (state, observation) => report({
+      dir,
+      run: "run-test",
+      task: "I#124",
+      candidate,
+      state,
+      summary: `${state} for delivery review`,
+      checks: ["unit=PASS"],
+      required_checks: ["unit"],
+      evidence_binding: binding(observation),
+      providerVerifier: () => ({ status: "verified" }),
+      silent: true,
+      nonBlocking: true
+    });
+    const ready = terminal("READY", "obs-124-ready");
+    const closed = terminal("CLOSED", "obs-124-closed");
+    assert.equal(ready.state, "READY");
+    assert.equal(closed.state, "CLOSED");
+    assert.deepEqual(snapshot(), before);
+    for (const entry of [ready, closed]) {
+      assert.equal("push" in entry, false);
+      assert.equal("merge" in entry, false);
+      assert.equal("authorization" in entry, false);
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -1298,6 +1449,177 @@ test("extension tools integrate with mailbox and support evidence reading", asyn
       limit: 5
     });
     assert.equal(previewRes.content[0].text, "56789\n[truncated; read offset 10 to continue]");
+  } finally {
+    if (origEnv !== undefined) process.env.ORCH_DIR = origEnv;
+    else delete process.env.ORCH_DIR;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("report accumulates usage deltas and records unknown metrics as unknown", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-usage-"));
+  try {
+    const start = Date.parse("2026-11-26T10:00:00Z");
+    const first = report({
+      dir,
+      run: "run-usage",
+      task: "I#401",
+      state: "WORKING",
+      phase: "PLAN",
+      summary: "Planning",
+      now: start,
+      usage: { agent_launches: 1, tokens: 1000, cost_usd: 0.25 },
+      silent: true,
+      nonBlocking: true
+    });
+    assert.equal(first.usage.agent_launches, 1);
+    assert.equal(first.usage.tokens, 1000);
+    assert.equal(first.usage.cost_usd, 0.25);
+    assert.equal(first.usage.wall_ms, 0);
+    assert.deepEqual(first.usage.phases, { PLAN: 0 });
+
+    const second = report({
+      dir,
+      run: "run-usage",
+      task: "I#401",
+      state: "WORKING",
+      phase: "IMPLEMENT",
+      summary: "Implementing",
+      now: start + 120_000,
+      usage: { agent_launches: 2 },
+      silent: true,
+      nonBlocking: true
+    });
+    assert.equal(second.usage.agent_launches, 3);
+    assert.equal(second.usage.wall_ms, 120_000);
+    assert.deepEqual(second.usage.phases, { PLAN: 0, IMPLEMENT: 120_000 });
+    assert.equal(second.usage.tokens, "unknown");
+    assert.equal(second.usage.cost_usd, "unknown");
+    assert.deepEqual(second.usage.last, { agent_launches: 2, tokens: "unknown", cost_usd: "unknown", wall_ms: 120_000, phase: "IMPLEMENT" });
+
+    const third = report({
+      dir,
+      run: "run-usage",
+      task: "I#402",
+      state: "WORKING",
+      summary: "No usage exposed",
+      now: start,
+      silent: true,
+      nonBlocking: true
+    });
+    assert.equal(third.usage.agent_launches, "unknown");
+    assert.equal(third.usage.tokens, "unknown");
+    assert.equal(third.usage.cost_usd, "unknown");
+    assert.equal(third.usage.wall_ms, 0);
+
+    const saved = JSON.parse(readFileSync(join(dir, "I-401.json"), "utf8"));
+    assert.equal(saved.usage.tokens, "unknown");
+    assert.doesNotMatch(JSON.stringify(saved.usage), /"tokens":0/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("an exceeded run budget blocks the next transition and names the dimension", () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-budget-"));
+  try {
+    const start = Date.parse("2026-11-26T11:00:00Z");
+    const unbounded = report({
+      dir,
+      run: "run-budget",
+      task: "I#501",
+      state: "WORKING",
+      phase: "IMPLEMENT",
+      summary: "Within budget",
+      now: start,
+      usage: { agent_launches: 1, tokens: 400 },
+      budget: { tokens: 10_000, agent_launches: 5, wall_ms: 3_600_000 },
+      silent: true,
+      nonBlocking: true
+    });
+    assert.equal(unbounded.state, "WORKING");
+    assert.equal(unbounded.budget_block, null);
+    assert.deepEqual(unbounded.run_budget, { tokens: 10_000, agent_launches: 5, wall_ms: 3_600_000 });
+
+    const blocked = report({
+      dir,
+      run: "run-budget",
+      task: "I#501",
+      state: "WORKING",
+      phase: "IMPLEMENT",
+      summary: "Ninth dev cycle",
+      now: start + 4_000,
+      usage: { agent_launches: 1, tokens: 10_001 },
+      budget: { tokens: 10_000 },
+      silent: true,
+      nonBlocking: true
+    });
+    assert.equal(blocked.state, "BLOCKED");
+    assert.equal(blocked.lifecycle, "blocked");
+    assert.deepEqual(blocked.budget_block, { dimension: "tokens", limit: 10_000, observed: 10_401 });
+    const saved = JSON.parse(readFileSync(join(dir, "I-501.json"), "utf8"));
+    assert.equal(saved.state, "BLOCKED");
+    assert.equal(saved.budget_block.dimension, "tokens");
+
+    // An unknown dimension can never prove the ceiling was exceeded.
+    const unknown = report({
+      dir,
+      run: "run-budget-unknown",
+      task: "I#502",
+      state: "WORKING",
+      summary: "Runtime exposes no tokens",
+      now: start,
+      budget: { tokens: 1 },
+      silent: true,
+      nonBlocking: true
+    });
+    assert.equal(unknown.state, "WORKING");
+    assert.equal(unknown.usage.tokens, "unknown");
+    assert.equal(unknown.budget_block, null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("extension reports and shows accumulated usage until the run budget blocks", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "orch-ext-usage-"));
+  const origEnv = process.env.ORCH_DIR;
+  process.env.ORCH_DIR = dir;
+  try {
+    const { default: registerExtension } = await import("../../../extensions/index.mjs");
+    const tools = new Map();
+    registerExtension({ registerTool: (tool) => tools.set(tool.name, tool), registerCommand: () => {} });
+    const tool = tools.get("orch_report");
+    assert.ok(tool.parameters.properties.usage);
+    assert.ok(tool.parameters.properties.budget);
+
+    const first = await tool.execute("usage-1", {
+      run: "ext-usage",
+      task: "I#601",
+      state: "WORKING",
+      phase: "PLAN",
+      summary: "Planning",
+      usage: { agent_launches: 1, tokens: 900 }
+    });
+    assert.match(first.content[0].text, /I#601 WORKING/);
+
+    const statusRes = await tools.get("orch_status").execute("usage-status", { run: "ext-usage", json: true });
+    const row = JSON.parse(statusRes.content[0].text).find((item) => item.task === "I#601");
+    assert.match(row.usage, /launches=1/);
+    assert.match(row.usage, /tokens=900/);
+    assert.match(row.usage, /cost=unknown/);
+
+    const blocked = await tool.execute("usage-2", {
+      run: "ext-usage",
+      task: "I#601",
+      state: "WORKING",
+      phase: "IMPLEMENT",
+      summary: "Over budget",
+      usage: { tokens: 200 },
+      budget: { tokens: 1000 }
+    });
+    assert.match(blocked.content[0].text, /I#601 BLOCKED/);
+    assert.match(blocked.content[0].text, /BUDGET tokens/);
   } finally {
     if (origEnv !== undefined) process.env.ORCH_DIR = origEnv;
     else delete process.env.ORCH_DIR;

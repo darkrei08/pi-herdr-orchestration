@@ -1,7 +1,11 @@
 {
   "extensionSettings": {
     "herdr": {
-      "enableFullyInspectableMode": false
+      "enableFullyInspectableMode": true
     }
+  },
+  "retention": {
+    "olderThanDays": 14,
+    "maxTerminalRuns": 100
   }
 }
