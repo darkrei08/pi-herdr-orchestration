@@ -256,20 +256,7 @@ if (existsSync(agentsPath)) {
   }
 }
 
-// 5. Serena Semantic Navigation
-if (commandAvailable("serena")) {
-  const serenaProjectConfig = join(targetDir, ".serena");
-  if (existsSync(serenaProjectConfig)) {
-    status("serena", "configured", "project configuration exists (.serena)");
-  } else {
-    status("serena", "pending", "initialize Serena project");
-    runCmd("serena", ["project", "create", targetDir, "--name", projectName], targetDir, { input: "n\nn\nn\n" });
-  }
-} else {
-  status("serena", "skipped", "serena CLI not installed");
-}
-
-// 6. CodeGraph Index
+// 5. CodeGraph Index
 const codegraphDir = join(targetDir, ".codegraph");
 if (!codegraph) {
   status("codegraph", "skipped", "not requested");
@@ -282,7 +269,7 @@ if (!codegraph) {
   runCmd("codegraph", ["init", "-i", targetDir]);
 }
 
-// 7. sqz / rtk Output Reduction
+// 6. sqz / rtk Output Reduction
 const claudeSettings = join(targetDir, ".claude", "settings.local.json");
 if (!sqz) {
   status("sqz", "skipped", "not requested");
@@ -301,7 +288,7 @@ if (commandAvailable("rtk")) {
   status("rtk", "skipped", "rtk CLI not installed");
 }
 
-// 8. Herdr Workspace Integration
+// 7. Herdr Workspace Integration
 if (commandAvailable("herdr")) {
   try {
     const listRes = spawnSync("herdr", ["workspace", "list"], { encoding: "utf8" });
@@ -325,7 +312,7 @@ if (commandAvailable("herdr")) {
   status("herdr", "skipped", "herdr CLI not installed");
 }
 
-// 9. Skill Registry Index
+// 8. Skill Registry Index
 const atlDir = join(targetDir, ".atl");
 const registryFile = join(atlDir, "skill-registry.md");
 if (existsSync(registryFile)) {
