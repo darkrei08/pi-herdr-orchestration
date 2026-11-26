@@ -8,6 +8,8 @@ CodeGraph indexes are worktree-local: a worktree without its own `.codegraph` fa
 
 One branch and one worktree per independent task; never edit the default branch directly. Follow repository naming, else `fix/<scope>`, `feat/<scope>`, `refactor/<scope>`, `test/<scope>`, `docs/<scope>`. While work is unstable, preserve logical checkpoints locally when authorized and do not push intermediate commits. Publish (push, PR) only when the unit is coherent and verified, and only with authorization. Squash or reorder only when it improves reviewability without destroying useful history.
 
+The isolated commit contract is proven without a remote by `scripts/isolated-commit-fixture.mjs`: `npm run test:fixture` builds a temporary local repository, dirties the root, branches a worktree from a fixed baseline, commits the scoped change locally, and asserts the exact branch, clean status, changed files, commit identity, unchanged root bytes, and the absence of any remote. Nothing is pushed, merged or proposed.
+
 ## Worker rules
 
 1. Understand the task and its allowed scope; inspect the relevant existing code.
