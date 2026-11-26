@@ -10,6 +10,10 @@ One branch and one worktree per independent task; never edit the default branch 
 
 The isolated commit contract is proven without a remote by `scripts/isolated-commit-fixture.mjs`: `npm run test:fixture` builds a temporary local repository, dirties the root, branches a worktree from a fixed baseline, commits the scoped change locally, and asserts the exact branch, clean status, changed files, commit identity, unchanged root bytes, and the absence of any remote. Nothing is pushed, merged or proposed.
 
+## Local factory run
+
+`npm run factory` is the repeatable local procedure from dispatch readiness to final repository verification. It runs capability preflight, host roster status, the deterministic fan-out and timeout resolver, the isolated commit gate, `git diff --check`, lint and the full unit suite, and reports every gate separately as `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`. Live Herdr pane fan-out and live PiWorkflow dispatch stay `NOT RUN`: the runner starts no session and creates no worktree, pane, mailbox record or process. Gate order, cleanup checks and the report template are in [`docs/local-factory-run.md`](../../../docs/local-factory-run.md).
+
 ## Worker rules
 
 1. Understand the task and its allowed scope; inspect the relevant existing code.
