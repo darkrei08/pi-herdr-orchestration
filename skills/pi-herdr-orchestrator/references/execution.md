@@ -16,8 +16,21 @@ One branch and one worktree per independent task; never edit the default branch 
 4. Preserve public contracts unless explicitly authorized; a refactor needs behavior-preservation tests.
 5. Update tests, and documentation when behavior changes.
 6. Run the relevant validation, inspect your own diff, and hand off with evidence. Lifecycle: [dispatch.md](dispatch.md).
-7. Treat a terminal Pi execution failure as a failed result, not a completed assignment. Preserve the exact session and assignment, inspect possible external effects, and continue only through the existing authorized path. Never replay tools or automatically create a second writer.
+7. Treat a terminal Pi execution failure as a failed result, not a completed assignment. Preserve the exact session and assignment, inspect possible external effects, and continue only through the existing authorized path. Never replay tools or automatically create a second writer. After a provider or workflow package update, restart Pi before treating a model-preflight failure as a transport fault, because the running process still holds the previous modules and provider registry.
 8. Report through the mailbox (`scripts/mailbox.mjs report`) at every phase change, at least every 10 minutes, immediately when blocked, and as the last action with all checks. Silence is a defect. See [supervision.md](supervision.md).
+
+## Bounded research phases
+
+Read-only scouts and researchers stay bounded only when each phase carries a contract the child cannot widen:
+
+| Field | Contract |
+| --- | --- |
+| Scope | One question per phase, plus explicit allowed paths/globs and the exact resolved tool names the phase may use |
+| Budget | A cap on tool calls and a phase deadline shorter than the run deadline; a phase that hits either cap returns what it has |
+| Terminal result | A compact report: answer, evidence references, files read, tools used, and what is unverified. Never a transcript |
+| Memory | Engram or Gentle calls pass an explicit `project` and cwd, or are omitted in a read-only scout, to avoid `project_transition_conflict` |
+
+Report each phase result through the mailbox as it lands, so a later timeout loses one phase instead of the whole investigation. A scout that browses and synthesizes indefinitely turns a bounded deadline into a missing terminal report for every sibling that waited on it; classify that outcome with the envelope in [supervision.md](supervision.md).
 
 ## Master and chiefs
 
