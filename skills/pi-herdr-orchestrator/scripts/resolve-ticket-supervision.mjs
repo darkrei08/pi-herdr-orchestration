@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export function thinkingLevel(model) {
   const lastColon = model.lastIndexOf(":");
@@ -33,7 +35,7 @@ export function resolveTicketSupervision(configPath, rolesSettingsPath) {
 
 const invokedPath = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
 if (invokedPath === import.meta.url) {
-  const configPath = process.argv[2] ?? "config/ticket-supervision.json";
-  const settingsPath = process.argv[3] ?? process.env.PI_EXT_ROLES_SETTINGS ?? "/root/.pi/agent/pi-ext-roles/settings.json";
+  const configPath = process.argv[2] ?? fileURLToPath(new URL("../config/ticket-supervision.json", import.meta.url));
+  const settingsPath = process.argv[3] ?? process.env.PI_EXT_ROLES_SETTINGS ?? join(homedir(), ".pi", "agent", "pi-ext-roles", "settings.json");
   console.log(JSON.stringify(resolveTicketSupervision(configPath, settingsPath), null, 2));
 }

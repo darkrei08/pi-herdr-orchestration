@@ -18,7 +18,7 @@ function readJson(relativePath) {
 }
 
 test("ticket supervision config references pi-ext-roles aliases without duplicating models", () => {
-  const config = readJson("../../../config/ticket-supervision.json");
+  const config = readJson("../config/ticket-supervision.json");
   assert.equal(config.schema, "pi-herdr-orchestration/ticket-supervision/v1");
   assert.equal(config.aliasSource, "pi-ext-roles.modelAliases");
   assert.notEqual(config.producer.role, config.supervisor.role);

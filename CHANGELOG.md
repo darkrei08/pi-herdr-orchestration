@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-11-28
+
+### Fixed
+- **Skill Packaging (`skills/pi-herdr-orchestrator/config/ticket-supervision.json`)**: Moved the supervision alias config inside the installable skill directory so global skill installation includes it. The resolver and regression test now use the skill-local path.
+- **GGA Review Fixes (`package.json`, `skills/pi-herdr-orchestrator/scripts/resolve-ticket-supervision.mjs`)**: Removed the duplicate `test` script key and made the default `pi-ext-roles` settings path portable via `homedir()` instead of a hardcoded root path.
+
 ## [1.7.0] - 2026-11-28
 
 ### Added
