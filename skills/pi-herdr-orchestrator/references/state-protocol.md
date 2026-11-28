@@ -50,7 +50,7 @@ When Pi VCC is disabled or unavailable, fall back to Pi native compaction. In bo
   "id": "r_20260927_001",
   "parent": "chief-build-01",
   "run": "repo-run-42",
-  "sender": {"role": "implementer", "session": "pi-i42", "tab": "[I#42] Config loading", "worktree": ".worktrees/issue-42-config-loading"},
+  "sender": {"role": "developer", "session": "pi-i42", "tab": "[I#42] Config loading", "worktree": ".worktrees/issue-42-config-loading"},
   "task": {"id": "I#42", "type": "issue", "goal": "Fix config loading"},
   "state": "READY",
   "lifecycle": "ready",

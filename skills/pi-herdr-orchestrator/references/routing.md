@@ -64,25 +64,14 @@ agent(taskPrompt, {
 
 These are examples, not a mandatory pipeline.
 
-## Canonical PiWorkflow role-to-model matrix
+## Role source of truth
 
-When configuring or routing Pi workflow roles (`pi-ext-roles`) with CLIProxyAPI and High Availability (HA CLI) groups, use this canonical matrix:
+Pi Herdr Orchestration does not define roles or role-to-model assignments. The installed `pi-ext-roles` roles and `modelAliases` are the single source of truth.
 
-| Role | Primary Model (CLIProxyAPI / Native) | Effort | HA Failover Group | Failover Models | Responsibility |
-|---|---|---|---|---|---|
-| `developer` | `cliproxyapi/claude-sonnet-5-5` | `medium` | `development` / `fast` | `gemini-3.8-flash-high:high`, `gemini-4-argon:medium`, `gpt-6-luna:high` | Focused surgical edits, test-driven fixes |
-| `reviewer` | `cliproxyapi/claude-opus-5-5` | `high` | `reviewer` | `gemini-4-argon:high`, `gemini-3.8-flash-high:high`, `gpt-6-luna:high` | Code review gates, defect detection |
-| `oracle` | `cliproxyapi/claude-opus-5-5` | `high` | `reviewer` | `gemini-4-argon:high`, `gemini-pro-agent:high`, `gpt-6-luna:high` | Second-opinion architectural challenge |
-| `architect` | `cliproxyapi/claude-opus-5-5` | `high` | `reviewer` | `gemini-4-argon:high`, `gemini-pro-agent:high`, `gpt-6-luna:high` | Component boundaries, domain models |
-| `security` | `cliproxyapi/claude-opus-5-5` | `high` | `reviewer` | `gemini-4-argon:high`, `gemini-pro-agent:high`, `gpt-6-luna:high` | Trust boundaries, vulnerability audit |
-| `tests-expert` | `cliproxyapi/gpt-6-luna` | `high` | `testing` | `gemini-3.8-flash-high:high`, `gemini-4-argon:high` | Test authoring, edge-case analysis |
-| `researcher` | `cliproxyapi/gpt-6-luna` | `xhigh` | `research` | `gemini-pro-agent:high`, `gemini-4-argon:high` | Web & codebase deep investigation |
-| `scout` | `opencode-go/cat-jam-free` | `medium` | `scout` | `gemini-3.8-flash-high:medium`, `go/cat-jam-free:medium` | Fast repo mapping, 1M context |
-| `summarizer` | `cliproxyapi/claude-haiku-5-5` | `low` | `summary` | `gemini-3.5-flash-lite:low`, `cat-jam-free:low` | Text summarization without tools |
-| `qa`, `release`, `sre` | `cliproxyapi/claude-sonnet-5-5` | `medium` | `development` | `gemini-3.8-flash-high:medium` | Coverage, release, ops verification |
-| **GGA** | `cliproxyapi/claude-opus-5-5` | `high` | `reviewer` | `gemini-3.8-flash-high:high`, `gemini-4-argon:high` | Pre-commit quality gate |
-
-Use `pi-ha status` and `pi-ha group <name> <models...>` to verify and switch active failover groups.
+- Inspect an active role with `pi-role --identify <role>`.
+- Resolve model and effort from the active `pi-ext-roles` settings, not from this repository.
+- Use only role names that exist in the installed `roles/` directory. A missing or unavailable role is `BLOCKED`.
+- Host failover groups are owned by the host configuration; this repository records no duplicate matrix.
 
 ### Ticket supervision contract
 

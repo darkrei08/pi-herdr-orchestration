@@ -174,7 +174,7 @@ Parent sessions never ingest worker transcripts. All cross-session communication
   "parent": "chief-build-01",
   "run": "repo-run-10",
   "sender": {
-    "role": "implementer",
+    "role": "developer",
     "session": "pi-i42",
     "tab": "[I#42] Config loading",
     "worktree": ".worktrees/issue-42-config-loading"

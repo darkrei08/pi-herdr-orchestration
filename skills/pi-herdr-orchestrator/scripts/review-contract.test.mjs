@@ -78,3 +78,16 @@ test("reviewer profile points at the supervisor alias", () => {
   const profile = readFileSync(new URL("../reviewer-profile.gga", import.meta.url), "utf8");
   assert.match(profile, /^PROVIDER="kilo:reviewer-model"$/m);
 });
+
+test("role configuration delegates to pi-ext-roles without duplicate definitions", () => {
+  const routing = readFileSync(new URL("../references/routing.md", import.meta.url), "utf8");
+  const readme = readFileSync(new URL("../../../README.md", import.meta.url), "utf8");
+  const stateProtocol = readFileSync(new URL("../references/state-protocol.md", import.meta.url), "utf8");
+  assert.doesNotMatch(routing, /Canonical PiWorkflow role-to-model matrix/);
+  assert.doesNotMatch(routing, /\| `developer` \| `cliproxyapi\//);
+  assert.doesNotMatch(routing, /\| `reviewer` \| `cliproxyapi\//);
+  assert.match(routing, /pi-ext-roles/);
+  assert.match(routing, /pi-role --identify/);
+  assert.doesNotMatch(readme, /"role": "implementer"/);
+  assert.doesNotMatch(stateProtocol, /"role": "implementer"/);
+});

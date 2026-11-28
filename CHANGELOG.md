@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-11-28
+
+### Fixed
+- **Single Role Source (`skills/pi-herdr-orchestrator/references/routing.md`, `README.md`, `skills/pi-herdr-orchestrator/references/state-protocol.md`)**: Removed the duplicate role-to-model matrix and noncanonical `implementer` examples. Installed `pi-ext-roles` is now the only role source.
+- **Role Delegation Regression Test (`skills/pi-herdr-orchestrator/scripts/review-contract.test.mjs`)**: Assert that this repository contains no duplicated role matrix or hardcoded role-model assignments and that examples use canonical role names.
+
 ## [1.7.1] - 2026-11-28
 
 ### Fixed
