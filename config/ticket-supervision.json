@@ -1,0 +1,23 @@
+{
+  "schema": "pi-herdr-orchestration/ticket-supervision/v1",
+  "phase": "supervise",
+  "placement": {
+    "after": "spec",
+    "before": "implement"
+  },
+  "aliasSource": "pi-ext-roles.modelAliases",
+  "producer": {
+    "role": "developer",
+    "alias": "developer-model"
+  },
+  "supervisor": {
+    "role": "reviewer",
+    "alias": "reviewer-model"
+  },
+  "failure": "BLOCKED",
+  "requiredEvidence": [
+    "path:line findings",
+    "GGA verdict and configuration digest",
+    "verified producer and supervisor aliases"
+  ]
+}

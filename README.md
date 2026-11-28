@@ -341,7 +341,7 @@ Launch named workflows with `foreground: true` and no budget; omit `timeoutMs` o
 ### Guardian Angel (GGA)
 - **Role:** Provider-agnostic pre-commit and pre-PR quality gate.
 - **Capabilities Used:**
-  - Reviewed by default via `kilo:cliproxyapi/gemini-3.8-flash-high` with high reasoning effort.
+  - Reviewed by default via `kilo:reviewer-model`; the producer uses `developer-model`. Both aliases and their effort resolve from `pi-ext-roles` settings, checked by `npm run check:ticket-supervision`.
   - Bridge integration `agents/gga-pi/` routing reviews directly through `pi --print` to the local CLIProxyAPI gateway.
   - Verifies git diffs, rules, and repository invariants after tests and before declaring a worker `READY`. Uses hash caching to ensure idempotent verification.
 

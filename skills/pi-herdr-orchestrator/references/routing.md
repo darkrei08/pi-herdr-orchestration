@@ -84,6 +84,15 @@ When configuring or routing Pi workflow roles (`pi-ext-roles`) with CLIProxyAPI 
 
 Use `pi-ha status` and `pi-ha group <name> <models...>` to verify and switch active failover groups.
 
+### Ticket supervision contract
+
+Every ticket, map entry, grilling answer or documentation draft must be reviewed before it becomes an implementation input. Use two distinct `pi-ext-roles` selectors from `config/ticket-supervision.json`:
+
+- Producer: `developer` via `developer-model`.
+- Supervisor: `reviewer` via `reviewer-model`.
+
+Resolve both aliases from `modelAliases` in the active `pi-ext-roles` settings; do not duplicate physical model strings in this repository. Run `npm run check:ticket-supervision` to verify that the two aliases resolve to different models or effort. The supervisor is an independent perspective, not a restatement of the producer output. If both roles resolve to the same alias, model or effort, report `BLOCKED` and do not create or activate the ticket.
+
 ### Model-fit evidence envelope
 
 Rows in that matrix are configuration, never availability evidence: a listed route does not prove entitlement, inference, or quota. Consume `pi-model-fit` output only through `skills/pi-herdr-orchestrator/scripts/model-fit-evidence.mjs`, which is read-only and fail-closed:

@@ -30,6 +30,7 @@ Act as the control session for the current repository. Respect the user's actual
    - Skill registry indexing (`.atl/skill-registry.md`).
 5. If Wizard-AI is installed or the repository exposes it, discover its context stack and compatibility layer. See [wizard-ai.md](references/wizard-ai.md).
 6. If installed, use Guardian Angel (GGA) as a provider-agnostic commit/PR quality gate after tests and before `READY`. See [guardian-angel.md](references/guardian-angel.md).
+   - Before a ticket, map entry, grilling answer or documentation draft is activated, run the `supervise` phase with the producer and supervisor aliases declared in `config/ticket-supervision.json`; resolve physical model and effort from the active `pi-ext-roles` settings. The same alias, model or effort for both roles is `BLOCKED`; see [routing.md](references/routing.md).
 7. Reconcile relevant persisted memory with current Git, issues, PRs and CI; load only task-relevant memory. See [memory.md](references/memory.md).
 8. Build a deduplicated work queue and dependency graph. Prioritize defects with material impact and unblockers. See [discovery.md](references/discovery.md). Dispatch only independent units in parallel; serialize or group related and conflicting ones. See [dispatch.md](references/dispatch.md).
 9. Select the smallest useful set of available skills, methods and roles; one owner per concern. See [routing.md](references/routing.md).

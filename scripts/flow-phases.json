@@ -98,6 +98,38 @@
       "conditionalSkills": []
     },
     {
+      "id": "supervise",
+      "title": "Supervise",
+      "purpose": "Review the ticket draft or spec with an independent supervisor before implementation.",
+      "skills": [
+        "code-review",
+        "comment-writer",
+        "judgment-day",
+        "pi-herdr-orchestrator"
+      ],
+      "mandatoryByRoute": {
+        "matt-ticket-pipeline": [
+          "code-review"
+        ],
+        "engineering-excellence-sdd": [
+          "code-review"
+        ],
+        "gentle-sdd": [
+          "gentle-ai"
+        ],
+        "gentle-odd": [
+          "gentle-ai"
+        ]
+      },
+      "consumes": "The spec or ticket draft, the producer role/model contract, and the reviewer profile.",
+      "handsOn": "A reviewed draft with path:line findings, a GGA verdict, and an explicit READY or BLOCKED status.",
+      "failurePrevents": "Implementing a draft produced and reviewed by the same model without an independent perspective.",
+      "practices": [
+        "Producer and supervisor roles must resolve to different pi-ext-roles aliases and models or effort; a shared alias is BLOCKED."
+      ],
+      "conditionalSkills": []
+    },
+    {
       "id": "implement",
       "title": "Implement",
       "purpose": "Make the smallest change that satisfies the spec while preserving existing behavior.",

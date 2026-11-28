@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-28
+
+### Added
+- **Ticket Supervision Phase (`scripts/flow-phases.json`, `config/ticket-supervision.json`)**: Added a `supervise` phase between `spec` and `implement` for ticket drafts, map entries, grilling answers and documentation drafts. Producer and supervisor roles are resolved through `pi-ext-roles` aliases, with fail-closed `BLOCKED` when both roles resolve to the same alias, model or effort.
+- **Supervision Alias Resolver (`skills/pi-herdr-orchestrator/scripts/resolve-ticket-supervision.mjs`)**: Resolves physical model and effort from active `pi-ext-roles` settings without duplicating model configuration in this repository, and adds `npm run check:ticket-supervision`.
+- **Supervision Contract Regression (`skills/pi-herdr-orchestrator/scripts/review-contract.test.mjs`)**: Asserts distinct producer and supervisor aliases, the `supervise` phase placement, and fail-closed behavior for indistinguishable roles.
+
 ## [1.6.0] - 2026-11-26
 
 ### Added

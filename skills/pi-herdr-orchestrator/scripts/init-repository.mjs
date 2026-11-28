@@ -220,7 +220,7 @@ if (existsSync(ggaPath)) {
 } else {
   status("gga", "pending", "create repository .gga configuration");
   const ggaConfig = `# Gentleman Guardian Angel Configuration
-PROVIDER="claude"
+PROVIDER="kilo:reviewer-model"
 FILE_PATTERNS="*.ts,*.tsx,*.js,*.mjs,*.py,*.go,*.rs,*.md"
 EXCLUDE_PATTERNS="*.test.*,*.spec.*,*.d.ts,node_modules/*,.worktrees/*"
 RULES_FILE="AGENTS.md"
