@@ -143,7 +143,7 @@ test("envelope carries the twenty-field event schema and an empty history", () =
   assert.equal(event.payload_hash.length, 64);
 });
 
-test("migrateEnvelope adds an empty history and one migrated event", () => {
+test("migrateEnvelope migrates envelopes that have revision but no events", () => {
   const legacy = buildEnvelope(base, now);
   delete legacy.events;
   delete legacy.revision;
@@ -154,6 +154,17 @@ test("migrateEnvelope adds an empty history and one migrated event", () => {
   assert.equal(migrated.events[0].event_type, "migrated");
   assert.equal(migrated.events[0].to, resolveColumn(legacy).column);
   assert.deepEqual(Object.keys(migrated.events[0]), EVENT_FIELDS);
+});
+
+test("migrateEnvelope migrates events-only legacy gaps without resetting revision", () => {
+  const legacy = { ...buildEnvelope(base, now), revision: 2 };
+  delete legacy.events;
+
+  const migrated = migrateEnvelope(legacy, now);
+  assert.equal(migrated.revision, 2);
+  assert.equal(migrated.events.length, 1);
+  assert.equal(migrated.events[0].event_type, "migrated");
+  assert.equal(migrated.events[0].revision, 2);
 });
 
 test("applyCorrection increments revision and adds a correlated event", () => {

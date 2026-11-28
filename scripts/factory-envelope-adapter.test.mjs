@@ -99,6 +99,15 @@ test("projectFactoryEvidence emits full writeback projection without live writes
   assert.deepEqual(output.writeback.map((item) => item.column), output.envelopes.map((item) => item.column));
 });
 
+test("projectFactoryEvidence preserves all evidence items", () => {
+  const evidence = Array.from({ length: 25 }, (_, index) => `evidence-${index}`);
+  const output = projectFactoryEvidence({
+    ...fixture,
+    stages: [stage("full-evidence", 200, "intake", "PASS", repoA, { evidence })],
+  });
+  assert.deepEqual(output.envelopes[0].evidence.slice(0, evidence.length), evidence);
+});
+
 test("projectFactoryEvidence rejects malformed or unapproved factory fixtures", () => {
   assert.throws(() => projectFactoryEvidence({ ...fixture, org: "other" }), /org must be darkrei08/);
   assert.throws(() => projectFactoryEvidence({ ...fixture, repos: [{ ...repo(repoA), labels: ["other"] }] }), /factory label required/);

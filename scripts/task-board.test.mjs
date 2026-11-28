@@ -155,6 +155,33 @@ test("task-board renders all envelope fields", (t) => {
   }
 });
 
+test("task-board uses keyboard-operable column toggles and stable dedup order", (t) => {
+  const dir = scratch(t);
+  const inputPath = join(dir, "input.json");
+  const outputPath = join(dir, "board.html");
+  const common = {
+    org: "darkrei08",
+    repo: "pi-herdr-orchestration",
+    source: "github",
+    ticket: "I#2",
+    created_at: "2026-11-28T12:00:00.000Z",
+    state: "READY",
+    evidence: [],
+    blockers: [],
+    waiting: [],
+  };
+  const records = [
+    envelope({ ...common, pi_session_id: "pi-9", summary: "SECOND" }),
+    envelope({ ...common, pi_session_id: "pi-1", summary: "FIRST" }),
+  ];
+  writeFileSync(inputPath, JSON.stringify(records));
+  const result = run(["--input", inputPath, "--output", outputPath]);
+  assert.equal(result.status, 0, result.stderr);
+  const html = readFileSync(outputPath, "utf8");
+  assert.match(html, /<button[^>]*class="column-toggle"/);
+  assert.ok(html.indexOf("FIRST") < html.indexOf("SECOND"));
+});
+
 test("task-board docs specify path and counts output", () => {
   const doc = readFileSync(new URL("../docs/task-board.md", import.meta.url), "utf8");
   assert.match(doc, /counts/i);

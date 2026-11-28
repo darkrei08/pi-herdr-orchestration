@@ -147,7 +147,7 @@ export function appendEvent(envelope, input = {}, now = new Date()) {
 
 export function migrateEnvelope(envelope, now = new Date()) {
   if (!envelope) return envelope;
-  const isLegacy = !Object.hasOwn(envelope, "events") && !Object.hasOwn(envelope, "revision");
+  const isLegacy = !Object.hasOwn(envelope, "events");
   const base = {
     ...envelope,
     v: ENVELOPE_VERSION,
@@ -155,6 +155,7 @@ export function migrateEnvelope(envelope, now = new Date()) {
     events: list(envelope.events),
   };
   if (!isLegacy) return base;
+  if (!Object.hasOwn(envelope, "revision")) base.revision = 0;
   const resolved = resolveColumn(base);
   return appendEvent(base, {
     event_type: "migrated",

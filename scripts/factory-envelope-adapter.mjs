@@ -68,7 +68,7 @@ function projectStage(stage, meta) {
   const timestamp = requireText(stage.timestamp, "stage timestamp");
   if (Number.isNaN(Date.parse(timestamp))) throw new Error(`invalid stage timestamp ${JSON.stringify(timestamp)}`);
   const state = gate === "PASS" ? KIND_STATE[kind] : "BLOCKED";
-  const evidence = list(stage.evidence).slice(0, 20).map((item) => String(item));
+  const evidence = list(stage.evidence).map((item) => String(item));
   const blockers = gate === "FAIL" ? [`gate ${gate}`] : [];
   const waiting = gate === "BLOCKED" ? [`gate ${gate}`] : [];
   const ticket = `I#${issue}`;

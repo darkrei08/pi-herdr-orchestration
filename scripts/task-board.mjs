@@ -20,7 +20,7 @@ const DEDUPE_FIELDS = [
   "tab_id",
   "pane_id",
 ];
-const SORT_FIELDS = ["org", "repo", "ticket", "created_at"];
+const SORT_FIELDS = ["org", "repo", "ticket", "created_at", ...DEDUPE_FIELDS];
 const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
 function escapeHtml(value) {
@@ -144,7 +144,7 @@ export function renderBoardHtml(input, options = {}) {
   }
   const columns = BOARD_COLUMNS.map((column) => `
     <section class="column" data-column="${escapeHtml(column)}">
-      <h2>${escapeHtml(column)}</h2>
+      <h2><button class="column-toggle" type="button" aria-expanded="true">${escapeHtml(column)}</button></h2>
       <div class="cards">${byColumn.get(column).join("") || '<p class="empty">No cards</p>'}</div>
     </section>`).join("");
 
@@ -158,7 +158,8 @@ export function renderBoardHtml(input, options = {}) {
 body{font-family:system-ui,sans-serif;margin:1rem;background:#f6f7f9;color:#1b1f24}
 .board{display:grid;grid-template-columns:repeat(8,minmax(14rem,1fr));gap:.75rem;overflow-x:auto}
 .column{background:#fff;border:1px solid #d7dce2;border-radius:.5rem;padding:.5rem}
-.column h2{cursor:pointer;font-size:1rem;margin:0 0 .5rem}
+.column h2{font-size:1rem;margin:0 0 .5rem}
+.column-toggle{background:none;border:0;cursor:pointer;font:inherit;padding:0;text-align:left}
 .card{background:#fafbfc;border:1px solid #ccd3da;border-radius:.4rem;margin-bottom:.5rem;padding:.5rem;transition:transform .15s ease}
 .card:hover{transform:translateY(-2px)}
 .field{display:grid;grid-template-columns:7rem 1fr;gap:.25rem;font-size:.8rem;overflow-wrap:anywhere}
@@ -185,10 +186,11 @@ body{font-family:system-ui,sans-serif;margin:1rem;background:#f6f7f9;color:#1b1f
       card.hidden = needle !== "" && card.textContent.toLowerCase().indexOf(needle) === -1;
     });
   });
-  Array.from(document.querySelectorAll(".column h2")).forEach(function (heading) {
-    heading.addEventListener("click", function () {
-      var list = heading.parentElement.querySelector(".cards");
+  Array.from(document.querySelectorAll(".column-toggle")).forEach(function (toggle) {
+    toggle.addEventListener("click", function () {
+      var list = toggle.closest(".column").querySelector(".cards");
       list.hidden = !list.hidden;
+      toggle.setAttribute("aria-expanded", String(!list.hidden));
     });
   });
 })();
