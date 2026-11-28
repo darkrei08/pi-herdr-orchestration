@@ -41,6 +41,29 @@ npm run taskmap:pr -- --input /tmp/pr-events.json --output /tmp/pr-projection.js
 npm run taskmap:factory -- --input /tmp/factory-jobs.json --output /tmp/factory-projection.json
 ```
 
+The read-only Herdr inventory projector consumes saved snapshots from `herdr agent list`, `herdr session list` and the mailbox status command. It does not restart sessions, rename panes or change Herdr core:
+
+```bash
+npm run taskmap:inventory -- --agents /tmp/herdr-agents.json --sessions /tmp/herdr-sessions.json --mailbox /tmp/mailbox.json --output /tmp/herdr-inventory.json
+```
+
+Provider selection and Windows host readiness are validated locally with fixture contracts:
+
+```bash
+npm run taskmap:provider -- --input /tmp/providers.json --output /tmp/provider-projection.json
+npm run taskmap:windows -- --input /tmp/windows-target.json --output /tmp/windows-plan.txt
+```
+
+See [`docs/provider-config.md`](provider-config.md) and [`docs/windows-matrix.md`](windows-matrix.md). These commands validate contracts only; they do not activate providers or run live Windows checks.
+
+The optional TaskView adapter currently runs only in fixture mode:
+
+```bash
+npm run taskmap:taskview -- --input /tmp/task-map-envelopes.json --output /tmp/taskview-projection.json
+```
+
+It emits deterministic writeback requests and HMAC-signed webhook fixtures with `network=0` and `live_write=false`. It does not read a URL, token or webhook secret, and it does not contact TaskView. A real round trip is tracked by #110.
+
 PR events are `opened`, `ready_for_review`, `review`, `checks`, `changes_requested`, `approved`, `merged` and `closed`. Their idempotency key is `org/repo/PR/event/id`. Open PRs project to `Review`, `checks PASS` plus approval to `Ready to Merge`, and verified merge to `Closed`.
 
 Factory `intake` and `spec` project to `Intake`. Gate outcomes are `PASS`, `FAIL` and `BLOCKED`. ODD task docs and logs remain the local authority; the adapter only projects evidence.

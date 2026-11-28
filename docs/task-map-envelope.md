@@ -32,7 +32,7 @@ Identity and follow-up fields are nullable when unavailable:
 ## Commands
 
 ```bash
-node scripts/mailbox.mjs status --run default --json=true > /tmp/mailbox.json
+node scripts/mailbox.mjs status --run default --json true > /tmp/mailbox.json
 herdr agent list > /tmp/herdr-agents.json
 npm run taskmap:envelope -- --mailbox /tmp/mailbox.json --herdr /tmp/herdr-agents.json --repo pi-herdr-orchestration --subject "Session evidence" --source mailbox
 ```

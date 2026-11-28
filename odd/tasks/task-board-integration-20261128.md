@@ -1,5 +1,5 @@
 Owner: Lead
-Status: LOCAL WORK COMPLETE; #110-#113 BLOCKED ON EXTERNAL TARGETS
+Status: LOCAL CONTRACTS COMPLETE; #110-#114 BLOCKED ON EXTERNAL TARGETS AND PI 1.7 VERIFICATION
 Scope: Implement the local task-map board, envelope transition events, PR and factory projections, and workflow documentation from Wayfinder map #90.
 
 ## Specs
@@ -44,16 +44,17 @@ The repository has no per-ticket model assignment. The model column below is der
 | #107 | `developer` | `cliproxyapi/claude-sonnet-5-5` | `scripts/pr-envelope-adapter.mjs`, `scripts/pr-envelope-adapter.test.mjs` | Implemented in 9f233f9; review clean |
 | #108 | `developer` | `cliproxyapi/claude-sonnet-5-5` | `scripts/factory-envelope-adapter.mjs`, `scripts/factory-envelope-adapter.test.mjs` | Implemented in 9f233f9; review fixes applied after commit |
 | #109 | `developer` | `cliproxyapi/claude-sonnet-5-5` | `package.json`, `docs/task-board.md`, `docs/task-map-envelope.md` | Implemented in 9f233f9; review clean |
-| #110 | `developer` and GGA review | `cliproxyapi/claude-sonnet-5-5`; GGA `cliproxyapi/claude-opus-5-5` | Planned `scripts/taskview-adapter.mjs`, absent until target exists | Blocked: TaskView URL, token and webhook secret |
-| #111 | `architect` | `cliproxyapi/claude-opus-5-5` | No code file found; provider capability contract only | Blocked: provider URLs and master tokens |
-| #112 | `scout` | `opencode-go/cat-jam-free` | No code file found; migration inventory only | Blocked: migration target and approval |
-| #113 | `qa` and `release` | `cliproxyapi/claude-sonnet-5-5` | No code file found; Windows test matrix only | Blocked: host, user, scope and backup target |
+| #110 | `developer` and GGA review | `cliproxyapi/claude-sonnet-5-5`; GGA `cliproxyapi/claude-opus-5-5` | `scripts/taskview-adapter.mjs`, `scripts/taskview-adapter.test.mjs`, `docs/task-board.md` | Fixture PASS 6/6; live round trip blocked |
+| #111 | `architect` | `cliproxyapi/claude-opus-5-5` | `scripts/provider-config.mjs`, `scripts/provider-config.test.mjs`, `docs/provider-config.md` | Fixture PASS 13/13; live activation blocked |
+| #112 | `scout` | `opencode-go/cat-jam-free` | `scripts/herdr-inventory.mjs`, `scripts/herdr-inventory.test.mjs`, `docs/task-board.md` | Fixture PASS 6/6; zero mutations; live migration approval blocked |
+| #113 | `qa` and `release` | `cliproxyapi/claude-sonnet-5-5` | `scripts/windows-matrix.mjs`, `scripts/windows-matrix.test.mjs`, `docs/windows-matrix.md` | Contract PASS 15/15; live host target blocked |
+| #114 | `qa` and `release` | `cliproxyapi/claude-sonnet-5-5` | Release ticket in GitHub #114; verification artifacts to be added after runtime checks | Open: Pi 1.7.0 impact on extensions unverified |
 
 ## Development map
 
 - Dependencies: #91-#104 are closed decisions. #105 establishes the event contract for #106-#109. #106 consumes #105. #107 and #108 consume #105 plus the #95 column rules. #109 documents #105-#108. #110 consumes #100 and the #105 event contract. #111 consumes #101. #112 consumes #93 and #102. #113 consumes #103.
 - Local state: #105-#109 implemented and tested; live writeback not attempted; #110-#113 blocked on external targets.
-- Next steps: publish the reviewed local commit set after explicit authorization; add TaskView URL, token and webhook for #110; add provider URLs and master tokens for #111; approve Herdr inventory for #112; supply Windows target and backup for #113.
+- Next steps: publish the reviewed local commit set; add TaskView URL, token and webhook for #110; add provider URLs and master tokens for #111; approve Herdr inventory for #112; supply Windows target and backup for #113; run #114 verification for Pi 1.7.0.
 - Closure gate: do not close #90, #105-#109 or blocked tickets until publication and verification policy allow it.
 
 ## Tasks
@@ -86,3 +87,9 @@ L7 Final verification: `npm run test:taskmap` 29/29, `npm test` 266/266, `npm ru
 L8 Work-unit commit: 9f233f953a37b658894e278b55b8ea05742b0669 `feat(taskmap): add local board and envelope adapters`, 1,959 insertions and 2 deletions across 11 files. Push, PR, merge and issue closure are deferred by repository policy.
 
 L9 Review of #105-#109 found one high finding: `migrateEnvelope` treated missing `revision` plus missing `events` as legacy, so an envelope with `revision` but no `events` was not migrated. Low findings covered factory evidence truncation, keyboard-operable column collapse and dedup order dependence. RED observed with three failing tests. Fixes removed the `events` presence trap, removed the factory evidence cap, changed column toggles to buttons and added dedupe fields to sort order. GREEN: focused task-map suite 32/32, full suite 269/269, lint exit 0, strict check Required failures 0, diff check exit 0.
+
+L10 Operator authorized full execution, commit and push. Local fixture contracts were added for #110-#113: TaskView projection 6/6, provider config 13/13, Herdr inventory 6/6 and Windows matrix 15/15. All report `network=0` and no live writes. Live TaskView, provider, Herdr migration and Windows SSH criteria remain BLOCKED by missing targets and credentials.
+
+L11 Pi Agent 1.7.0 release was analyzed from the authoritative GitHub release and changelog. Ticket #114 was created, labeled `wayfinder:research`, assigned and linked to map #90 after #113. The release removes install telemetry and adds `--agent-dir`, OSC 7577 resume, image options and model/provider changes. 1.6 results are not treated as 1.7 compatibility evidence.
+
+L12 Final local verification recorded in `docs/task-map-verification-20261128.md`: focused 72/72, full 309/309, lint exit 0, strict check Required failures 0, diff check exit 0. A real read-only Herdr inventory ran with 9 agents, 1 session and 0 mailbox rows, producing 0 envelopes with network=0 and mutations=0. Local `pi --version` is 1.6.0 and help has no `--agent-dir`, so Pi 1.7 runtime compatibility remains NOT VERIFIED and belongs to #114.
